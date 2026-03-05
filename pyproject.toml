@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-server-toolkit"
+version = "0.1.0"
+description = "Production-ready MCP server framework with caching, rate limiting, OpenTelemetry, and 6 pre-built servers for database, web scraping, file processing, analytics, email, and calendar"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Cayman Roden" }]
+keywords = ["mcp", "model-context-protocol", "ai", "llm", "anthropic", "claude", "tools", "agents", "automation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/ChunkyTortoise/mcp-server-toolkit"
+Repository = "https://github.com/ChunkyTortoise/mcp-server-toolkit"
+Documentation = "https://github.com/ChunkyTortoise/mcp-server-toolkit#readme"
+
+dependencies = [
+    "mcp>=1.7",
+    "pydantic>=2.10",
+    "httpx>=0.28",
+]
+
+[project.optional-dependencies]
+database = ["sqlglot>=26", "sqlalchemy[asyncio]>=2.0", "asyncpg>=0.30"]
+web = ["beautifulsoup4>=4.12", "lxml>=5.0"]
+files = ["PyPDF2>=3.0", "openpyxl>=3.1", "python-magic>=0.4"]
+redis = ["redis>=5.2"]
+telemetry = ["opentelemetry-api>=1.20", "opentelemetry-sdk>=1.20"]
+all = [
+    "mcp-server-toolkit[database]",
+    "mcp-server-toolkit[web]",
+    "mcp-server-toolkit[files]",
+    "mcp-server-toolkit[redis]",
+    "mcp-server-toolkit[telemetry]",
+]
+dev = [
+    "mcp-server-toolkit[all]",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "ruff>=0.9",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+ignore = ["E741", "F841", "F401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E", "F"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_toolkit"]
