@@ -1,5 +1,8 @@
 # MCP Server Toolkit
 
+![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit)
+![Downloads](https://img.shields.io/pypi/dm/mcp-server-toolkit)
+
 Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 6 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
 
 ## Why?
@@ -147,6 +150,14 @@ client = MCPTestClient(mcp)
 result = await client.call_tool("greet", {"name": "World"})
 assert result == "Hello, World!"
 ```
+
+## Examples
+
+See the [`examples/`](examples/) directory for working implementations:
+
+- [`basic_server.py`](examples/basic_server.py) — minimal server with 2 tools
+- [`cached_tools.py`](examples/cached_tools.py) — caching with `@mcp.cached_tool()` decorator
+- [`database_query_usage.py`](examples/database_query_usage.py) — pre-built SQL database server
 
 ## Development
 
