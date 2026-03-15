@@ -3,11 +3,33 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
+import socket
 import time
 from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlparse
 
 import httpx
+
+
+def _validate_url(url: str) -> None:
+    """Reject file://, non-http schemes, and private/metadata IPs."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"URL scheme {parsed.scheme!r} not allowed. Only http/https permitted.")
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("URL has no hostname")
+
+    try:
+        results = socket.getaddrinfo(hostname, None)
+        for result in results:
+            ip = ipaddress.ip_address(result[4][0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local:
+                raise ValueError(f"URL resolves to private/restricted IP: {ip}")
+    except socket.gaierror as e:
+        raise ValueError(f"Could not resolve hostname {hostname!r}: {e}")
 
 
 @dataclass
@@ -102,6 +124,7 @@ class WebScraper:
         client: httpx.AsyncClient | None = None,
     ) -> ScrapedPage:
         """Scrape a URL and return structured content."""
+        _validate_url(url)
         should_close = client is None
         if client is None:
             client = httpx.AsyncClient(

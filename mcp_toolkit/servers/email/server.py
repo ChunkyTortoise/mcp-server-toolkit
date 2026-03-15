@@ -179,3 +179,11 @@ async def list_templates() -> str:
         vars_str = ", ".join(t.variables) if t.variables else "none"
         lines.append(f"- **{t.name}**: {t.subject} (vars: {vars_str})")
     return "\n".join(lines)
+
+
+def main() -> None:
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

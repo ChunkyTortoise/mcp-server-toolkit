@@ -190,3 +190,11 @@ async def record_metric(
     """
     _store.record(metric, value, timestamp=timestamp)
     return f"Recorded {metric}={value}"
+
+
+def main() -> None:
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

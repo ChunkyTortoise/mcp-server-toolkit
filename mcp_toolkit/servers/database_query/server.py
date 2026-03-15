@@ -121,3 +121,11 @@ async def list_tables() -> str:
     if not schema.tables:
         return "No tables found. Is the database connected?"
     return schema.to_context()
+
+
+def main() -> None:
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

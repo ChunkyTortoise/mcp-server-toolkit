@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+
+_IDENTIFIER_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+
+def _validate_identifier(name: str, label: str) -> None:
+    """Reject identifiers that don't match safe SQL identifier pattern."""
+    if not _IDENTIFIER_RE.match(name):
+        raise ValueError(f"Invalid {label}: {name!r}. Must match ^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 
 class DatabaseConnection(Protocol):
@@ -81,6 +90,9 @@ class SchemaInspector:
         for row in tables_rows:
             table_name = row["table_name"]
             table_schema = row.get("table_schema", "public")
+
+            _validate_identifier(table_name, "table_name")
+            _validate_identifier(table_schema, "table_schema")
 
             columns_rows = await conn.fetch(
                 f"SELECT column_name, data_type, is_nullable, column_default "

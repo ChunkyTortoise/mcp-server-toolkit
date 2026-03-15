@@ -195,3 +195,11 @@ async def create_opportunity(
         pipeline_id=pipeline_id or "default",
     )
     return f"Opportunity created: {opp['id']} ({name}, ${value:,.0f})"
+
+
+def main() -> None:
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

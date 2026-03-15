@@ -138,3 +138,11 @@ async def detect_file_type(filename: str) -> str:
             "extension": Path(filename).suffix.lower(),
         }
     )
+
+
+def main() -> None:
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

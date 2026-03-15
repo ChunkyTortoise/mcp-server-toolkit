@@ -2,11 +2,11 @@
 
 All notable changes to mcp-server-toolkit are documented here.
 
-## [0.1.0] — 2025-01-15
+## [0.1.0] — 2026-03-05
 
 ### Added
 - Initial PyPI release
-- 6 pre-built MCP servers: `DatabaseServer`, `WebServer`, `FileServer`, `AnalyticsServer`, `EmailServer`, `CalendarServer`
+- 8 pre-built MCP servers: `DatabaseServer`, `WebServer`, `FileServer`, `AnalyticsServer`, `EmailServer`, `CalendarServer`, `CrmGhlServer`, `GeminiEmbeddingServer`
 - `@mcp.tool()` decorator for simple tool registration
 - `@mcp.cached_tool()` decorator with configurable TTL
 - `@mcp.rate_limited_tool()` decorator with per-caller limits
@@ -23,3 +23,5 @@ All notable changes to mcp-server-toolkit are documented here.
 - **AnalyticsServer** — data aggregation and statistics tools
 - **EmailServer** — SMTP send + IMAP read tools
 - **CalendarServer** — iCal read/write tools
+- **CrmGhlServer** — GoHighLevel CRM integration tools
+- **GeminiEmbeddingServer** — Gemini-powered embedding and vector search tools

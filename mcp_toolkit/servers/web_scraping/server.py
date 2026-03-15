@@ -104,3 +104,11 @@ async def extract_data(
     import json
 
     return f"**Extracted from:** {url}\n\n```json\n{json.dumps(result.data, indent=2)}\n```"
+
+
+def main() -> None:
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

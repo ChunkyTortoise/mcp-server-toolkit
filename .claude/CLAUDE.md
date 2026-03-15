@@ -4,8 +4,8 @@
 Python | MCP protocol | pydantic | httpx | hatchling (build) | PyPI
 
 ## Architecture
-6 pre-built MCP servers: db, web, file, analytics, email, calendar. PyPI-published library. Build with `hatch build && twine upload`. `examples/` dir shows usage per server.
-- `mcp_server_toolkit/` — main package with 6 server modules
+8 pre-built MCP servers: db, web, file, analytics, email, calendar, crm-ghl, gemini-embedding. PyPI-published library. Build with `hatch build && twine upload`. `examples/` dir shows usage per server.
+- `mcp_toolkit/` — main package with 8 server modules
 - `examples/` — usage examples per server
 - `tests/` — 233 tests
 - `pyproject.toml` — hatchling build config

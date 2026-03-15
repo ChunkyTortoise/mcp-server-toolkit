@@ -5,9 +5,9 @@ build-backend = "hatchling.build"
 [project]
 name = "mcp-server-toolkit"
 version = "0.1.0"
-description = "Production-ready MCP server framework with caching, rate limiting, OpenTelemetry, and 6 pre-built servers for database, web scraping, file processing, analytics, email, and calendar"
+description = "Production-ready MCP server framework with caching, rate limiting, OpenTelemetry, and 8 pre-built servers for database, web scraping, file processing, analytics, email, calendar, CRM/GHL, and Gemini embedding"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "Cayman Roden" }]
 keywords = ["mcp", "model-context-protocol", "ai", "llm", "anthropic", "claude", "tools", "agents", "automation"]
@@ -16,6 +16,8 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -30,6 +32,16 @@ dependencies = [
 Homepage = "https://github.com/ChunkyTortoise/mcp-server-toolkit"
 Repository = "https://github.com/ChunkyTortoise/mcp-server-toolkit"
 Documentation = "https://github.com/ChunkyTortoise/mcp-server-toolkit#readme"
+
+[project.scripts]
+mcp-toolkit-db = "mcp_toolkit.servers.database_query.server:main"
+mcp-toolkit-web = "mcp_toolkit.servers.web_scraping.server:main"
+mcp-toolkit-files = "mcp_toolkit.servers.file_processing.server:main"
+mcp-toolkit-analytics = "mcp_toolkit.servers.analytics.server:main"
+mcp-toolkit-email = "mcp_toolkit.servers.email.server:main"
+mcp-toolkit-calendar = "mcp_toolkit.servers.calendar.server:main"
+mcp-toolkit-crm-ghl = "mcp_toolkit.servers.crm_ghl.server:main"
+mcp-toolkit-embedding = "mcp_toolkit.servers.gemini_embedding.server:main"
 
 [project.optional-dependencies]
 database = ["sqlglot>=26", "sqlalchemy[asyncio]>=2.0", "asyncpg>=0.30"]
@@ -57,7 +69,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]

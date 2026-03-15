@@ -181,3 +181,11 @@ async def delete_event(event_id: str) -> str:
     if deleted:
         return f"Event {event_id} deleted."
     return f"Event {event_id} not found."
+
+
+def main() -> None:
+    mcp.run()
+
+
+if __name__ == "__main__":
+    main()

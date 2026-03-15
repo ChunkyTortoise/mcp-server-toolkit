@@ -3,11 +3,11 @@
 ![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit)
 ![Downloads](https://img.shields.io/pypi/dm/mcp-server-toolkit)
 
-Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 6 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
+Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 8 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
 
 ## Why?
 
-The MCP spec gives you a protocol. This toolkit gives you the production layer on top: response caching, per-caller rate limiting, telemetry, auth, and a test client. It also includes 6 ready-to-use servers for common AI-agent tasks (database queries, web scraping, file processing, analytics, email, and calendar).
+The MCP spec gives you a protocol. This toolkit gives you the production layer on top: response caching, per-caller rate limiting, telemetry, auth, and a test client. It also includes 8 ready-to-use servers for common AI-agent tasks (database queries, web scraping, file processing, analytics, email, calendar, CRM/GoHighLevel, and vector embeddings).
 
 ## Installation
 
@@ -54,6 +54,8 @@ async def limited_action(action: str) -> str:
 | `analytics` | Metrics recording, aggregation, anomaly detection (z-score), chart generation | core |
 | `email` | Email composition with template engine | core |
 | `calendar` | Availability checking and scheduling | core |
+| `crm_ghl` | GoHighLevel CRM — contact CRUD, pipeline summaries, opportunity tracking with field mapping | core |
+| `gemini_embedding` | Gemini Embedding 2 — text embedding, semantic search, vector indexing, cosine similarity | core |
 
 ### Database Query Server
 
@@ -92,6 +94,66 @@ from mcp_toolkit.servers.web_scraping.server import mcp
 # Tools available:
 # - scrape_page(url="https://example.com", extract="product prices")
 # - extract_structured(url="...", schema={"name": "str", "price": "float"})
+```
+
+### CRM GoHighLevel Server
+
+Contact management, pipeline tracking, and opportunity creation for GoHighLevel CRM. Includes a `GHLFieldMapper` for resolving natural language field names to GHL custom field IDs. Falls back to a `MockGHLClient` when no real client is configured, so agents can demo the tools without API credentials.
+
+```python
+from mcp_toolkit.servers.crm_ghl.server import mcp, configure
+
+# Use the mock client for demos (default), or provide your own GHL API client
+# configure(client=my_ghl_client)
+
+# Tools available to agents:
+# - search_contacts("John", limit=10)
+# - create_contact(first_name="John", last_name="Doe", email="john@example.com")
+# - get_pipeline_summary(pipeline_id="")
+# - create_opportunity(contact_id="c1", name="Website Redesign", value=5000)
+```
+
+### Gemini Embedding Server
+
+Semantic search and vector indexing powered by Gemini Embedding 2. Embeds text, indexes documents into an in-memory vector store, and performs cosine-similarity search. Uses a deterministic `MockEmbeddingClient` by default so agents can test without a Gemini API key.
+
+```python
+from mcp_toolkit.servers.gemini_embedding.server import mcp, configure
+
+# Set GEMINI_API_KEY env var for real embeddings, or use the mock client (default)
+# Tools available:
+# - embed_text("hello world", task_type="SEMANTIC_SIMILARITY")
+# - index_text(text="document content", item_id="doc1", metadata='{"source": "readme"}')
+# - search(query="async patterns", top_k=5)
+# - similarity(text_a="Python", text_b="JavaScript")
+# - list_indexed()
+# - clear_index()
+```
+
+### Claude Desktop Configuration
+
+Add servers to `~/.claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "analytics": {
+      "command": "python3",
+      "args": ["-m", "mcp_toolkit.servers.analytics.server"]
+    },
+    "crm-ghl": {
+      "command": "python3",
+      "args": ["-m", "mcp_toolkit.servers.crm_ghl.server"]
+    },
+    "gemini-embedding": {
+      "command": "python3",
+      "args": ["-m", "mcp_toolkit.servers.gemini_embedding.server"],
+      "env": {
+        "GEMINI_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
 ```
 
 ## Framework Features
@@ -158,6 +220,8 @@ See the [`examples/`](examples/) directory for working implementations:
 - [`basic_server.py`](examples/basic_server.py) — minimal server with 2 tools
 - [`cached_tools.py`](examples/cached_tools.py) — caching with `@mcp.cached_tool()` decorator
 - [`database_query_usage.py`](examples/database_query_usage.py) — pre-built SQL database server
+- [`crm_ghl_usage.py`](examples/crm_ghl_usage.py) — GoHighLevel CRM contact and pipeline management
+- [`gemini_embedding_usage.py`](examples/gemini_embedding_usage.py) — text embedding, vector indexing, and semantic search
 
 ## Development
 
