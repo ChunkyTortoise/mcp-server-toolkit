@@ -89,7 +89,15 @@ class EnhancedMCP(FastMCP):
             @self.tool()
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
-                caller_id = "default"
+                # Try to identify the caller from common identifier kwargs.
+                # Falls back to "default" when no identifier is present,
+                # making rate limits global across all callers for that tool.
+                caller_id = (
+                    kwargs.get("caller_id")
+                    or kwargs.get("client_id")
+                    or kwargs.get("user_id")
+                    or "default"
+                )
                 rate_key = f"{func.__name__}:{caller_id}"
                 allowed = await self._rate_limiter.check(
                     key=rate_key,

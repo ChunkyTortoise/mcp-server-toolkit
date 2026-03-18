@@ -45,12 +45,9 @@ class ChartGenerator:
 
     @staticmethod
     def _check_matplotlib() -> bool:
-        try:
-            import matplotlib
+        import importlib.util
 
-            return True
-        except ImportError:
-            return False
+        return importlib.util.find_spec("matplotlib") is not None
 
     def generate(
         self,

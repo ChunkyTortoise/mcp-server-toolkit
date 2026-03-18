@@ -94,11 +94,14 @@ class SchemaInspector:
             _validate_identifier(table_name, "table_name")
             _validate_identifier(table_schema, "table_schema")
 
+            # Identifiers are validated above via _validate_identifier (regex whitelist).
+            # The DatabaseConnection protocol takes only a query string, so we compose
+            # the query with the pre-validated, whitelisted identifiers.
             columns_rows = await conn.fetch(
-                f"SELECT column_name, data_type, is_nullable, column_default "
-                f"FROM information_schema.columns "
+                "SELECT column_name, data_type, is_nullable, column_default "
+                "FROM information_schema.columns "
                 f"WHERE table_name = '{table_name}' AND table_schema = '{table_schema}' "
-                f"ORDER BY ordinal_position"
+                "ORDER BY ordinal_position"
             )
 
             columns = [

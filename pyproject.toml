@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-server-toolkit"
-version = "0.1.0"
-description = "Production-ready MCP server framework with caching, rate limiting, OpenTelemetry, and 8 pre-built servers for database, web scraping, file processing, analytics, email, calendar, CRM/GHL, and Gemini embedding"
+version = "0.2.0"
+description = "Production-ready MCP server framework with caching, rate limiting, OpenTelemetry, and 9 pre-built servers for database, web scraping, file processing, analytics, email, calendar, CRM/GHL, Gemini embedding, and multi-LLM routing"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -42,6 +42,7 @@ mcp-toolkit-email = "mcp_toolkit.servers.email.server:main"
 mcp-toolkit-calendar = "mcp_toolkit.servers.calendar.server:main"
 mcp-toolkit-crm-ghl = "mcp_toolkit.servers.crm_ghl.server:main"
 mcp-toolkit-embedding = "mcp_toolkit.servers.gemini_embedding.server:main"
+mcp-toolkit-multi-llm = "mcp_toolkit.servers.multi_llm.server:main"
 
 [project.optional-dependencies]
 database = ["sqlglot>=26", "sqlalchemy[asyncio]>=2.0", "asyncpg>=0.30"]
@@ -73,10 +74,10 @@ target-version = "py310"
 line-length = 100
 
 [tool.ruff.lint]
-ignore = ["E741", "F841", "F401"]
+ignore = ["E741"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["E", "F"]
+"tests/**" = ["E", "F401", "F841"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["mcp_toolkit"]

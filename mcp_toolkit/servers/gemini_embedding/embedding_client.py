@@ -5,7 +5,7 @@ from __future__ import annotations
 import httpx
 
 _BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
-_MODEL = "gemini-embedding-2-preview"
+_MODEL = "gemini-embedding-001"
 
 
 class GeminiEmbeddingClient:

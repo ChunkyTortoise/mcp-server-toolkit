@@ -69,6 +69,7 @@ class DataExtractor:
     ) -> ExtractionResult:
         """Extract data matching a JSON schema from text."""
         prompt = self._build_schema_prompt(text, schema)
+        raw = ""
         try:
             raw = await self._llm.generate(prompt)
             data = json.loads(raw)
@@ -83,7 +84,7 @@ class DataExtractor:
                 data={},
                 source_url=source_url,
                 extraction_prompt=prompt,
-                raw_response=raw if "raw" in dir() else "",
+                raw_response=raw,
                 success=False,
                 error=f"Invalid JSON from LLM: {e}",
             )
@@ -104,6 +105,7 @@ class DataExtractor:
     ) -> ExtractionResult:
         """Extract data from text based on a natural language description."""
         prompt = self._build_freeform_prompt(text, description)
+        raw = ""
         try:
             raw = await self._llm.generate(prompt)
             data = json.loads(raw)
@@ -118,7 +120,7 @@ class DataExtractor:
                 data={},
                 source_url=source_url,
                 extraction_prompt=prompt,
-                raw_response=raw if "raw" in dir() else "",
+                raw_response=raw,
                 success=False,
                 error=f"Invalid JSON from LLM: {e}",
             )

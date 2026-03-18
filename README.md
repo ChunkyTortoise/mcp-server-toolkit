@@ -2,12 +2,14 @@
 
 ![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit)
 ![Downloads](https://img.shields.io/pypi/dm/mcp-server-toolkit)
+![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)
 
-Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 8 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
+Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 9 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
 
 ## Why?
 
-The MCP spec gives you a protocol. This toolkit gives you the production layer on top: response caching, per-caller rate limiting, telemetry, auth, and a test client. It also includes 8 ready-to-use servers for common AI-agent tasks (database queries, web scraping, file processing, analytics, email, calendar, CRM/GoHighLevel, and vector embeddings).
+The MCP spec gives you a protocol. This toolkit gives you the production layer on top: response caching, per-caller rate limiting, telemetry, auth, and a test client. It also includes 9 ready-to-use servers for common AI-agent tasks (database queries, web scraping, file processing, analytics, email, calendar, CRM/GoHighLevel, vector embeddings, and multi-LLM routing).
 
 ## Installation
 
@@ -56,6 +58,7 @@ async def limited_action(action: str) -> str:
 | `calendar` | Availability checking and scheduling | core |
 | `crm_ghl` | GoHighLevel CRM — contact CRUD, pipeline summaries, opportunity tracking with field mapping | core |
 | `gemini_embedding` | Gemini Embedding 2 — text embedding, semantic search, vector indexing, cosine similarity | core |
+| `multi_llm` | Multi-provider LLM router — Gemini/OpenAI/xAI with cost routing, circuit breakers, and parallel second opinions | core |
 
 ### Database Query Server
 
@@ -130,6 +133,63 @@ from mcp_toolkit.servers.gemini_embedding.server import mcp, configure
 # - clear_index()
 ```
 
+### Multi-LLM Router Server
+
+Route prompts across Gemini, OpenAI, and xAI/Grok based on cost or quality. Includes per-provider circuit breakers, parallel "second opinion" queries, and automatic fallback.
+
+```python
+from mcp_toolkit.servers.multi_llm.server import mcp, configure
+from mcp_toolkit.servers.multi_llm.providers import GeminiProvider, OpenAICompatibleProvider
+from mcp_toolkit.servers.multi_llm.models import ProviderName
+
+configure(providers={
+    ProviderName.GEMINI: GeminiProvider(api_key="...", default_model="gemini-3.1-pro-preview"),
+    ProviderName.OPENAI: OpenAICompatibleProvider(
+        api_key="...", base_url="https://api.openai.com/v1",
+        provider=ProviderName.OPENAI, default_model="gpt-5.4",
+    ),
+})
+
+# Tools available to agents:
+# - query_model(provider="gemini", model="gemini-3.1-pro-preview", prompt="...")
+# - query_cheap(prompt="...")          # routes to cheapest available model
+# - query_best(prompt="...")           # routes to highest-quality available model
+# - get_second_opinion(prompt="...")   # queries all providers in parallel
+# - list_providers()                   # shows status and circuit breaker state
+```
+
+Set `GEMINI_API_KEY`, `OPENAI_API_KEY`, and/or `XAI_API_KEY` environment variables to enable each provider. Providers without a key are skipped; `query_cheap` and `query_best` fall through to the next available option automatically.
+
+## A2A Protocol Support
+
+Every MCP server in this toolkit can be exposed as a [Google Agent-to-Agent (A2A)](https://google.github.io/A2A/) compatible agent. The `A2AAdapter` bridges MCP tool invocations to the A2A task protocol, enabling interoperability with multi-vendor agent ecosystems.
+
+```python
+from mcp_toolkit import EnhancedMCP
+from mcp_toolkit.framework.a2a_adapter import A2AAdapter
+
+mcp = EnhancedMCP("my-server")
+
+@mcp.tool()
+async def answer(question: str) -> str:
+    return f"Answer to: {question}"
+
+adapter = A2AAdapter(mcp, base_url="https://my-server.example.com")
+
+# Serve /.well-known/agent.json for A2A discovery
+agent_card = await adapter.get_agent_card()
+
+# Handle an incoming A2A task — routes to the matching MCP tool
+status = await adapter.handle_task("task-123", "answer", {"question": "What is 2+2?"})
+print(status.status)   # "completed"
+print(status.message)  # "Answer to: What is 2+2?"
+
+# Track task state
+status = adapter.get_task_status("task-123")
+```
+
+The agent card is auto-generated from your MCP tool metadata, so it stays in sync as you add tools.
+
 ### Claude Desktop Configuration
 
 Add servers to `~/.claude/claude_desktop_config.json`:
@@ -187,7 +247,7 @@ API key and OAuth support:
 from mcp_toolkit.framework.auth import APIKeyAuth, OAuthAuth
 
 auth = APIKeyAuth()
-auth.add_key("my-api-key", scopes=["read", "write"])
+auth.register_key("my-api-key", client_id="my-client", scopes=["read", "write"])
 ```
 
 ### Telemetry

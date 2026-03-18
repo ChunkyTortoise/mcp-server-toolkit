@@ -1,8 +1,12 @@
 """Tests for caching module."""
 
 import asyncio
+import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from mcp_toolkit.framework.caching import CacheLayer
+import pytest
+
+from mcp_toolkit.framework.caching import CacheLayer, InMemoryCache, RedisCache
 
 
 class TestInMemoryCache:
@@ -84,3 +88,135 @@ class TestCacheLayer:
         await cache_layer.clear()
         assert await cache_layer.get("a") is None
         assert await cache_layer.get("b") is None
+
+
+class TestRedisCache:
+    def _make_mock_redis(self, ping_ok: bool = True) -> MagicMock:
+        """Build a mock Redis client with async methods."""
+        client = MagicMock()
+        client.ping = AsyncMock(return_value=True if ping_ok else (_ for _ in ()).throw(Exception("refused")))
+        client.get = AsyncMock(return_value=None)
+        client.setex = AsyncMock(return_value=True)
+        client.delete = AsyncMock(return_value=1)
+        client.keys = AsyncMock(return_value=[])
+        return client
+
+    async def test_get_miss_returns_none(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+        mock_client.get = AsyncMock(return_value=None)
+        cache._client = mock_client
+        result = await cache.get("missing")
+        assert result is None
+
+    async def test_set_and_get_roundtrip(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+        stored: dict = {}
+
+        async def fake_setex(key, ttl, value):
+            stored[key] = value
+
+        async def fake_get(key):
+            return stored.get(key)
+
+        mock_client.setex = fake_setex
+        mock_client.get = fake_get
+        cache._client = mock_client
+
+        await cache.set("foo", {"x": 1}, ttl=60)
+        result = await cache.get("foo")
+        assert result == {"x": 1}
+
+    async def test_set_prefixes_key_with_mcp(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+        seen_keys: list = []
+
+        async def capture_setex(key, ttl, value):
+            seen_keys.append(key)
+
+        mock_client.setex = capture_setex
+        cache._client = mock_client
+
+        await cache.set("mykey", "value")
+        assert seen_keys[0] == "mcp:mykey"
+
+    async def test_delete_calls_redis(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+        deleted: list = []
+
+        async def capture_delete(*keys):
+            deleted.extend(keys)
+
+        mock_client.delete = capture_delete
+        cache._client = mock_client
+
+        await cache.delete("target")
+        assert "mcp:target" in deleted
+
+    async def test_clear_deletes_all_mcp_keys(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+        mock_client.keys = AsyncMock(return_value=["mcp:a", "mcp:b"])
+        deleted: list = []
+
+        async def capture_delete(*keys):
+            deleted.extend(keys)
+
+        mock_client.delete = capture_delete
+        cache._client = mock_client
+
+        await cache.clear()
+        assert "mcp:a" in deleted
+        assert "mcp:b" in deleted
+
+    async def test_clear_with_no_keys_is_safe(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+        mock_client.keys = AsyncMock(return_value=[])
+        cache._client = mock_client
+        await cache.clear()  # should not raise
+
+    async def test_falls_back_to_memory_when_redis_unavailable(self):
+        cache = RedisCache(redis_url="redis://nonexistent:9999")
+        # _get_client will fail; fallback to in-memory
+        await cache.set("fallback_key", "fallback_value")
+        result = await cache.get("fallback_key")
+        assert result == "fallback_value"
+
+    async def test_get_falls_back_to_memory_on_redis_error(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+
+        async def raise_on_get(key):
+            raise ConnectionError("Redis down")
+
+        mock_client.get = raise_on_get
+        cache._client = mock_client
+        # Should not raise; falls back to in-memory (returns None since not set there)
+        result = await cache.get("any_key")
+        assert result is None
+
+    async def test_set_falls_back_to_memory_on_redis_error(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+
+        async def raise_on_setex(*args):
+            raise ConnectionError("Redis down")
+
+        mock_client.setex = raise_on_setex
+        cache._client = mock_client
+        # Should not raise; data written to in-memory fallback
+        await cache.set("fb_key", "fb_value")
+        result = await cache._fallback.get("fb_key")
+        assert result == "fb_value"
+
+    async def test_get_parses_json_from_redis(self):
+        cache = RedisCache()
+        mock_client = self._make_mock_redis()
+        mock_client.get = AsyncMock(return_value=json.dumps({"answer": 42}))
+        cache._client = mock_client
+        result = await cache.get("jsonkey")
+        assert result == {"answer": 42}
