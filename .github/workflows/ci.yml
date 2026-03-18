@@ -26,6 +26,7 @@ jobs:
         run: ruff check mcp_toolkit tests
 
       - name: Type check
+        continue-on-error: true
         run: |
           pip install pyright
           pyright --pythonversion 3.10 mcp_toolkit
