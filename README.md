@@ -3,7 +3,7 @@
 ![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit)
 ![Downloads](https://img.shields.io/pypi/dm/mcp-server-toolkit)
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)
 
 Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 9 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
 
@@ -14,8 +14,8 @@ Production-ready framework for building [Model Context Protocol](https://modelco
 - [Installation](#installation)
 - [Pre-built Servers](#pre-built-servers)
 - [Framework Features](#framework-features)
-- [A2A Adapter](#a2a-protocol-support)
-- [Claude Desktop Integration](#claude-desktop-configuration)
+- [A2A Protocol Support](#a2a-protocol-support)
+- [Claude Desktop Configuration](#claude-desktop-configuration)
 - [Examples](#examples)
 - [Architecture](#architecture)
 - [Certifications Applied](#certifications-applied)
@@ -380,15 +380,15 @@ graph TB
     end
 
     subgraph Servers["9 Pre-built Servers"]
-        S1[filesystem]
-        S2[web_search]
-        S3[database]
-        S4[code_executor]
-        S5[calendar]
-        S6[email]
-        S7[slack]
-        S8[github]
-        S9[weather]
+        S1[analytics]
+        S2[calendar]
+        S3[crm_ghl]
+        S4[database_query]
+        S5[email]
+        S6[file_processing]
+        S7[gemini_embedding]
+        S8[multi_llm]
+        S9[web_scraping]
     end
 
     subgraph Testing["Testing Layer"]

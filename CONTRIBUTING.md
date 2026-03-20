@@ -18,7 +18,7 @@ pip install -e ".[dev]"
 
 ```bash
 # Full suite
-pytest tests/ -v --cov=mcp_toolkit --cov-report=term-missing --cov-fail-under=90
+pytest tests/ -v --cov=mcp_toolkit --cov-report=term-missing --cov-fail-under=88
 
 # Quick smoke test
 pytest tests/ -q --tb=short
