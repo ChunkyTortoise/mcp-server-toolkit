@@ -6,14 +6,14 @@ from mcp_toolkit.servers.multi_llm.models import ProviderName
 
 # Priority-ordered (provider, model) for cheapest routing
 CHEAP_PRIORITY: list[tuple[ProviderName, str]] = [
-    (ProviderName.GEMINI, "gemini-3.1-flash-lite-preview"),
-    (ProviderName.OPENAI, "gpt-5.4-nano"),
+    (ProviderName.GEMINI, "gemini-2.0-flash-lite"),
+    (ProviderName.OPENAI, "gpt-4.1-nano"),
     (ProviderName.XAI, "grok-4-1-fast-non-reasoning"),
 ]
 
 # Priority-ordered (provider, model) for best quality routing
 BEST_PRIORITY: list[tuple[ProviderName, str]] = [
-    (ProviderName.OPENAI, "gpt-5.4"),
-    (ProviderName.GEMINI, "gemini-3.1-pro-preview"),
-    (ProviderName.XAI, "grok-4-0709"),
+    (ProviderName.OPENAI, "gpt-4.1"),
+    (ProviderName.GEMINI, "gemini-2.5-pro"),
+    (ProviderName.XAI, "grok-4.20-0309-non-reasoning"),
 ]

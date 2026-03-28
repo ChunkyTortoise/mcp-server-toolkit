@@ -50,9 +50,16 @@ async def query_model(
 ) -> str:
     """Query a specific LLM provider and model directly.
 
+    Use this tool when:
+    - The user names a specific provider ("ask gemini", "use gpt-4.1", "ask grok")
+    - You need a specific model's perspective for comparison
+    - Testing a particular model's behavior
+
+    Providers: "gemini" (gemini-2.5-pro), "openai" (gpt-4.1), "xai" (grok-4.20-0309-non-reasoning)
+
     Args:
         provider: Provider name: "gemini", "openai", or "xai".
-        model: Model ID (e.g. "gemini-3.1-pro-preview", "gpt-5.4", "grok-4-0709").
+        model: Model ID (e.g. "gemini-2.5-pro", "gpt-4.1", "grok-4.20-0309-non-reasoning").
         prompt: The user prompt.
         system_prompt: Optional system instructions.
         temperature: Sampling temperature 0.0–1.0.
@@ -96,6 +103,12 @@ async def query_model(
 @mcp.rate_limited_tool(max_calls=10, window_seconds=60)
 async def get_second_opinion(prompt: str, context: str = "") -> str:
     """Query all available providers in parallel and return a side-by-side comparison.
+
+    Use this tool when:
+    - The user wants multiple AI perspectives on a question or decision
+    - Validating reasoning or stress-testing an approach
+    - Architecture decisions, technology evaluations, or meaningful tradeoff analysis
+    - The user says "second opinion", "what would others say", "compare models", "ask all AIs"
 
     Args:
         prompt: The question or prompt to send to all providers.
@@ -141,7 +154,13 @@ async def get_second_opinion(prompt: str, context: str = "") -> str:
 
 @mcp.cached_tool(ttl=300)
 async def query_cheap(prompt: str) -> str:
-    """Route to cheapest available model (Gemini 3.1 Flash-Lite > GPT-5.4-nano > Grok-4.1 Fast).
+    """Route to cheapest available model (Gemini 2.0 Flash-Lite > GPT-4.1-nano > Grok-4.1 Fast).
+
+    Use this tool when:
+    - Summarizing or condensing large blocks of text
+    - Classifying, tagging, or extracting structured data
+    - Generating boilerplate, templates, or repetitive content
+    - Any bulk processing where "good enough" quality is fine and cost matters
 
     Args:
         prompt: The prompt to send to the cheapest available model.
@@ -163,7 +182,13 @@ async def query_cheap(prompt: str) -> str:
 
 @mcp.rate_limited_tool(max_calls=15, window_seconds=60)
 async def query_best(prompt: str) -> str:
-    """Route to best available model (GPT-5.4 > Gemini 3.1 Pro > Grok-4).
+    """Route to best available model (GPT-4.1 > Gemini 2.5 Pro > Grok-4.20).
+
+    Use this tool when:
+    - The user says "ask GPT", "ask Gemini", "ask Grok" without naming a specific model
+    - Getting a non-Claude perspective on code, design, or technical choices
+    - The user wants to validate or challenge Claude's own answer
+    - High-quality reasoning is needed from an external model
 
     Args:
         prompt: The prompt to send to the best available model.
@@ -205,7 +230,7 @@ def main() -> None:
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
         providers[ProviderName.GEMINI] = GeminiProvider(
-            api_key=gemini_key, default_model="gemini-3.1-pro-preview"
+            api_key=gemini_key, default_model="gemini-2.5-pro"
         )
 
     openai_key = os.environ.get("OPENAI_API_KEY")
@@ -214,7 +239,7 @@ def main() -> None:
             api_key=openai_key,
             base_url="https://api.openai.com/v1",
             provider=ProviderName.OPENAI,
-            default_model="gpt-5.4",
+            default_model="gpt-4.1",
         )
 
     xai_key = os.environ.get("XAI_API_KEY")
@@ -223,7 +248,7 @@ def main() -> None:
             api_key=xai_key,
             base_url="https://api.x.ai/v1",
             provider=ProviderName.XAI,
-            default_model="grok-4-0709",
+            default_model="grok-4.20-0309-non-reasoning",
         )
 
     configure(providers=providers)

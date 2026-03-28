@@ -175,9 +175,9 @@ class TestOpenAICompatibleProvider:
             "usage": {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000},
         }
         with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=mock_resp):
-            resp = await p.query("test", model="gpt-5.4")
-        # gpt-5.4: $2.50 input + $15.00 output per 1M = $17.50
-        assert abs(resp.cost_usd - 17.50) < 0.01
+            resp = await p.query("test", model="gpt-4.1")
+        # gpt-4.1: $2.00 input + $8.00 output per 1M = $10.00
+        assert abs(resp.cost_usd - 10.00) < 0.01
 
 
 class TestGeminiProvider:
@@ -476,11 +476,11 @@ class TestRetryLogic:
 class TestRouter:
     def test_cheap_priority_first_is_gemini_flash_lite(self):
         from mcp_toolkit.servers.multi_llm.router import CHEAP_PRIORITY
-        assert CHEAP_PRIORITY[0] == (ProviderName.GEMINI, "gemini-3.1-flash-lite-preview")
+        assert CHEAP_PRIORITY[0] == (ProviderName.GEMINI, "gemini-2.0-flash-lite")
 
-    def test_best_priority_first_is_openai_gpt54(self):
+    def test_best_priority_first_is_openai_gpt41(self):
         from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY
-        assert BEST_PRIORITY[0] == (ProviderName.OPENAI, "gpt-5.4")
+        assert BEST_PRIORITY[0] == (ProviderName.OPENAI, "gpt-4.1")
 
     def test_all_router_models_in_pricing(self):
         from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY, CHEAP_PRIORITY

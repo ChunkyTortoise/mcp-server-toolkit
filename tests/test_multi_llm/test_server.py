@@ -175,7 +175,7 @@ class TestQueryCheap:
             "query_cheap", {"prompt": "Quick cheap question alpha"}
         )
         assert "gemini" in result
-        assert "gemini-3.1-flash-lite-preview" in result
+        assert "gemini-2.0-flash-lite" in result
 
     async def test_no_providers_returns_error(self, empty_client):
         result = await empty_client.call_tool(
@@ -186,7 +186,7 @@ class TestQueryCheap:
 
     async def test_falls_back_to_openai_when_gemini_unavailable(self, client):
         providers = {
-            ProviderName.OPENAI: MockProvider(ProviderName.OPENAI, "gpt-5.4"),
+            ProviderName.OPENAI: MockProvider(ProviderName.OPENAI, "gpt-4.1"),
         }
         configure(providers=providers)
         await multi_llm_mcp._cache.clear()
@@ -194,7 +194,7 @@ class TestQueryCheap:
             "query_cheap", {"prompt": "Fallback cheap test beta"}
         )
         assert "openai" in result
-        assert "gpt-5.4-nano" in result
+        assert "gpt-4.1-nano" in result
 
     async def test_result_includes_cost_metadata(self, client):
         await multi_llm_mcp._cache.clear()
@@ -216,7 +216,7 @@ class TestQueryBest:
             "query_best", {"prompt": "Best quality answer needed"}
         )
         assert "openai" in result
-        assert "gpt-5.4" in result
+        assert "gpt-4.1" in result
 
     async def test_no_providers_returns_error(self, empty_client):
         result = await empty_client.call_tool(
@@ -227,14 +227,14 @@ class TestQueryBest:
 
     async def test_falls_back_to_gemini_when_openai_unavailable(self, client):
         providers = {
-            ProviderName.GEMINI: MockProvider(ProviderName.GEMINI, "gemini-3.1-pro-preview"),
+            ProviderName.GEMINI: MockProvider(ProviderName.GEMINI, "gemini-2.5-pro"),
         }
         configure(providers=providers)
         result = await client.call_tool(
             "query_best", {"prompt": "Fallback to gemini best"}
         )
         assert "gemini" in result
-        assert "gemini-3.1-pro-preview" in result
+        assert "gemini-2.5-pro" in result
 
     async def test_result_includes_token_metadata(self, client):
         result = await client.call_tool(

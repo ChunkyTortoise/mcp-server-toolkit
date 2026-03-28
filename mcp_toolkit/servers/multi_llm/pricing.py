@@ -5,15 +5,17 @@ from __future__ import annotations
 # Per 1M tokens (input_price_usd, output_price_usd)
 PRICING: dict[str, tuple[float, float]] = {
     # Gemini
-    "gemini-3.1-flash-lite-preview": (0.25, 1.50),
-    "gemini-3.1-pro-preview": (2.00, 12.00),
+    "gemini-2.5-pro": (1.25, 10.00),
+    "gemini-2.5-flash": (0.30, 2.50),
+    "gemini-2.0-flash-lite": (0.075, 0.30),
     # OpenAI
-    "gpt-5.4-nano": (0.20, 1.25),
-    "gpt-5.4-mini": (0.75, 4.50),
-    "gpt-5.4": (2.50, 15.00),
+    "gpt-4.1": (2.00, 8.00),
+    "gpt-4.1-mini": (0.40, 1.60),
+    "gpt-4.1-nano": (0.10, 0.40),
     # xAI
+    "grok-4.20-0309-non-reasoning": (2.00, 6.00),
+    "grok-4.20-0309-reasoning": (2.00, 6.00),
     "grok-4-1-fast-non-reasoning": (0.20, 0.50),
-    "grok-4-0709": (3.00, 15.00),
 }
 
 
