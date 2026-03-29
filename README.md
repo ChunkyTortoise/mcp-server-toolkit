@@ -1,9 +1,9 @@
 # MCP Server Toolkit
 
-![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit)
-![Downloads](https://img.shields.io/pypi/dm/mcp-server-toolkit)
+![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit?color=14B8A6)
+![Downloads](https://img.shields.io/pypi/dm/mcp-server-toolkit?color=14B8A6)
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-88%25-14B8A6)
 
 Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 9 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
 
@@ -368,6 +368,7 @@ See the [`examples/`](examples/) directory for working implementations:
 ## Architecture
 
 ```mermaid
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#14B8A6', 'primaryBorderColor': '#0D9488', 'primaryTextColor': '#E2E8F0', 'lineColor': '#14B8A6'}}}%%
 graph TB
     subgraph Core["Core Framework"]
         EM[EnhancedMCP<br/>base class]
