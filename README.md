@@ -23,6 +23,20 @@ Production-ready framework for building [Model Context Protocol](https://modelco
 - [Contributing](#contributing)
 - [License](#license)
 
+## For Hiring Managers
+
+| If you're hiring for... | This repo demonstrates |
+|---|---|
+| **AI/LLM Engineer** | Production MCP server framework, A2A protocol adapter, multi-provider LLM integration (Claude, Gemini, OpenAI), tool use patterns |
+| **Python Engineer** | PyPI-published library (pip install mcp-server-toolkit), 412 tests at 88% coverage, async Python, clean API design |
+| **Platform/Infra Engineer** | Auto-caching, rate limiting, auth middleware, OpenTelemetry tracing, 9 server modules with shared framework |
+
+**Key metrics:** 412 tests, 88% coverage, PyPI published, 9 pre-built servers, A2A protocol support
+
+**Certifications applied:** IBM Generative AI Engineering (144h), IBM RAG and Agentic AI (24h), Duke LLMOps (48h), Claude Code in Action (Anthropic)
+
+---
+
 ## Why mcp-server-toolkit?
 
 Building MCP servers from scratch means writing the same boilerplate every time. This toolkit adds the production layer on top of the raw MCP SDK.
