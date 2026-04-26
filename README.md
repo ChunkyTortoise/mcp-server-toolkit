@@ -3,11 +3,11 @@
 ![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit?color=14B8A6)
 ![Downloads](https://img.shields.io/pypi/dm/mcp-server-toolkit?color=14B8A6)
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
-![Coverage](https://img.shields.io/badge/coverage-88%25-14B8A6)
+![Coverage](https://codecov.io/gh/ChunkyTortoise/mcp-server-toolkit/graph/badge.svg)
 
-Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 9 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
+MCP server framework with built-in TTL caching (P50: 0.007ms hit), per-provider circuit breakers, and OpenTelemetry tracing. Ships with 9 pre-built servers, automatic caching, rate limiting, and A2A protocol support -- so you can focus on your tool logic instead of infrastructure.
 
-> **Proof in 30 seconds** -- PyPI published | 9 pre-built servers | 383 tests | 88% coverage
+> **Proof in 30 seconds** -- PyPI published | 9 pre-built servers | 383 tests | P50 cache hit 0.007ms
 >
 > **Best fit** -- AI Engineer, Python Engineer, LLM Platform / Tooling
 >
@@ -95,7 +95,7 @@ pip install mcp-server-toolkit[all]      # Everything
 
 ## Pre-built Servers
 
-Nine production-ready servers — import and run, no boilerplate required.
+Nine pre-built servers -- import and run, no boilerplate required.
 
 | Server | Description | Install Extra |
 |--------|-------------|---------------|
