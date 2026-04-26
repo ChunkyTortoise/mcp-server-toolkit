@@ -8,3 +8,19 @@
 {"id": "best-03", "description": "query_best with OpenAI circuit open falls through to Gemini 2.5 Pro", "scenario": "openai_open", "tool": "query_best", "expected_provider": "gemini", "expected_model": "gemini-2.5-pro"}
 {"id": "best-04", "description": "query_best with only xAI configured selects grok reasoning model", "scenario": "xai_only", "tool": "query_best", "expected_provider": "xai", "expected_model": "grok-4.20-0309-non-reasoning"}
 {"id": "cb-01", "description": "Circuit breaker opens after 3 consecutive failures", "scenario": "circuit_breaker_trip", "tool": "circuit_breaker", "expected_open_after_failures": 3}
+{"id": "cache-01", "description": "set then immediate get returns stored value", "tool": "cache", "operation": "set_get", "scenario": "cache"}
+{"id": "cache-02", "description": "get on missing key returns None", "tool": "cache", "operation": "get_missing", "scenario": "cache"}
+{"id": "cache-03", "description": "set with ttl=1, after 1.1s get returns None (TTL expiry)", "tool": "cache", "operation": "ttl_expiry", "scenario": "cache"}
+{"id": "cache-04", "description": "make_key is deterministic -- same args produce identical key", "tool": "cache", "operation": "key_determinism", "scenario": "cache"}
+{"id": "cache-05", "description": "make_key is unique -- different args produce different keys", "tool": "cache", "operation": "key_uniqueness", "scenario": "cache"}
+{"id": "cache-06", "description": "clear() empties the cache -- subsequent get returns None", "tool": "cache", "operation": "clear", "scenario": "cache"}
+{"id": "cache-07", "description": "set overwrites an existing key with new value", "tool": "cache", "operation": "overwrite", "scenario": "cache"}
+{"id": "a2a-01", "description": "handle_task with valid tool returns status completed", "tool": "a2a", "operation": "valid_tool", "scenario": "a2a"}
+{"id": "a2a-02", "description": "handle_task with unknown tool name returns status failed", "tool": "a2a", "operation": "unknown_tool", "scenario": "a2a"}
+{"id": "a2a-03", "description": "get_agent_card returns dict with skills list of length >= 1", "tool": "a2a", "operation": "agent_card", "scenario": "a2a"}
+{"id": "a2a-04", "description": "get_task_status after handle_task returns the same task status", "tool": "a2a", "operation": "task_status", "scenario": "a2a"}
+{"id": "a2a-05", "description": "list_tasks after two handle_task calls returns 2 entries", "tool": "a2a", "operation": "list_tasks", "scenario": "a2a"}
+{"id": "rl-01", "description": "first call to check() always returns True", "tool": "rate_limiter", "operation": "first_call", "scenario": "rate_limiter"}
+{"id": "rl-02", "description": "call at max_calls limit returns False", "tool": "rate_limiter", "operation": "at_limit", "scenario": "rate_limiter"}
+{"id": "rl-03", "description": "reset() clears bucket so next call returns True", "tool": "rate_limiter", "operation": "reset", "scenario": "rate_limiter"}
+{"id": "rl-04", "description": "get_remaining() decrements with each allowed call", "tool": "rate_limiter", "operation": "get_remaining", "scenario": "rate_limiter"}
