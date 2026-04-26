@@ -1,4 +1,4 @@
-.PHONY: all test lint fmt type-check install clean
+.PHONY: all test lint fmt type-check install clean benchmark evals
 
 all: lint test
 
@@ -16,6 +16,12 @@ fmt:
 
 type-check:
 	pyright .
+
+benchmark:
+	python benchmarks/bench_cache.py
+
+evals:
+	python evals/run_evals.py --verbose
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

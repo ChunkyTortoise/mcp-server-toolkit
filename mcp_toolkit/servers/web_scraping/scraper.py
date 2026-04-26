@@ -196,15 +196,15 @@ class WebScraper:
 
         links = []
         for a in soup.find_all("a", href=True):
-            href = a["href"]
+            href = str(a["href"])
             abs_url = urljoin(base_url, href)
             if abs_url.startswith(("http://", "https://")):
                 links.append(abs_url)
 
         meta: dict[str, str] = {}
         for tag in soup.find_all("meta"):
-            name = tag.get("name", "") or tag.get("property", "")
-            content = tag.get("content", "")
+            name = str(tag.get("name", "") or tag.get("property", ""))
+            content = str(tag.get("content", ""))
             if name and content:
                 meta[name] = content
 

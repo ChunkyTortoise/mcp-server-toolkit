@@ -16,3 +16,6 @@ venv/
 .env.*
 node_modules/
 .DS_Store
+
+# Ephemeral session notes (gitignored so Claude can write freely)
+NOTES.md

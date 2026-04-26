@@ -71,7 +71,7 @@ class EnhancedMCP(FastMCP):
                 self._telemetry.record_tool_call(func.__name__, duration_ms, True, cache_hit=False)
                 return result
 
-            wrapper.__wrapped__ = func
+            wrapper.__wrapped__ = func  # type: ignore[attr-defined]
             return wrapper
 
         return decorator
@@ -112,7 +112,7 @@ class EnhancedMCP(FastMCP):
                 self._telemetry.record_tool_call(func.__name__, duration_ms, True)
                 return result
 
-            wrapper.__wrapped__ = func
+            wrapper.__wrapped__ = func  # type: ignore[attr-defined]
             return wrapper
 
         return decorator

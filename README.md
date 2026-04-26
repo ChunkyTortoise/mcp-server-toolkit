@@ -7,6 +7,12 @@
 
 Production-ready framework for building [Model Context Protocol](https://modelcontextprotocol.io/) servers in Python. Ships with 9 pre-built servers, automatic caching, rate limiting, and OpenTelemetry integration -- so you can focus on your tool logic instead of infrastructure.
 
+> **Proof in 30 seconds** -- PyPI published | 9 pre-built servers | 383 tests | 88% coverage
+>
+> **Best fit** -- AI Engineer, Python Engineer, LLM Platform / Tooling
+>
+> **Plain English** -- this package adds the production layer around MCP servers: auth, caching, tracing, testing utilities, and reusable server modules.
+
 ## Table of Contents
 
 - [Why mcp-server-toolkit?](#why-mcp-server-toolkit)
@@ -28,10 +34,10 @@ Production-ready framework for building [Model Context Protocol](https://modelco
 | If you're hiring for... | This repo demonstrates |
 |---|---|
 | **AI/LLM Engineer** | Production MCP server framework, A2A protocol adapter, multi-provider LLM integration (Claude, Gemini, OpenAI), tool use patterns |
-| **Python Engineer** | PyPI-published library (pip install mcp-server-toolkit), 412 tests at 88% coverage, async Python, clean API design |
+| **Python Engineer** | PyPI-published library (pip install mcp-server-toolkit), 383 tests at 88% coverage, async Python, clean API design |
 | **Platform/Infra Engineer** | Auto-caching, rate limiting, auth middleware, OpenTelemetry tracing, 9 server modules with shared framework |
 
-**Key metrics:** 412 tests, 88% coverage, PyPI published, 9 pre-built servers, A2A protocol support
+**Key metrics:** 383 tests, 88% coverage, PyPI published, 9 pre-built servers, A2A protocol support, cache hit P50 0.007ms (3x speedup vs miss)
 
 **Certifications applied:** IBM Generative AI Engineering (144h), IBM RAG and Agentic AI (24h), Duke LLMOps (48h), Claude Code in Action (Anthropic)
 
@@ -202,15 +208,15 @@ from mcp_toolkit.servers.multi_llm.providers import GeminiProvider, OpenAICompat
 from mcp_toolkit.servers.multi_llm.models import ProviderName
 
 configure(providers={
-    ProviderName.GEMINI: GeminiProvider(api_key="...", default_model="gemini-3.1-pro-preview"),
+    ProviderName.GEMINI: GeminiProvider(api_key="...", default_model="gemini-2.5-pro"),
     ProviderName.OPENAI: OpenAICompatibleProvider(
         api_key="...", base_url="https://api.openai.com/v1",
-        provider=ProviderName.OPENAI, default_model="gpt-5.4",
+        provider=ProviderName.OPENAI, default_model="gpt-5.5",
     ),
 })
 
 # Tools available to agents:
-# - query_model(provider="gemini", model="gemini-3.1-pro-preview", prompt="...")
+# - query_model(provider="gemini", model="gemini-2.5-pro", prompt="...")
 # - query_cheap(prompt="...")          # routes to cheapest available model
 # - query_best(prompt="...")           # routes to highest-quality available model
 # - get_second_opinion(prompt="...")   # queries all providers in parallel

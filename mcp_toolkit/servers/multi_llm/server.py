@@ -51,15 +51,15 @@ async def query_model(
     """Query a specific LLM provider and model directly.
 
     Use this tool when:
-    - The user names a specific provider ("ask gemini", "use gpt-4.1", "ask grok")
+    - The user names a specific provider ("ask gemini", "use gpt-5.5", "ask grok")
     - You need a specific model's perspective for comparison
     - Testing a particular model's behavior
 
-    Providers: "gemini" (gemini-2.5-pro), "openai" (gpt-4.1), "xai" (grok-4.20-0309-non-reasoning)
+    Providers: "gemini" (gemini-2.5-pro), "openai" (gpt-5.5), "xai" (grok-4.20-0309-non-reasoning)
 
     Args:
         provider: Provider name: "gemini", "openai", or "xai".
-        model: Model ID (e.g. "gemini-2.5-pro", "gpt-4.1", "grok-4.20-0309-non-reasoning").
+        model: Model ID (e.g. "gemini-2.5-pro", "gpt-5.5", "grok-4.20-0309-non-reasoning").
         prompt: The user prompt.
         system_prompt: Optional system instructions.
         temperature: Sampling temperature 0.0–1.0.
@@ -239,7 +239,7 @@ def main() -> None:
             api_key=openai_key,
             base_url="https://api.openai.com/v1",
             provider=ProviderName.OPENAI,
-            default_model="gpt-4.1",
+            default_model="gpt-5.5",
         )
 
     xai_key = os.environ.get("XAI_API_KEY")

@@ -83,7 +83,7 @@ class FileParser:
 
     async def _parse_pdf(self, content: bytes, filename: str) -> ParsedFile:
         try:
-            from PyPDF2 import PdfReader
+            from PyPDF2 import PdfReader  # type: ignore[import-untyped]
         except ImportError:
             return ParsedFile(
                 filename=filename,

@@ -478,9 +478,9 @@ class TestRouter:
         from mcp_toolkit.servers.multi_llm.router import CHEAP_PRIORITY
         assert CHEAP_PRIORITY[0] == (ProviderName.GEMINI, "gemini-2.0-flash-lite")
 
-    def test_best_priority_first_is_openai_gpt41(self):
+    def test_best_priority_first_is_openai_gpt55(self):
         from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY
-        assert BEST_PRIORITY[0] == (ProviderName.OPENAI, "gpt-4.1")
+        assert BEST_PRIORITY[0] == (ProviderName.OPENAI, "gpt-5.5")
 
     def test_all_router_models_in_pricing(self):
         from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY, CHEAP_PRIORITY

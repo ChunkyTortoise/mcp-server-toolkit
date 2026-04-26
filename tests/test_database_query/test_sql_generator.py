@@ -2,6 +2,8 @@
 
 import pytest
 
+pytest.importorskip("sqlglot")
+
 from mcp_toolkit.servers.database_query.schema_inspector import (
     ColumnInfo,
     DatabaseSchema,

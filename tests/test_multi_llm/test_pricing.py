@@ -41,6 +41,9 @@ class TestEstimateCost:
             "gemini-2.5-pro",
             "gemini-2.5-flash",
             "gemini-2.0-flash-lite",
+            "gpt-5.5",
+            "gpt-5.5-thinking",
+            "gpt-5.5-pro",
             "gpt-4.1",
             "gpt-4.1-mini",
             "gpt-4.1-nano",
@@ -49,3 +52,13 @@ class TestEstimateCost:
             "grok-4-1-fast-non-reasoning",
         }
         assert set(PRICING.keys()) == expected
+
+    def test_gpt55_cost(self):
+        # 1M input at $5.00, 1M output at $30.00
+        cost = estimate_cost("gpt-5.5", 1_000_000, 1_000_000)
+        assert abs(cost - 35.00) < 1e-9
+
+    def test_gpt55_pro_cost(self):
+        # 1M input at $30.00, 1M output at $180.00
+        cost = estimate_cost("gpt-5.5-pro", 1_000_000, 1_000_000)
+        assert abs(cost - 210.00) < 1e-9

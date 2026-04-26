@@ -13,7 +13,7 @@ CHEAP_PRIORITY: list[tuple[ProviderName, str]] = [
 
 # Priority-ordered (provider, model) for best quality routing
 BEST_PRIORITY: list[tuple[ProviderName, str]] = [
-    (ProviderName.OPENAI, "gpt-4.1"),
+    (ProviderName.OPENAI, "gpt-5.5"),
     (ProviderName.GEMINI, "gemini-2.5-pro"),
     (ProviderName.XAI, "grok-4.20-0309-non-reasoning"),
 ]

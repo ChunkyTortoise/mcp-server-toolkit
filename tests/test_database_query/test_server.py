@@ -2,6 +2,8 @@
 
 import pytest
 
+pytest.importorskip("sqlglot")
+
 from mcp_toolkit.framework.testing import MCPTestClient
 from mcp_toolkit.servers.database_query import server as db_server
 from mcp_toolkit.servers.database_query.sql_generator import MockLLMProvider

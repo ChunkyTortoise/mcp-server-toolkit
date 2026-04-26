@@ -13,6 +13,8 @@ import json
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from mcp.types import TextContent
+
 if TYPE_CHECKING:
     from mcp_toolkit.framework.base_server import EnhancedMCP
 
@@ -141,7 +143,7 @@ class A2AAdapter:
             if isinstance(result, tuple) and len(result) >= 1:
                 content = result[0]
             text = ""
-            if isinstance(content, list) and content and hasattr(content[0], "text"):
+            if isinstance(content, list) and content and isinstance(content[0], TextContent):
                 text = content[0].text
             elif isinstance(content, str):
                 text = content

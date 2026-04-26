@@ -23,7 +23,7 @@ def build_providers() -> dict:
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
         providers[ProviderName.GEMINI] = GeminiProvider(
-            api_key=gemini_key, default_model="gemini-3.1-pro-preview"
+            api_key=gemini_key, default_model="gemini-2.5-pro"
         )
         print("Gemini provider configured.")
 
@@ -33,7 +33,7 @@ def build_providers() -> dict:
             api_key=openai_key,
             base_url="https://api.openai.com/v1",
             provider=ProviderName.OPENAI,
-            default_model="gpt-5.4",
+            default_model="gpt-5.5",
         )
         print("OpenAI provider configured.")
 

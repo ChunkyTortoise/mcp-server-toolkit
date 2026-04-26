@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import TextContent
 
 
 class MCPTestClient:
@@ -39,7 +40,7 @@ class MCPTestClient:
         content = result
         if isinstance(result, tuple) and len(result) >= 1:
             content = result[0]
-        if isinstance(content, list) and len(content) == 1 and hasattr(content[0], "text"):
+        if isinstance(content, list) and len(content) == 1 and isinstance(content[0], TextContent):
             return content[0].text
         return content
 
@@ -66,9 +67,10 @@ class MCPTestClient:
         result = await self._server.read_resource(uri)
         if isinstance(result, str):
             return result
-        if hasattr(result, "contents") and result.contents:
-            first = result.contents[0]
-            if hasattr(first, "text"):
+        result_contents = getattr(result, "contents", None)
+        if result_contents:
+            first = result_contents[0]
+            if isinstance(first, TextContent):
                 return first.text
         return str(result)
 

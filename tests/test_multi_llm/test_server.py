@@ -211,12 +211,12 @@ class TestQueryCheap:
 
 
 class TestQueryBest:
-    async def test_routes_to_openai_gpt54_first(self, client):
+    async def test_routes_to_openai_gpt55_first(self, client):
         result = await client.call_tool(
             "query_best", {"prompt": "Best quality answer needed"}
         )
         assert "openai" in result
-        assert "gpt-4.1" in result
+        assert "gpt-5.5" in result
 
     async def test_no_providers_returns_error(self, empty_client):
         result = await empty_client.call_tool(

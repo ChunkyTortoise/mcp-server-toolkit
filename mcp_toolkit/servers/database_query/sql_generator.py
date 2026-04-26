@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-import sqlglot
+import sqlglot  # type: ignore[import-untyped]
 
 from mcp_toolkit.servers.database_query.schema_inspector import DatabaseSchema
 
