@@ -2,6 +2,49 @@
 
 All notable changes to mcp-server-toolkit are documented here.
 
+## [0.3.0] — 2026-04-26
+
+### Breaking Changes
+
+- `OAuthAuth` is now a **deprecated test-only stub**. Replace with `JWTAuth` (see Migration below).
+- `RedisCache` now **raises on connection errors by default** (was silent fallback). Pass `fallback_to_memory=True` to restore old behavior.
+- `RateLimiter` `caller_id` falls back to `"default"` with a warning log instead of silently applying global limits.
+
+### Added
+
+**Auth (W2):** `JWTAuth` (HS256/RS256/JWKS, audience+issuer verify, scope-based RBAC), `requires_scope` decorator, audit log sink.
+
+**Telemetry (W1):** Full OTel rewrite — real spans via `BatchSpanProcessor`, OTLP HTTP exporter, env-var config (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`). Fixed hardcoded `0.1ms` cache-hit duration.
+
+**Cost Attribution (W3):** `CostTracker` reads token counts from Anthropic/OpenAI/Gemini/xAI responses; `mcp_toolkit/pricing/2026.json` price table.
+
+**A2A Bridge (W4):** `stream_task()` SSE generator (`submitted → working → completed`); `handle_task(webhook_url=…)` push notifications; agent card `pushNotifications: true` flag.
+
+**Production Backends (W5):** `SMTPEmailClient` (stdlib), `GmailEmailClient` (`[gmail]`), `GoogleCalendarProvider` (`[gcal]`), `PostgresClient` with sqlglot read-only enforcement + pgvector `vector_search()` (`[database]`).
+
+**Evals + Safety (W3):** 10-task quality eval suite (LLM-as-judge, nightly CI), 30-case adversarial corpus, Five Gates test suite (`tests/gates/`).
+
+**Examples:** `a2a_bridge/`, `agentic_rag/`, `claude_desktop_app/`, `multi_agent_research/`, `observability/`.
+
+**ADRs:** 0005 (rate-limit distribution), 0006 (OAuth 2.1), 0007 (MCP↔A2A boundary).
+
+### Changed
+
+- Test count: 412 → 598.
+- New extras: `[auth]`, `[gmail]`, `[gcal]`.
+
+### Migration from 0.2.0
+
+```python
+# OAuthAuth → JWTAuth
+from mcp_toolkit import JWTAuth
+auth = JWTAuth(secret="my-32-byte-or-longer-secret-here")
+
+# RedisCache fallback is now opt-in
+from mcp_toolkit.framework.caching import RedisCache
+cache = RedisCache(fallback_to_memory=True)  # dev only
+```
+
 ## [0.2.0] — 2026-03-18
 
 ### Added

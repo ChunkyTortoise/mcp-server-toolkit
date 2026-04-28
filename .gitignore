@@ -19,3 +19,8 @@ node_modules/
 
 # Ephemeral session notes (gitignored so Claude can write freely)
 NOTES.md
+
+# Coverage
+.coverage
+.coverage.*
+htmlcov/

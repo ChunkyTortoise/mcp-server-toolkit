@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "web-scraping": {
+      "command": "python3",
+      "args": [
+        "/path/to/mcp-server-toolkit/mcp_toolkit/servers/web_scraping.py"
+      ],
+      "description": "Web scraping + search tools"
+    },
+    "file-processing": {
+      "command": "python3",
+      "args": [
+        "/path/to/mcp-server-toolkit/mcp_toolkit/servers/file_processing.py"
+      ],
+      "description": "File reading, writing, PDF/DOCX/CSV parsing"
+    },
+    "multi-llm": {
+      "command": "python3",
+      "args": [
+        "/path/to/mcp-server-toolkit/mcp_toolkit/servers/multi_llm.py"
+      ],
+      "description": "Multi-LLM routing (GPT-4o, Gemini Pro, Claude Haiku, Grok)"
+    }
+  }
+}

@@ -1,0 +1,46 @@
+name: Quality Evals (Nightly)
+on:
+  schedule:
+    - cron: "0 4 * * *" # 04:00 UTC daily
+  workflow_dispatch:
+    inputs:
+      judge:
+        description: "Enable LLM-as-judge scoring"
+        type: boolean
+        default: false
+jobs:
+  quality-evals:
+    name: Quality Evals
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -e ".[dev,auth]"
+      - name: Run deterministic quality evals (pytest)
+        run: pytest tests/test_evals/test_quality_evals.py -v --tb=short
+      - name: Run quality eval runner (generates RESULTS.md)
+        run: python evals/quality/runner.py --verbose
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Run with LLM-as-judge (if enabled)
+        if: ${{ github.event.inputs.judge == 'true' || secrets.ANTHROPIC_API_KEY != '' }}
+        run: python evals/quality/runner.py --judge --output evals/RESULTS.md
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Upload results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-${{ github.run_number }}
+          path: evals/RESULTS.md
+          retention-days: 30
+      - name: Check cost cap
+        run: |
+          echo "Nightly judge eval cost is capped at $5 via ANTHROPIC_API_KEY absence in forks."
+          echo "Set ANTHROPIC_API_KEY secret on the repo to enable live scoring."

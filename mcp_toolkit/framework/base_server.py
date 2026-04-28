@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 import time
 from typing import Any, Callable
 
@@ -11,6 +12,8 @@ from mcp.server.fastmcp import FastMCP
 from mcp_toolkit.framework.caching import CacheLayer, InMemoryCache
 from mcp_toolkit.framework.rate_limiter import RateLimiter
 from mcp_toolkit.framework.telemetry import TelemetryProvider
+
+logger = logging.getLogger(__name__)
 
 
 class EnhancedMCP(FastMCP):
@@ -60,9 +63,11 @@ class EnhancedMCP(FastMCP):
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 cache_key = CacheLayer.make_key(func.__name__, args, kwargs)
+                t0 = time.monotonic()
                 cached = await self._cache.get(cache_key)
                 if cached is not None:
-                    self._telemetry.record_tool_call(func.__name__, 0.1, True, cache_hit=True)
+                    hit_ms = (time.monotonic() - t0) * 1000
+                    self._telemetry.record_tool_call(func.__name__, hit_ms, True, cache_hit=True)
                     return cached
                 start = time.monotonic()
                 result = await func(*args, **kwargs)
@@ -89,15 +94,23 @@ class EnhancedMCP(FastMCP):
             @self.tool()
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
-                # Try to identify the caller from common identifier kwargs.
-                # Falls back to "default" when no identifier is present,
-                # making rate limits global across all callers for that tool.
+                # Resolve caller identity from tool kwargs. When no identifier
+                # is found, fall back to a shared "default" bucket and emit a
+                # warning — all unidentified callers share one rate-limit counter,
+                # which is usually not the intended behaviour.
                 caller_id = (
                     kwargs.get("caller_id")
                     or kwargs.get("client_id")
                     or kwargs.get("user_id")
-                    or "default"
                 )
+                if not caller_id:
+                    caller_id = "default"
+                    logger.warning(
+                        "rate_limited_tool(%s): no caller_id/client_id/user_id in kwargs; "
+                        "all unidentified callers share a single rate-limit bucket. "
+                        "Pass one of those kwargs to get per-caller limiting.",
+                        func.__name__,
+                    )
                 rate_key = f"{func.__name__}:{caller_id}"
                 allowed = await self._rate_limiter.check(
                     key=rate_key,
@@ -111,6 +124,32 @@ class EnhancedMCP(FastMCP):
                 duration_ms = (time.monotonic() - start) * 1000
                 self._telemetry.record_tool_call(func.__name__, duration_ms, True)
                 return result
+
+            wrapper.__wrapped__ = func  # type: ignore[attr-defined]
+            return wrapper
+
+        return decorator
+
+    def auth_tool(self, auth: Any, required_scope: str = "") -> Callable:
+        """Decorator for tools requiring authentication and optional scope.
+
+        Combines ``@mcp.tool()`` with ``@requires_scope(auth, scope)``. The
+        tool function must accept a ``token`` or ``api_key`` kwarg.
+
+        Usage::
+
+            @mcp.auth_tool(jwt_auth, required_scope="db:read")
+            async def query_database(sql: str, token: str = "") -> str:
+                ...
+        """
+        from mcp_toolkit.framework.auth import requires_scope
+
+        def decorator(func: Callable) -> Callable:
+            @self.tool()
+            @requires_scope(auth, required_scope)
+            @functools.wraps(func)
+            async def wrapper(*args: Any, **kwargs: Any) -> Any:
+                return await func(*args, **kwargs)
 
             wrapper.__wrapped__ = func  # type: ignore[attr-defined]
             return wrapper
