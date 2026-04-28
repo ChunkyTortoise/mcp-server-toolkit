@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
 from abc import ABC, abstractmethod
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class CacheBackend(ABC):
@@ -54,11 +57,30 @@ class InMemoryCache(CacheBackend):
         return len(self._store)
 
 
-class RedisCache(CacheBackend):
-    """Redis-backed cache. Falls back to in-memory if Redis unavailable."""
+# Exceptions that indicate a transient Redis connectivity issue.
+_REDIS_TRANSIENT = (ConnectionError, TimeoutError, OSError)
 
-    def __init__(self, redis_url: str = "redis://localhost:6379") -> None:
+
+class RedisCache(CacheBackend):
+    """Redis-backed cache.
+
+    By default, connectivity errors are **raised** so callers know Redis is down.
+    Pass ``fallback_to_memory=True`` to silently use an in-process fallback instead —
+    useful for local development where Redis may not be running.
+
+    Args:
+        redis_url:          Redis connection string (default: redis://localhost:6379).
+        fallback_to_memory: When True, swallow transient errors and fall back to an
+                            in-memory cache instead of raising.  Defaults to False.
+    """
+
+    def __init__(
+        self,
+        redis_url: str = "redis://localhost:6379",
+        fallback_to_memory: bool = False,
+    ) -> None:
         self._redis_url = redis_url
+        self._fallback_to_memory = fallback_to_memory
         self._client: Any | None = None
         self._fallback = InMemoryCache()
 
@@ -68,11 +90,20 @@ class RedisCache(CacheBackend):
         try:
             import redis.asyncio as aioredis
 
-            self._client = aioredis.from_url(self._redis_url, decode_responses=True)
-            await self._client.ping()
+            client = aioredis.from_url(self._redis_url, decode_responses=True)
+            await client.ping()
+            self._client = client
             return self._client
-        except Exception:
-            return None
+        except _REDIS_TRANSIENT as exc:
+            if self._fallback_to_memory:
+                logger.warning("Redis unavailable (%s); falling back to in-memory cache.", exc)
+                return None
+            raise
+        except Exception as exc:
+            if self._fallback_to_memory:
+                logger.warning("Redis connection error (%s); falling back to in-memory cache.", exc)
+                return None
+            raise
 
     async def get(self, key: str) -> Any | None:
         client = await self._get_client()
@@ -81,8 +112,11 @@ class RedisCache(CacheBackend):
         try:
             raw = await client.get(f"mcp:{key}")
             return json.loads(raw) if raw else None
-        except Exception:
-            return await self._fallback.get(key)
+        except _REDIS_TRANSIENT as exc:
+            if self._fallback_to_memory:
+                logger.warning("Redis get error (%s); using in-memory fallback.", exc)
+                return await self._fallback.get(key)
+            raise
 
     async def set(self, key: str, value: Any, ttl: int = 300) -> None:
         client = await self._get_client()
@@ -91,8 +125,12 @@ class RedisCache(CacheBackend):
             return
         try:
             await client.setex(f"mcp:{key}", ttl, json.dumps(value, default=str))
-        except Exception:
-            await self._fallback.set(key, value, ttl)
+        except _REDIS_TRANSIENT as exc:
+            if self._fallback_to_memory:
+                logger.warning("Redis set error (%s); writing to in-memory fallback.", exc)
+                await self._fallback.set(key, value, ttl)
+                return
+            raise
 
     async def delete(self, key: str) -> None:
         client = await self._get_client()
@@ -101,8 +139,12 @@ class RedisCache(CacheBackend):
             return
         try:
             await client.delete(f"mcp:{key}")
-        except Exception:
-            await self._fallback.delete(key)
+        except _REDIS_TRANSIENT as exc:
+            if self._fallback_to_memory:
+                logger.warning("Redis delete error (%s); using in-memory fallback.", exc)
+                await self._fallback.delete(key)
+                return
+            raise
 
     async def clear(self) -> None:
         client = await self._get_client()
@@ -113,8 +155,12 @@ class RedisCache(CacheBackend):
             keys = await client.keys("mcp:*")
             if keys:
                 await client.delete(*keys)
-        except Exception:
-            await self._fallback.clear()
+        except _REDIS_TRANSIENT as exc:
+            if self._fallback_to_memory:
+                logger.warning("Redis clear error (%s); clearing in-memory fallback.", exc)
+                await self._fallback.clear()
+                return
+            raise
 
 
 class CacheLayer:

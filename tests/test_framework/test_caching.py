@@ -180,14 +180,14 @@ class TestRedisCache:
         await cache.clear()  # should not raise
 
     async def test_falls_back_to_memory_when_redis_unavailable(self):
-        cache = RedisCache(redis_url="redis://nonexistent:9999")
+        cache = RedisCache(redis_url="redis://nonexistent:9999", fallback_to_memory=True)
         # _get_client will fail; fallback to in-memory
         await cache.set("fallback_key", "fallback_value")
         result = await cache.get("fallback_key")
         assert result == "fallback_value"
 
     async def test_get_falls_back_to_memory_on_redis_error(self):
-        cache = RedisCache()
+        cache = RedisCache(fallback_to_memory=True)
         mock_client = self._make_mock_redis()
 
         async def raise_on_get(key):
@@ -200,7 +200,7 @@ class TestRedisCache:
         assert result is None
 
     async def test_set_falls_back_to_memory_on_redis_error(self):
-        cache = RedisCache()
+        cache = RedisCache(fallback_to_memory=True)
         mock_client = self._make_mock_redis()
 
         async def raise_on_setex(*args):
@@ -212,6 +212,18 @@ class TestRedisCache:
         await cache.set("fb_key", "fb_value")
         result = await cache._fallback.get("fb_key")
         assert result == "fb_value"
+
+    async def test_strict_mode_raises_on_connection_error(self):
+        cache = RedisCache()  # fallback_to_memory=False by default
+        mock_client = self._make_mock_redis()
+
+        async def raise_on_get(key):
+            raise ConnectionError("Redis down")
+
+        mock_client.get = raise_on_get
+        cache._client = mock_client
+        with pytest.raises(ConnectionError):
+            await cache.get("any_key")
 
     async def test_get_parses_json_from_redis(self):
         cache = RedisCache()
