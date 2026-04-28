@@ -1,0 +1,20 @@
+version: "3.9"
+# Jaeger all-in-one for local OTel tracing development.
+# Usage:
+#   docker compose up -d
+#   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 python your_server.py
+#   Open http://localhost:16686 to view traces.
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.56
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP  ← use this with mcp-server-toolkit
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:16686"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

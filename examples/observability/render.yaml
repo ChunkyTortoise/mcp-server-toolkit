@@ -1,0 +1,55 @@
+# Render blueprint — public Jaeger UI + a 15-minute trace-seeder cron.
+#
+# Deploy:
+#   1. Connect this repo at https://dashboard.render.com/blueprints/new
+#   2. Render reads this file and provisions both services
+#   3. Public Jaeger UI URL becomes mcp-toolkit-jaeger.onrender.com (free tier)
+#   4. Cron job emits sample MCP traces every 15 min so the dashboard is never empty
+#
+# Internal wiring:
+#   - Cron sends OTLP HTTP to ${JAEGER_HOST}:4318 via Render's private network
+#   - JAEGER_HOST is auto-injected from the web service via fromService
+
+services:
+  # ------------------------------------------------------------------
+  # 1. Jaeger all-in-one — public UI on $PORT, OTLP HTTP on 4318
+  # ------------------------------------------------------------------
+  - type: web
+    name: mcp-toolkit-jaeger
+    runtime: image
+    plan: free
+    image:
+      url: docker.io/jaegertracing/all-in-one:1.56
+    envVars:
+      - key: COLLECTOR_OTLP_ENABLED
+        value: "true"
+      - key: QUERY_BASE_PATH
+        value: /
+    # Render binds $PORT publicly. Jaeger UI listens on 16686 by default,
+    # so we override its query port via CLI flag to match $PORT.
+    dockerCommand: >
+      --query.http-server.host-port=:$PORT --collector.otlp.enabled=true
+
+  # ------------------------------------------------------------------
+  # 2. Seed-trace cron — fires sample workflows every 15 min
+  # ------------------------------------------------------------------
+  - type: cron
+    name: mcp-toolkit-trace-seeder
+    runtime: docker
+    plan: free
+    schedule: "*/15 * * * *"
+    dockerfilePath: ./examples/observability/Dockerfile.seeder
+    dockerContext: .
+    envVars:
+      - key: OTEL_SERVICE_NAME
+        value: mcp-toolkit-demo
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT
+        # Render private hostname — only reachable inside this Render team
+        fromService:
+          type: web
+          name: mcp-toolkit-jaeger
+          property: hostport
+          # Resolves to e.g. mcp-toolkit-jaeger:4318 — but we need the OTLP port,
+          # not the public one, so override with the explicit value below.
+      - key: OTEL_EXPORTER_OTLP_ENDPOINT_OVERRIDE
+        value: http://mcp-toolkit-jaeger:4318

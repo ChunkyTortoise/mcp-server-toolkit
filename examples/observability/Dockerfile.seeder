@@ -1,0 +1,20 @@
+# Trace seeder — runs as a Render cron every 15 min.
+# Build context is the repo root so the local mcp_toolkit package is installable.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install build deps for any C extensions in transitive dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package source and install with telemetry extras
+COPY pyproject.toml README.md ./
+COPY mcp_toolkit ./mcp_toolkit
+COPY examples/observability/seed_traces.py ./seed_traces.py
+
+RUN pip install --no-cache-dir -e ".[telemetry]"
+
+CMD ["python", "seed_traces.py"]
