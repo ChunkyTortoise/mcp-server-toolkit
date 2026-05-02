@@ -71,10 +71,8 @@ class SQLGenerator:
                     return False, f"Only SELECT/WITH queries allowed, got: {upper[:20]}"
 
             return True, parsed[0]
-        except Exception:
-            return False, f"SQL parsing error: {sql[:100]}"
         except Exception as e:
-            return False, f"Validation error: {e}"
+            return False, f"SQL parsing error: {e}"
 
     async def generate_and_validate(
         self, question: str, schema: DatabaseSchema
