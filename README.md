@@ -7,6 +7,16 @@
 
 Production-grade MCP server framework: TTL caching (P50: 0.007ms hit), JWT/OAuth 2.1 auth, OpenTelemetry tracing, LLM cost attribution, A2A streaming + webhooks, and a Five-Gates quality eval suite. Ships 9 pre-built servers and a full adversarial safety corpus — so you focus on tool logic, not infrastructure.
 
+## For Hiring Managers
+
+**30-second pitch:** mcp-server-toolkit is the production layer around MCP servers: auth, rate limits, telemetry, cost attribution, test utilities, reusable servers, and safety gates packaged for PyPI.
+
+**Key proof:** PyPI package, 9 pre-built servers, 598 tests, 88% coverage, P50 cache hit 0.007ms, JWT/OAuth 2.1, OpenTelemetry spans, and cost_usd attribution.
+
+**Engineering signals:** Python package design, Model Context Protocol, JWT/JWKS auth, rate limiting, cache design, OTLP export, LLM cost modeling, A2A streaming, and adversarial safety tests.
+
+**Hiring fit:** AI Platform Engineer, LLM Tooling Engineer, Full-stack AI App Developer.
+
 > **Proof in 30 seconds** — PyPI 0.3.0 | 9 pre-built servers | 598 tests | P50 cache hit 0.007ms
 >
 > **Best fit** — AI Engineer, Full-stack AI App Developer, LLM Platform / Tooling
@@ -67,7 +77,7 @@ flowchart LR
 - [Contributing](#contributing)
 - [License](#license)
 
-## For Hiring Managers
+## Detailed Hiring Evidence
 
 Two hiring lanes — click the demo that matches your role:
 
