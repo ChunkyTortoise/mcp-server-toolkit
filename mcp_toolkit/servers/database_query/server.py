@@ -41,6 +41,8 @@ mcp = EnhancedMCP(
     ),
 )
 
+logger = logging.getLogger(__name__)
+
 _schema_inspector = SchemaInspector()
 _sql_generator = SQLGenerator()
 _db_connection: Any = None
@@ -162,6 +164,13 @@ def main() -> None:
     ``MCP_JWT_SECRET`` to be set explicitly — it refuses to start otherwise so
     auth can never silently no-op.
     """
+    logger.warning(
+        "database-query running with DefaultLLMProvider — it generates "
+        "'SELECT 1' for EVERY question (placeholder, not real NL→SQL) and no "
+        "DB connection is configured. The sqlglot SELECT-only validation gate "
+        "is functional; wire a real LLM and DB via "
+        "database_query.server.configure(llm=..., db_connection=...)."
+    )
     http_port = os.environ.get("MCP_HTTP_PORT")
     if http_port:
         if not _JWT_SECRET:

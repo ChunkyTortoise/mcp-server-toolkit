@@ -174,3 +174,21 @@ class TestAuthGateStillEnforced:
                 "create_contact", {"first_name": "No", "last_name": "Access"}
             )
         assert "Forbidden" in result
+
+
+class TestMockModeWarning:
+    def test_main_warns_when_running_mock_ghl_client(self, monkeypatch, caplog):
+        """main() must loudly warn that crm-ghl uses the in-memory mock —
+        never silently pretend to talk to GoHighLevel."""
+        import logging
+
+        import mcp_toolkit.servers.crm_ghl.server as crm_server
+
+        monkeypatch.setattr(crm_server.mcp, "run", lambda: None)
+        crm_server.configure(client=MockGHLClient())
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.crm_ghl.server"):
+            crm_server.main()
+
+        assert "MockGHLClient" in caplog.text
+        assert "configure(" in caplog.text

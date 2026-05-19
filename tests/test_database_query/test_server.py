@@ -112,8 +112,18 @@ class TestQueryDatabaseTool:
         big_rows = [{"id": i, "name": f"user{i}"} for i in range(150)]
         mock_db._tables["big_table"] = {
             "columns": [
-                {"column_name": "id", "data_type": "integer", "is_nullable": "NO", "column_default": None},
-                {"column_name": "name", "data_type": "varchar", "is_nullable": "NO", "column_default": None},
+                {
+                    "column_name": "id",
+                    "data_type": "integer",
+                    "is_nullable": "NO",
+                    "column_default": None,
+                },
+                {
+                    "column_name": "name",
+                    "data_type": "varchar",
+                    "is_nullable": "NO",
+                    "column_default": None,
+                },
             ],
             "rows": big_rows,
         }
@@ -177,3 +187,18 @@ class TestAuthGateStillEnforced:
                 )
         finally:
             auth_context_var.reset(handle)
+
+
+class TestMockModeWarning:
+    def test_main_warns_default_llm_placeholder(self, monkeypatch, caplog):
+        """database-query main() must warn loudly that the default LLM emits
+        'SELECT 1' for everything — never silently look functional."""
+        import logging
+
+        monkeypatch.setattr(db_server.mcp, "run", lambda: None)
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.database_query.server"):
+            db_server.main()
+
+        assert "DefaultLLMProvider" in caplog.text
+        assert "SELECT 1" in caplog.text

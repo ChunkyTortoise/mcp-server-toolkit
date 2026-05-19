@@ -204,3 +204,17 @@ class TestToolListing:
         tools = await configured_server.list_tools()
         for tool in tools:
             assert tool["description"], f"Tool {tool['name']} missing description"
+
+
+class TestMockModeWarning:
+    def test_main_warns_extraction_uses_placeholder_llm(self, monkeypatch, caplog):
+        """Page fetching is real, but LLM extraction defaults to a stub —
+        main() must say so loudly, not silently return stub data."""
+        import logging
+
+        monkeypatch.setattr(ws_server.mcp, "run", lambda: None)
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.web_scraping.server"):
+            ws_server.main()
+
+        assert "DefaultLLMProvider" in caplog.text

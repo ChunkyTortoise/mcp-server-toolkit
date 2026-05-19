@@ -206,6 +206,13 @@ def main() -> None:
                 "it does NOT read or write your real calendar). Install with: "
                 "pip install mcp-server-toolkit[gcal]"
             )
+    else:
+        logger.warning(
+            "GOOGLE_CALENDAR_CREDENTIALS not set — calendar server running with "
+            "MockCalendarProvider (in-memory — it does NOT read or write a real "
+            "calendar). Set GOOGLE_CALENDAR_CREDENTIALS and install "
+            "mcp-server-toolkit[gcal] to use Google Calendar."
+        )
     mcp.run()
 
 

@@ -32,6 +32,8 @@ mcp = EnhancedMCP(
     ),
 )
 
+logger = logging.getLogger(__name__)
+
 _field_mapper = GHLFieldMapper()
 
 
@@ -232,6 +234,13 @@ def main() -> None:
     ``MCP_HTTP_PORT`` for streamable-HTTP, where JWT + scope are enforced;
     HTTP mode requires ``MCP_JWT_SECRET`` and refuses to start without it.
     """
+    if isinstance(_client, MockGHLClient):
+        logger.warning(
+            "crm-ghl server running with the in-memory MockGHLClient — it does "
+            "NOT connect to GoHighLevel (contacts, pipelines, and opportunities "
+            "are fake). No real GHL client ships with the toolkit; inject one "
+            "via crm_ghl.server.configure(client=...)."
+        )
     http_port = os.environ.get("MCP_HTTP_PORT")
     if http_port:
         if not _JWT_SECRET:

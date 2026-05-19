@@ -186,6 +186,7 @@ class TestMainWiring:
             assert isinstance(cal_server._provider, GoogleCalendarProvider)
         except ImportError:
             import pytest
+
             pytest.skip("[gcal] extra not installed")
 
     def test_main_keeps_mock_provider_without_env(self, monkeypatch):
@@ -226,5 +227,22 @@ class TestMainWiring:
             cal_server.main()
 
         assert "[gcal]" in caplog.text
+        assert "MockCalendarProvider" in caplog.text
+
+    def test_main_warns_when_no_creds_env(self, monkeypatch, caplog):
+        """main() without GOOGLE_CALENDAR_CREDENTIALS must warn loudly that it
+        is running the in-memory mock — never silently pretend to be real."""
+        import logging
+
+        import mcp_toolkit.servers.calendar.server as cal_server
+
+        monkeypatch.delenv("GOOGLE_CALENDAR_CREDENTIALS", raising=False)
+        monkeypatch.setattr(cal_server.mcp, "run", lambda: None)
+        cal_server.configure(provider=MockCalendarProvider())
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.calendar.server"):
+            cal_server.main()
+
+        assert "GOOGLE_CALENDAR_CREDENTIALS" in caplog.text
         assert "MockCalendarProvider" in caplog.text
         assert isinstance(cal_server._provider, MockCalendarProvider)
