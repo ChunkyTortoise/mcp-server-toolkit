@@ -54,7 +54,7 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 |---|---|---|
 | OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](examples/observability/seed_traces.py)). A Render blueprint is committed but not yet deployed ([`render.yaml`](examples/observability/render.yaml)). |
 | Agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py) | Embed, pgvector retrieve, Claude synthesize in 4 tool calls |
-| End-to-end case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers and trace screenshots (numbers labeled seeded in the doc) |
+| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers and trace screenshots (numbers labeled seeded in the doc) |
 
 ## What you get vs. the raw MCP SDK
 
@@ -312,7 +312,7 @@ See [`examples/observability/`](examples/observability/) for a Docker Compose Ja
 
 ### Testing
 
-First-class test client for unit testing your MCP servers:
+Test client for unit testing your MCP servers:
 
 ```python
 from mcp_toolkit import MCPTestClient
@@ -410,13 +410,13 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | Signal | Where to look |
 |--------|--------------|
 | OAuth 2.1 + JWT (HS256/RS256/JWKS) | [`mcp_toolkit/framework/auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`, `requires_scope` |
-| OpenTelemetry spans end-to-end | [`mcp_toolkit/framework/telemetry.py`](mcp_toolkit/framework/telemetry.py): `TelemetryProvider`, OTLP exporter |
+| OpenTelemetry span on every tool call | [`mcp_toolkit/framework/telemetry.py`](mcp_toolkit/framework/telemetry.py): `TelemetryProvider`, OTLP exporter |
 | LLM cost attribution | [`mcp_toolkit/framework/costing.py`](mcp_toolkit/framework/costing.py): `CostTracker`, per-model pricing |
 | A2A streaming + push notifications | [`mcp_toolkit/framework/a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py): `stream_task()`, `handle_task(webhook_url=...)` |
 | LLM-as-judge eval suite (10 tasks) | [`evals/quality/`](evals/quality/): deterministic CI + nightly Anthropic judge |
 | Adversarial safety corpus (30 cases) | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
-| Five-gates production readiness | [`tests/gates/`](tests/gates/): schema, security, semantic, scale, safety |
-| End-to-end case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md): agentic RAG with cost, latency, cache numbers |
+| Five-gates suite | [`tests/gates/`](tests/gates/): schema, security, semantic, scale, safety |
+| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md): agentic RAG with cost, latency, cache numbers |
 
 ### Full-stack AI App Developer
 
@@ -424,7 +424,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 |--------|--------------|
 | Streamlit agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py): embed to pgvector to cited synthesis |
 | Claude Desktop one-command setup | [`examples/claude_desktop_app/setup.sh`](examples/claude_desktop_app/setup.sh) |
-| A2A bridge end-to-end (SSE streaming) | [`examples/a2a_bridge/`](examples/a2a_bridge/): Starlette server + client |
+| A2A bridge with SSE streaming | [`examples/a2a_bridge/`](examples/a2a_bridge/): Starlette server + client |
 | PostgreSQL + pgvector client | [`mcp_toolkit/servers/database_query/postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py) |
 | SMTP + Gmail clients | [`mcp_toolkit/servers/email/smtp_client.py`](mcp_toolkit/servers/email/smtp_client.py), [`gmail_client.py`](mcp_toolkit/servers/email/gmail_client.py) |
 | Google Calendar provider | [`mcp_toolkit/servers/calendar/google_calendar.py`](mcp_toolkit/servers/calendar/google_calendar.py) |
