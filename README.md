@@ -13,9 +13,9 @@ Every number below is from a reproducible local run on this commit. No hosted de
 
 | Metric | Value | Method |
 |---|---|---|
-| Cache hit latency | P50 0.008 ms, P95 0.009 ms | `python benchmarks/bench_cache.py` (500 iters, 20 warmup) |
-| Cache miss latency | P50 0.024 ms | same run |
-| Cache speedup | 3.1x vs. miss | same run, median miss / median hit |
+| Cache hit latency | P50 0.008 ms, P95 0.009 ms | `python benchmarks/bench_cache.py` (500 iters, 20 warmup); median of 3 runs |
+| Cache miss latency | P50 0.024 ms | same run; median of 3 runs |
+| Cache speedup | 3.1x vs. miss | same run, median miss / median hit; median of 3 runs |
 | Test suite | 607 passed, 2 skipped | `pytest tests/ -q` |
 | Test coverage | 84% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
