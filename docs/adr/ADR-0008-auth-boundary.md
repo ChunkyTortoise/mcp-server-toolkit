@@ -95,6 +95,12 @@ With a verifier wired, the SDK enforces, before any tool runs:
 The pre-built `database_query` and `crm_ghl` servers are wired this way, with
 per-tool scopes (`db:read`; `crm:read` / `crm:write`).
 
+The apparent double scope check is deliberate: `AuthSettings.required_scopes`
+(enforced server-wide by `RequireAuthMiddleware` at the transport) gates
+admission to the server, while `@requires_scope` adds the per-tool granularity
+the single server-wide setting cannot express — e.g. `crm:read` for reads vs.
+`crm:write` for mutations on the same server.
+
 ### 4. The stdio limit — stated, not papered over
 
 stdio has no `Authorization` channel. There is no place for a bearer token to

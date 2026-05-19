@@ -23,18 +23,11 @@ from mcp_toolkit.servers.database_query.sql_generator import (
 
 logger = logging.getLogger(__name__)
 
-# Auth model (see ADR-0008):
-#   * The credential is the request's `Authorization: Bearer <jwt>` header,
-#     validated by the SDK's BearerAuthBackend via JWTTokenVerifier BEFORE any
-#     tool runs. It is never a tool argument and never appears in list_tools().
-#   * stdio (the default transport) has no Authorization channel, so every
-#     @requires_scope tool hard-rejects under stdio. Real auth requires the
-#     opt-in HTTP mode (MCP_HTTP_PORT) where the header exists.
-#
-# MCP_JWT_SECRET is the HS256 verification secret. If unset we fall back to an
-# ephemeral random secret so stdio import still works (no token can validate
-# against it, which matches the stdio hard-reject); HTTP mode refuses to start
-# without an explicitly configured secret.
+# Auth model — credential is the request's verified Authorization bearer token
+# (never a tool argument); stdio (default) has no header channel so
+# @requires_scope hard-rejects; HTTP mode (MCP_HTTP_PORT) enforces JWT + scope
+# and requires MCP_JWT_SECRET. Unset MCP_JWT_SECRET -> ephemeral secret so stdio
+# import still works (nothing validates against it). See ADR-0008 for rationale.
 _JWT_SECRET = os.environ.get("MCP_JWT_SECRET")
 _jwt_auth = JWTAuth(secret=_JWT_SECRET or secrets.token_urlsafe(32))
 

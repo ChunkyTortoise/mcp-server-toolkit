@@ -15,11 +15,10 @@ from mcp_toolkit.servers.crm_ghl.field_mapper import GHLFieldMapper
 
 logger = logging.getLogger(__name__)
 
-# Auth model — see ADR-0008 and the matching comment in
-# mcp_toolkit/servers/database_query/server.py. Credential is the request's
-# verified Authorization bearer token (never a tool argument); stdio (default)
-# has no header channel so @requires_scope hard-rejects; HTTP mode (MCP_HTTP_PORT)
-# enforces JWT + scope and requires MCP_JWT_SECRET.
+# Auth model — credential is the request's verified Authorization bearer token
+# (never a tool argument); stdio (default) has no header channel so
+# @requires_scope hard-rejects; HTTP mode (MCP_HTTP_PORT) enforces JWT + scope
+# and requires MCP_JWT_SECRET. See ADR-0008 for rationale.
 _JWT_SECRET = os.environ.get("MCP_JWT_SECRET")
 _jwt_auth = JWTAuth(secret=_JWT_SECRET or secrets.token_urlsafe(32))
 
