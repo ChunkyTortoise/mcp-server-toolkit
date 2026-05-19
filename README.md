@@ -284,8 +284,9 @@ configure(provider=GoogleCalendarProvider(credentials=creds, calendar_id="primar
 from mcp_toolkit.servers.file_processing.server import mcp
 
 # Tools available:
-# - parse_file(path="report.pdf")
-# - chunk_for_rag(text="...", chunk_size=512)
+# - process_file(file_content_base64="...", filename="report.pdf")
+# - chunk_text(text="...", chunk_size=1000, chunk_overlap=200, strategy="fixed")
+# - detect_file_type(filename="report.pdf")
 ```
 
 </details>
