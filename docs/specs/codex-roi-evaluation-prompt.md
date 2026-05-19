@@ -10,11 +10,11 @@ You are a **principal AI-platform engineer + hiring-panel signal evaluator**. Yo
 
 ## CONTEXT — REPO STATE (TRUST THIS, DO NOT GUESS)
 
-Repo: `github.com/ChunkyTortoise/mcp-server-toolkit`, PyPI `mcp-server-toolkit==0.3.0`.
+Repo: `github.com/ChunkyTortoise/mcp-server-toolkit`, PyPI `mcp-server-toolkit` (published 0.1.0; 0.3.0 unreleased).
 
 **Stack:** Python 3.11, MCP protocol, pydantic, httpx, hatchling, pytest (598 tests), pyright (blocking in CI), Codecov, Ruff.
 
-**Shipped (v0.3.0, commit `de7e134`):**
+**Implemented (unreleased 0.3.0.dev, commit `de7e134`):**
 - 9 pre-built MCP servers: `db, web, file, analytics, email, calendar, crm-ghl, gemini-embedding, multi-llm`
 - Framework layer (`mcp_toolkit/framework/`):
   - `auth.py` — JWT HS256/RS256/JWKS, OAuth 2.1 scopes, `requires_scope`

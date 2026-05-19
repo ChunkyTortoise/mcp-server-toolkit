@@ -14,4 +14,4 @@ __all__ = [
     "requires_scope",
     "CostTracker",
 ]
-__version__ = "0.3.0"
+__version__ = "0.3.0.dev0"
