@@ -91,7 +91,7 @@ class RedisCache(CacheBackend):
             import redis.asyncio as aioredis
 
             client = aioredis.from_url(self._redis_url, decode_responses=True)
-            await client.ping()
+            await client.ping()  # type: ignore[misc]  # redis.asyncio stub types ping() as sync
             self._client = client
             return self._client
         except _REDIS_TRANSIENT as exc:

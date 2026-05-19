@@ -129,9 +129,10 @@ class TelemetryProvider:
 
         otel_span: Any | None = None
         if self._tracer is not None:
-            otel_span = self._tracer.start_span(name)
+            span = self._tracer.start_span(name)
+            otel_span = span
             for k, v in attrs.items():
-                otel_span.set_attribute(str(k), _otel_safe(v))
+                span.set_attribute(str(k), _otel_safe(v))
 
         try:
             yield record
