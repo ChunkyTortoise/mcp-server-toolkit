@@ -191,7 +191,9 @@ class JWTAuth:
                 )
                 payload = pyjwt.decode(token, signing_key.key, **decode_kwargs)
             else:
-                # HS256: symmetric secret
+                # HS256: symmetric secret (guaranteed non-None by __init__ invariant)
+                if self._secret is None:
+                    return AuthResult(authenticated=False, error="JWTAuth misconfigured: missing secret")
                 payload = pyjwt.decode(token, self._secret, **decode_kwargs)
 
         except Exception as exc:

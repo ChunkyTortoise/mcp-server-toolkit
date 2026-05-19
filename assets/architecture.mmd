@@ -1,0 +1,36 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'JetBrains Mono, ui-monospace, monospace','primaryColor':'#0F1A2B','primaryBorderColor':'#14B8A6','primaryTextColor':'#E2E8F0','secondaryColor':'#0F1A2B','tertiaryColor':'#0B1220','lineColor':'#14B8A6','clusterBkg':'#0B1220','clusterBorder':'#1F3A4D','edgeLabelBackground':'#0B1220'}}}%%
+flowchart LR
+    Client["MCP Client<br/>Claude Desktop / agent"]
+
+    subgraph TK["mcp-server-toolkit · EnhancedMCP base class"]
+      direction TB
+      Auth["JWTAuth<br/>HS256 / RS256 / JWKS"]
+      RL["RateLimiter<br/>per-caller window"]
+      Cache["CacheLayer<br/>InMemory / Redis · TTL"]
+      Cost["CostTracker<br/>pricing/2026.json"]
+      Tel["TelemetryProvider<br/>OpenTelemetry spans"]
+      Auth --> RL --> Cache
+    end
+
+    subgraph SRV["9 pre-built servers"]
+      direction TB
+      S["analytics · calendar · crm-ghl<br/>database-query · email · file-processing<br/>gemini-embedding · multi-llm · web-scraping"]
+    end
+
+    LLM["LLM providers<br/>Anthropic · OpenAI · Google · xAI"]
+    A2A["A2AAdapter<br/>SSE streaming + webhooks"]
+    Jaeger["Jaeger<br/>OTLP HTTP :4318"]
+
+    Client --> Auth
+    Cache --> SRV
+    SRV --> LLM --> Cost
+    SRV --> A2A
+    SRV -. span .-> Tel
+    Cost -. cost_usd .-> Tel
+    Tel --> Jaeger
+
+    style Client fill:#0F1A2B,stroke:#14B8A6,color:#E2E8F0
+    style S fill:#0F1A2B,stroke:#14B8A6,color:#E2E8F0
+    style LLM fill:#0F1A2B,stroke:#1F3A4D,color:#94A3B8
+    style A2A fill:#0F1A2B,stroke:#1F3A4D,color:#94A3B8
+    style Jaeger fill:#0F1A2B,stroke:#1F3A4D,color:#94A3B8

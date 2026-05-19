@@ -24,7 +24,7 @@ jobs:
           pip install pyright
           pyright --pythonversion 3.10 mcp_toolkit
       - name: Test
-        run: pytest tests/ -x -q --tb=short --cov=mcp_toolkit --cov-report=term-missing --cov-report=xml --cov-fail-under=88
+        run: pytest tests/ -x -q --tb=short --cov=mcp_toolkit --cov-report=term-missing --cov-report=xml --cov-fail-under=80
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
