@@ -12,7 +12,7 @@ Last run: 2026-05-19 | Python 3.12.13 | macOS (Apple Silicon)
 | Cache MISS P95 | 0.030ms |
 | Speedup | **3.1x** faster on cache hit |
 
-500 iterations, 20 warmup calls. Cache effectiveness: 519 of 520 cacheable calls served from cache (99.8%); hit loop made 0 of 500 backend calls (verbatim `bench_cache.py` output).
+500 iterations, 20 warmup calls. Cache effectiveness: 519 of 520 cacheable calls served from cache (99.8%); hit loop made 0 of 500 backend calls (from `bench_cache.py` stdout).
 
 ## Reproducing
 

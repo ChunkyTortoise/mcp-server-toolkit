@@ -60,6 +60,9 @@ async def run() -> dict[str, float]:
         await mcp.call_tool("echo", {"value": f"unique-{i}"})
         miss_times.append((time.perf_counter() - t0) * 1_000)
 
+    # Cacheable surface = warmup + hit loop (all share one key). The miss loop is
+    # intentionally excluded: it uses unique args every call, so it is
+    # intrinsically uncacheable and not part of the hit-rate denominator.
     cacheable_calls = WARMUP + ITERATIONS
     cacheable_backend = warmup_backend + hit_loop_backend
     return {
@@ -68,7 +71,6 @@ async def run() -> dict[str, float]:
         "miss_p50_ms": statistics.median(miss_times),
         "miss_p95_ms": sorted(miss_times)[int(ITERATIONS * 0.95)],
         "speedup_x": statistics.median(miss_times) / statistics.median(hit_times),
-        "backend_calls_total": call_count,
         "hit_loop_backend": hit_loop_backend,
         "cacheable_calls": cacheable_calls,
         "cacheable_served_from_cache": cacheable_calls - cacheable_backend,
