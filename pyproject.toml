@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "mcp-server-toolkit"
 version = "0.3.0"
-description = "Production-ready MCP server framework with caching, rate limiting, OpenTelemetry, and 9 pre-built servers for database, web scraping, file processing, analytics, email, calendar, CRM/GHL, Gemini embedding, and multi-LLM routing"
+description = "MCP server framework with caching, rate limiting, OpenTelemetry, and 9 pre-built servers for database, web scraping, file processing, analytics, email, calendar, CRM/GHL, Gemini embedding, and multi-LLM routing"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
