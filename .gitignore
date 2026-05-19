@@ -20,6 +20,9 @@ node_modules/
 # Ephemeral session notes (gitignored so Claude can write freely)
 NOTES.md
 
+# Local maintenance / audit working dir — scan reports, triage notes (never committed)
+.maintenance/
+
 # Coverage
 .coverage
 .coverage.*
