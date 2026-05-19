@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol
@@ -187,8 +188,6 @@ async def delete_event(event_id: str) -> str:
 
 
 def main() -> None:
-    import os
-
     creds_path = os.environ.get("GOOGLE_CALENDAR_CREDENTIALS")
     if creds_path:
         try:
