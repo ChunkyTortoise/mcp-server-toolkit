@@ -17,7 +17,7 @@ Every number below is from a reproducible local run on this commit. No hosted de
 | Cache miss latency | P50 0.022 ms | same run |
 | Cache speedup | 2.9x vs. miss | same run, median miss / median hit |
 | Test suite | 600 tests | `pytest tests/ --collect-only -q` |
-| Coverage gate | >= 88% enforced | CI `--cov-fail-under=88` in `.github/workflows/ci.yml` |
+| Test coverage | 82.87% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
 | Python support | 3.10 / 3.11 / 3.12 | CI matrix in `.github/workflows/ci.yml` |
