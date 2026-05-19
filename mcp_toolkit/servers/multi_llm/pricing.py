@@ -1,30 +1,36 @@
-"""Pricing tables and cost estimation for LLM providers."""
+"""multi_llm cost estimation.
+
+**Single source of truth:** ``mcp_toolkit/pricing/2026.json``, loaded once by
+``mcp_toolkit.framework.costing``. This module exposes a *model-keyed* view of
+that canonical table because the multi_llm providers attribute cost by model id
+(model ids are unique across providers in the canonical table). There is no
+hand-maintained price list here — edit the JSON, not this file.
+"""
 
 from __future__ import annotations
 
-# Per 1M tokens (input_price_usd, output_price_usd)
+# The canonical, already-loaded pricing table (provider -> model -> {input, output}).
+# Importing the loaded table (rather than re-reading the JSON) guarantees a single
+# in-memory source of truth shared with CostTracker.
+from mcp_toolkit.framework.costing import _PRICING as _CANONICAL_PRICING
+
+# Canonical-derived, model-keyed view: {model_id: (input_per_1M, output_per_1M)}.
 PRICING: dict[str, tuple[float, float]] = {
-    # Gemini
-    "gemini-2.5-pro": (1.25, 10.00),
-    "gemini-2.5-flash": (0.30, 2.50),
-    "gemini-2.0-flash-lite": (0.075, 0.30),
-    # OpenAI
-    "gpt-5.5": (5.00, 30.00),
-    "gpt-5.5-thinking": (5.00, 30.00),
-    "gpt-5.5-pro": (30.00, 180.00),
-    "gpt-4.1": (2.00, 8.00),
-    "gpt-4.1-mini": (0.40, 1.60),
-    "gpt-4.1-nano": (0.10, 0.40),
-    # xAI
-    "grok-4.20-0309-non-reasoning": (2.00, 6.00),
-    "grok-4.20-0309-reasoning": (2.00, 6.00),
-    "grok-4-1-fast-non-reasoning": (0.20, 0.50),
+    model: (prices["input"], prices["output"])
+    for provider_table in _CANONICAL_PRICING.values()
+    for model, prices in provider_table.items()
 }
 
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    """Return estimated USD cost. Returns 0.0 for unknown models."""
-    if model not in PRICING:
+    """Return estimated USD cost for ``model``. Returns 0.0 for unknown models.
+
+    Canonical pricing source: ``mcp_toolkit/pricing/2026.json``.
+    """
+    prices = PRICING.get(model)
+    if prices is None:
         return 0.0
-    input_price, output_price = PRICING[model]
-    return (input_tokens * input_price + output_tokens * output_price) / 1_000_000
+    input_price, output_price = prices
+    return round(
+        (input_tokens * input_price + output_tokens * output_price) / 1_000_000, 8
+    )
