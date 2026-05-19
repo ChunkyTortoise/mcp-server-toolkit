@@ -181,7 +181,10 @@ class A2AAdapter:
                 result={"output": result_text},
             )
         except Exception as exc:
-            logger.exception("A2A task %s failed: %s", task_id, exc)
+            # Expected, handled failure — returned to the caller as a
+            # "failed" A2ATaskStatus. Log at WARNING (no stack trace) so a
+            # correctly-handled task failure does not look like a crash.
+            logger.warning("A2A task %s failed: %s", task_id, exc)
             final = A2ATaskStatus(
                 task_id=task_id,
                 status="failed",
@@ -221,7 +224,10 @@ class A2AAdapter:
                 result={"output": result_text},
             )
         except Exception as exc:
-            logger.exception("A2A task %s failed: %s", task_id, exc)
+            # Expected, handled failure — returned to the caller as a
+            # "failed" A2ATaskStatus. Log at WARNING (no stack trace) so a
+            # correctly-handled task failure does not look like a crash.
+            logger.warning("A2A task %s failed: %s", task_id, exc)
             status = A2ATaskStatus(
                 task_id=task_id,
                 status="failed",
