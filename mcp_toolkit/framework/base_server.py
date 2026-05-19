@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import logging
 import time
@@ -28,6 +29,8 @@ class EnhancedMCP(FastMCP):
         self._cache = CacheLayer(InMemoryCache())
         self._rate_limiter = RateLimiter()
         self._telemetry = TelemetryProvider(name)
+        self._inflight_locks: dict[str, asyncio.Lock] = {}
+        self._inflight_master = asyncio.Lock()
         self._setup_telemetry()
         self._setup_caching()
 
@@ -49,6 +52,16 @@ class EnhancedMCP(FastMCP):
     def telemetry(self) -> TelemetryProvider:
         return self._telemetry
 
+    async def _inflight_lock_for(self, key: str) -> asyncio.Lock:
+        """Return a per-cache-key lock, creating it under a master lock so
+        concurrent first-misses serialize on one execution (single-flight)."""
+        async with self._inflight_master:
+            lock = self._inflight_locks.get(key)
+            if lock is None:
+                lock = asyncio.Lock()
+                self._inflight_locks[key] = lock
+            return lock
+
     def cached_tool(self, ttl: int = 300) -> Callable:
         """Decorator for tools with automatic response caching.
 
@@ -69,12 +82,21 @@ class EnhancedMCP(FastMCP):
                     hit_ms = (time.monotonic() - t0) * 1000
                     self._telemetry.record_tool_call(func.__name__, hit_ms, True, cache_hit=True)
                     return cached
-                start = time.monotonic()
-                result = await func(*args, **kwargs)
-                duration_ms = (time.monotonic() - start) * 1000
-                await self._cache.set(cache_key, result, ttl=ttl)
-                self._telemetry.record_tool_call(func.__name__, duration_ms, True, cache_hit=False)
-                return result
+                # Single-flight: dedupe concurrent misses for the same key so
+                # the expensive call runs once, not N times (cache stampede).
+                lock = await self._inflight_lock_for(cache_key)
+                async with lock:
+                    cached = await self._cache.get(cache_key)
+                    if cached is not None:
+                        hit_ms = (time.monotonic() - t0) * 1000
+                        self._telemetry.record_tool_call(func.__name__, hit_ms, True, cache_hit=True)
+                        return cached
+                    start = time.monotonic()
+                    result = await func(*args, **kwargs)
+                    duration_ms = (time.monotonic() - start) * 1000
+                    await self._cache.set(cache_key, result, ttl=ttl)
+                    self._telemetry.record_tool_call(func.__name__, duration_ms, True, cache_hit=False)
+                    return result
 
             wrapper.__wrapped__ = func  # type: ignore[attr-defined]
             return wrapper
