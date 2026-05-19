@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
@@ -16,6 +17,8 @@ from mcp_toolkit.servers.database_query.sql_generator import (
 )
 
 mcp = EnhancedMCP("database-query")
+
+logger = logging.getLogger(__name__)
 
 _schema_inspector = SchemaInspector()
 _sql_generator = SQLGenerator()
@@ -124,6 +127,13 @@ async def list_tables() -> str:
 
 
 def main() -> None:
+    logger.warning(
+        "database-query running with DefaultLLMProvider — it generates "
+        "'SELECT 1' for EVERY question (placeholder, not real NL→SQL) and no "
+        "DB connection is configured. The sqlglot SELECT-only validation gate "
+        "is functional; wire a real LLM and DB via "
+        "database_query.server.configure(llm=..., db_connection=...)."
+    )
     mcp.run()
 
 

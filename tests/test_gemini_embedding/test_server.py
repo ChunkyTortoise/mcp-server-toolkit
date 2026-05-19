@@ -40,9 +40,7 @@ class TestEmbedText:
 
 class TestIndexText:
     async def test_index_returns_confirmation(self, client):
-        result = await client.call_tool(
-            "index_text", {"text": "test document", "item_id": "doc1"}
-        )
+        result = await client.call_tool("index_text", {"text": "test document", "item_id": "doc1"})
         assert "Indexed 'doc1'" in result
         assert "Total items: 1" in result
 
@@ -172,3 +170,21 @@ class TestToolListing:
         assert "similarity" in names
         assert "list_indexed" in names
         assert "clear_index" in names
+
+
+class TestMockModeWarning:
+    def test_main_warns_without_api_key(self, monkeypatch, caplog):
+        """No GEMINI_API_KEY -> running MockEmbeddingClient; main() must warn
+        loudly that vectors are fake, never silently degrade."""
+        import logging
+
+        import mcp_toolkit.servers.gemini_embedding.server as emb_server
+
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.setattr(emb_server.mcp, "run", lambda: None)
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.gemini_embedding.server"):
+            emb_server.main()
+
+        assert "GEMINI_API_KEY" in caplog.text
+        assert "MockEmbeddingClient" in caplog.text

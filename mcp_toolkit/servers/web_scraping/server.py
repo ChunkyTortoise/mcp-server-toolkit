@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
@@ -13,6 +14,8 @@ from mcp_toolkit.servers.web_scraping.extractor import (
 from mcp_toolkit.servers.web_scraping.scraper import WebScraper
 
 mcp = EnhancedMCP("web-scraping")
+
+logger = logging.getLogger(__name__)
 
 _scraper = WebScraper()
 _extractor = DataExtractor()
@@ -107,6 +110,12 @@ async def extract_data(
 
 
 def main() -> None:
+    logger.warning(
+        "web-scraping: page fetching is real, but structured/freeform data "
+        "extraction is using the placeholder DefaultLLMProvider (it returns "
+        "stub data, not real LLM extraction). Wire a real LLM via "
+        "web_scraping.server.configure(llm=...)."
+    )
     mcp.run()
 
 

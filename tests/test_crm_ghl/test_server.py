@@ -119,3 +119,21 @@ class TestToolListing:
         assert "create_contact" in names
         assert "get_pipeline_summary" in names
         assert "create_opportunity" in names
+
+
+class TestMockModeWarning:
+    def test_main_warns_when_running_mock_ghl_client(self, monkeypatch, caplog):
+        """main() must loudly warn that crm-ghl uses the in-memory mock —
+        never silently pretend to talk to GoHighLevel."""
+        import logging
+
+        import mcp_toolkit.servers.crm_ghl.server as crm_server
+
+        monkeypatch.setattr(crm_server.mcp, "run", lambda: None)
+        crm_server.configure(client=MockGHLClient())
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.crm_ghl.server"):
+            crm_server.main()
+
+        assert "MockGHLClient" in caplog.text
+        assert "configure(" in caplog.text
