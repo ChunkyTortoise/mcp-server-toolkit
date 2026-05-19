@@ -14,10 +14,10 @@ Every number below is from a reproducible local run on this commit. No hosted de
 | Metric | Value | Method |
 |---|---|---|
 | Cache hit latency | P50 0.008 ms, P95 0.009 ms | `python benchmarks/bench_cache.py` (500 iters, 20 warmup) |
-| Cache miss latency | P50 0.022 ms | same run |
-| Cache speedup | 2.9x vs. miss | same run, median miss / median hit |
-| Test suite | 600 tests | `pytest tests/ --collect-only -q` |
-| Test coverage | 82.87% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
+| Cache miss latency | P50 0.024 ms | same run |
+| Cache speedup | 3.1x vs. miss | same run, median miss / median hit |
+| Test suite | 607 passed, 2 skipped | `pytest tests/ -q` |
+| Test coverage | 84% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
 | Python support | 3.10 / 3.11 / 3.12 | CI matrix in `.github/workflows/ci.yml` |
@@ -477,7 +477,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | LLM cost from real API usage objects | [`costing.py`](mcp_toolkit/framework/costing.py) + [`pricing/2026.json`](mcp_toolkit/pricing/2026.json) |
 | 30-case adversarial corpus | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl): validated in CI |
 | PostgreSQL read-only enforced via AST | [`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py): `_validate_read_only()` via sqlglot |
-| 600 tests | `pytest tests/ --collect-only -q`; CI badge above |
+| 607 passed, 2 skipped | `pytest tests/ -q`; CI badge above |
 | Cache hit P50 0.008 ms | `python benchmarks/bench_cache.py`; [`tests/test_benchmarks.py`](tests/test_benchmarks.py): `test_cache_hit_latency_p95` |
 
 Certifications backing this work: IBM Generative AI Engineering (144h), IBM RAG and Agentic AI (24h), Duke LLMOps (48h), Anthropic Building with Claude (Vanderbilt). Full list and mapping at [caymanroden.com](https://caymanroden.com).
