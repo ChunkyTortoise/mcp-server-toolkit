@@ -160,3 +160,42 @@ class TestToolListing:
         assert "create_event" in names
         assert "find_free_slots" in names
         assert "delete_event" in names
+
+
+class TestMainWiring:
+    def test_main_wires_google_provider_when_env_set(self, monkeypatch, tmp_path):
+        """main() with GOOGLE_CALENDAR_CREDENTIALS set must configure GoogleCalendarProvider."""
+        import mcp_toolkit.servers.calendar.server as cal_server
+
+        # Write a minimal token.json so from_authorized_user_file succeeds
+        token_file = tmp_path / "token.json"
+        token_file.write_text(
+            '{"token": "tok", "refresh_token": "ref", "token_uri": "https://oauth2.googleapis.com/token",'
+            ' "client_id": "cid", "client_secret": "csec", "scopes": ["https://www.googleapis.com/auth/calendar"]}'
+        )
+
+        monkeypatch.setenv("GOOGLE_CALENDAR_CREDENTIALS", str(token_file))
+        monkeypatch.setenv("GOOGLE_CALENDAR_ID", "primary")
+        monkeypatch.setattr(cal_server.mcp, "run", lambda: None)
+
+        try:
+            from google.oauth2.credentials import Credentials  # noqa: F401
+            from mcp_toolkit.servers.calendar.google_calendar import GoogleCalendarProvider
+
+            cal_server.main()
+            assert isinstance(cal_server._provider, GoogleCalendarProvider)
+        except ImportError:
+            import pytest
+            pytest.skip("[gcal] extra not installed")
+
+    def test_main_keeps_mock_provider_without_env(self, monkeypatch):
+        """main() without GOOGLE_CALENDAR_CREDENTIALS must leave MockCalendarProvider in place."""
+        import mcp_toolkit.servers.calendar.server as cal_server
+
+        monkeypatch.delenv("GOOGLE_CALENDAR_CREDENTIALS", raising=False)
+        monkeypatch.setattr(cal_server.mcp, "run", lambda: None)
+
+        cal_server.configure(provider=MockCalendarProvider())  # reset
+        cal_server.main()
+
+        assert isinstance(cal_server._provider, MockCalendarProvider)

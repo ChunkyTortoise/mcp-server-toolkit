@@ -1,6 +1,6 @@
 # MCP Server Toolkit
 
-Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 ready-to-run servers as one PyPI install, so you write tool logic instead of infrastructure.
+Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 pre-built servers as one PyPI install, so you write tool logic instead of infrastructure. Six servers work out of the box; three wire real backends from environment variables (SMTP, Google Calendar, and multi-LLM providers).
 
 ![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit?color=14B8A6)
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
@@ -71,7 +71,7 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 | Telemetry | Not included | OpenTelemetry spans, OTLP export |
 | Cost attribution | Not included | Per-call `cost_usd` from a dated pricing table |
 | Test client | Manual mocking | `MCPTestClient` |
-| Pre-built servers | Build your own | 9 ready servers |
+| Pre-built servers | Build your own | 9 servers (6 zero-config, 3 wire from env) |
 | Agent-to-Agent | Not included | `A2AAdapter`, SSE + webhooks |
 
 ## Installation
@@ -95,29 +95,32 @@ Nine servers, import and run, no boilerplate.
 
 | Server | Description | Install extra |
 |--------|-------------|---------------|
-| `database_query` | Natural language to SQL with sqlglot validation and schema introspection | `[database]` |
-| `web_scraping` | Agent-driven web scraping with structured data extraction | `[web]` |
+| `database_query` | sqlglot SELECT-only validation gate + schema introspection; wire a real LLM via `configure(llm=...)` for NL→SQL | `[database]` |
+| `web_scraping` | Web scraping with robots.txt support; structured extraction requires a wired `LLMProvider` via `configure(llm=...)` | `[web]` |
 | `file_processing` | PDF/CSV/Excel/TXT parsing with RAG-optimized chunking | `[files]` |
 | `analytics` | Metrics recording, aggregation, anomaly detection (z-score), chart generation | core |
-| `email` | Email composition with template engine | core |
-| `calendar` | Availability checking and scheduling | core |
-| `crm_ghl` | GoHighLevel CRM: contact CRUD, pipeline summaries, opportunity tracking with field mapping | core |
-| `gemini_embedding` | Gemini Embedding 2: text embedding, semantic search, vector indexing, cosine similarity | core |
-| `multi_llm` | Multi-provider LLM router: Gemini/OpenAI/xAI with cost routing, circuit breakers, parallel second opinions | core |
+| `email` | Email send/search with template engine; set `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` to wire real SMTP | core |
+| `calendar` | Availability checking and scheduling; set `GOOGLE_CALENDAR_CREDENTIALS` to wire Google Calendar | core |
+| `crm_ghl` | GoHighLevel CRM: contact CRUD, pipeline summaries, opportunity tracking with field mapping; runs mock by default (no GHL API client bundled) | core |
+| `gemini_embedding` | Gemini Embedding 2: text embedding, semantic search, vector indexing, cosine similarity; set `GEMINI_API_KEY` | core |
+| `multi_llm` | Multi-provider LLM router: Gemini/OpenAI/xAI with cost routing, circuit breakers, parallel second opinions; set `GEMINI_API_KEY` / `OPENAI_API_KEY` / `XAI_API_KEY` | core |
 
 <details>
-<summary><strong>database_query</strong>: Natural language to SQL with sqlglot validation and schema introspection</summary>
+<summary><strong>database_query</strong>: sqlglot validation gate + schema introspection (wire a real LLM for NL→SQL)</summary>
+
+The real value here is the **sqlglot SELECT-only validation gate**: all generated SQL is AST-parsed and rejected if it contains mutations (INSERT/UPDATE/DELETE/DROP). Schema introspection and PostgreSQL execution work out of the box when a DB connection is wired. The default `DefaultLLMProvider` returns `"SELECT 1"` — it is a reference stub, not a working NL→SQL engine. Wire a real provider to enable natural-language queries.
 
 ```python
 from mcp_toolkit.servers.database_query.server import mcp, configure
+from mcp_toolkit.servers.database_query.sql_generator import LLMProvider
 
-# Connect to your database
-configure(db_connection=my_async_db, dialect="postgres")
+# Wire a real LLM (any class with async generate(prompt) -> str)
+configure(db_connection=my_async_db, llm=my_llm_provider, dialect="postgres")
 
 # Tools available to agents:
-# - query_database("How many users signed up last week?")
-# - explain_query("Show me top customers by revenue")
-# - list_tables()
+# - query_database("How many users signed up last week?")  # needs real LLM
+# - explain_query("Show me top customers by revenue")       # needs real LLM
+# - list_tables()                                            # works with DB only
 ```
 
 </details>
@@ -141,14 +144,20 @@ configure(store=store)
 </details>
 
 <details>
-<summary><strong>web_scraping</strong>: Agent-driven web scraping with structured data extraction</summary>
+<summary><strong>web_scraping</strong>: Web scraping with robots.txt support; structured extraction requires a wired LLM</summary>
+
+`scrape_url` works out of the box — fetches pages, respects robots.txt, returns text/title/links. `extract_data` requires a real `LLMProvider` wired via `configure(llm=...)`: the default provider returns empty JSON `{}` and is a reference stub, not a working extractor.
 
 ```python
-from mcp_toolkit.servers.web_scraping.server import mcp
+from mcp_toolkit.servers.web_scraping.server import mcp, configure
 
-# Tools available:
-# - scrape_page(url="https://example.com", extract="product prices")
-# - extract_structured(url="...", schema={"name": "str", "price": "float"})
+# scrape_url works with no setup:
+# - scrape_url(url="https://example.com")
+
+# extract_data needs a real LLM wired in (any class with async generate(prompt) -> str):
+configure(llm=my_llm_provider)
+# - extract_data(url="...", description="product names and prices")
+# - extract_data(url="...", schema={"name": "str", "price": "float"})
 ```
 
 </details>
@@ -156,13 +165,14 @@ from mcp_toolkit.servers.web_scraping.server import mcp
 <details>
 <summary><strong>crm_ghl</strong>: GoHighLevel CRM contact management, pipeline tracking, and opportunity creation</summary>
 
-Contact management, pipeline tracking, and opportunity creation for GoHighLevel CRM. Includes a `GHLFieldMapper` for resolving natural language field names to GHL custom field IDs. Falls back to a `MockGHLClient` when no real client is configured, so agents can demo the tools without API credentials.
+Contact management, pipeline tracking, and opportunity creation for GoHighLevel CRM. Includes a `GHLFieldMapper` for resolving natural language field names to GHL custom field IDs. Runs a `MockGHLClient` by default — no GHL HTTP client is bundled. Bring your own client that satisfies the `GHLClient` protocol and wire it via `configure(client=...)`.
 
 ```python
 from mcp_toolkit.servers.crm_ghl.server import mcp, configure
 
-# Use the mock client for demos (default), or provide your own GHL API client
-# configure(client=my_ghl_client)
+# Default: MockGHLClient (in-memory, no API calls — useful for demos/testing)
+# Wire a real client that implements the GHLClient protocol:
+# configure(client=my_ghl_api_client)
 
 # Tools available to agents:
 # - search_contacts("John", limit=10)
@@ -224,12 +234,23 @@ Set `GEMINI_API_KEY`, `OPENAI_API_KEY`, and/or `XAI_API_KEY` to enable each prov
 </details>
 
 <details>
-<summary><strong>email</strong>: Email composition with template engine</summary>
+<summary><strong>email</strong>: Email send/search with template engine</summary>
+
+Set `SMTP_HOST` (and optionally `SMTP_USER`, `SMTP_PASS`, `SMTP_PORT`, `IMAP_HOST`) to wire a real SMTP/IMAP client at startup. Without those vars the server runs a `MockEmailClient` — useful for demos and testing but does not send real email.
 
 ```python
-from mcp_toolkit.servers.email.server import mcp
+# Env-based startup (zero code):
+# SMTP_HOST=smtp.gmail.com SMTP_USER=you@gmail.com SMTP_PASS=app-pw mcp-toolkit-email
 
-# Tools available to agents for email composition and templating
+# Or wire programmatically:
+from mcp_toolkit.servers.email.server import mcp, configure
+from mcp_toolkit.servers.email.smtp_client import SMTPEmailClient
+
+configure(client=SMTPEmailClient(host="smtp.gmail.com", port=587,
+                                  username="you@gmail.com", credential="app-pw",
+                                  use_tls=True, imap_host="imap.gmail.com"))
+
+# Tools: send_email, search_emails, draft_from_template, list_templates
 ```
 
 </details>
@@ -237,10 +258,21 @@ from mcp_toolkit.servers.email.server import mcp
 <details>
 <summary><strong>calendar</strong>: Availability checking and scheduling</summary>
 
-```python
-from mcp_toolkit.servers.calendar.server import mcp
+Set `GOOGLE_CALENDAR_CREDENTIALS` to a Google OAuth token file path (and optionally `GOOGLE_CALENDAR_ID`) to wire the real Google Calendar provider at startup. Requires `pip install mcp-server-toolkit[gcal]`. Without the env var the server runs a `MockCalendarProvider` — in-memory, useful for demos and testing but does not read or write a real calendar.
 
-# Tools available to agents for availability checking and scheduling
+```python
+# Env-based startup:
+# GOOGLE_CALENDAR_CREDENTIALS=token.json mcp-toolkit-calendar
+
+# Or wire programmatically (requires [gcal] extra):
+from google.oauth2.credentials import Credentials
+from mcp_toolkit.servers.calendar.server import mcp, configure
+from mcp_toolkit.servers.calendar.google_calendar import GoogleCalendarProvider
+
+creds = Credentials.from_authorized_user_file("token.json")
+configure(provider=GoogleCalendarProvider(credentials=creds, calendar_id="primary"))
+
+# Tools: list_events, create_event, delete_event, find_free_slots
 ```
 
 </details>

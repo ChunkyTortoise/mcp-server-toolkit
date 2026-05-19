@@ -184,6 +184,20 @@ async def delete_event(event_id: str) -> str:
 
 
 def main() -> None:
+    import os
+
+    creds_path = os.environ.get("GOOGLE_CALENDAR_CREDENTIALS")
+    if creds_path:
+        try:
+            from google.oauth2.credentials import Credentials  # type: ignore[import-untyped]
+
+            from mcp_toolkit.servers.calendar.google_calendar import GoogleCalendarProvider
+
+            creds = Credentials.from_authorized_user_file(creds_path)
+            calendar_id = os.environ.get("GOOGLE_CALENDAR_ID", "primary")
+            configure(provider=GoogleCalendarProvider(credentials=creds, calendar_id=calendar_id))
+        except ImportError:
+            pass  # [gcal] extra not installed — fall through to mock
     mcp.run()
 
 

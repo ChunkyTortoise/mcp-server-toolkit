@@ -182,6 +182,22 @@ async def list_templates() -> str:
 
 
 def main() -> None:
+    import os
+
+    smtp_host = os.environ.get("SMTP_HOST")
+    if smtp_host:
+        from mcp_toolkit.servers.email.smtp_client import SMTPEmailClient
+
+        configure(
+            client=SMTPEmailClient(
+                host=smtp_host,
+                port=int(os.environ.get("SMTP_PORT", "587")),
+                username=os.environ.get("SMTP_USER", ""),
+                credential=os.environ.get("SMTP_PASS", ""),
+                use_tls=os.environ.get("SMTP_USE_TLS", "true").lower() != "false",
+                imap_host=os.environ.get("IMAP_HOST", ""),
+            )
+        )
     mcp.run()
 
 

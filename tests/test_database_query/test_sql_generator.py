@@ -171,3 +171,24 @@ class TestMockLLMProvider:
         await llm.generate("q1")
         await llm.generate("q2")
         assert llm.call_count == 2
+
+
+class TestDefaultLLMProviderIsStub:
+    """Confirm DefaultLLMProvider is an explicit stub, not a working NL→SQL engine."""
+
+    async def test_default_provider_returns_select_1(self):
+        """DefaultLLMProvider must return 'SELECT 1' regardless of prompt — it is a reference stub."""
+        from mcp_toolkit.servers.database_query.sql_generator import DefaultLLMProvider
+
+        provider = DefaultLLMProvider()
+        result = await provider.generate("How many users signed up last week?")
+        assert result == "SELECT 1"
+
+    async def test_default_provider_ignores_prompt_content(self):
+        """Confirm stub behaviour: same constant regardless of question."""
+        from mcp_toolkit.servers.database_query.sql_generator import DefaultLLMProvider
+
+        provider = DefaultLLMProvider()
+        r1 = await provider.generate("Show top customers")
+        r2 = await provider.generate("Delete all rows")
+        assert r1 == r2 == "SELECT 1"
