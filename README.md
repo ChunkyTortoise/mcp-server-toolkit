@@ -1,6 +1,6 @@
 # MCP Server Toolkit
 
-Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 pre-built servers as one PyPI install, so you write tool logic instead of infrastructure. Six servers work out of the box; three wire real backends from environment variables (SMTP, Google Calendar, and multi-LLM providers).
+Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 pre-built servers as one PyPI install, so you write tool logic instead of infrastructure. Five servers work out of the box; four wire real backends from environment variables (SMTP, Google Calendar, Gemini Embedding, and multi-LLM providers).
 
 ![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit?color=14B8A6)
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
@@ -71,7 +71,7 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 | Telemetry | Not included | OpenTelemetry spans, OTLP export |
 | Cost attribution | Not included | Per-call `cost_usd` from a dated pricing table |
 | Test client | Manual mocking | `MCPTestClient` |
-| Pre-built servers | Build your own | 9 servers (6 zero-config, 3 wire from env) |
+| Pre-built servers | Build your own | 9 servers (5 zero-config, 4 wire from env) |
 | Agent-to-Agent | Not included | `A2AAdapter`, SSE + webhooks |
 
 ## Installation
