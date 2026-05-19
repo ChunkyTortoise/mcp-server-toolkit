@@ -1,6 +1,6 @@
 # MCP Server Toolkit
 
-Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 ready-to-run servers as one PyPI install, so you write tool logic instead of infrastructure.
+Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 pre-built servers as one PyPI install, so you write tool logic instead of infrastructure. Five servers work out of the box; four wire real backends from environment variables (SMTP, Google Calendar, Gemini Embedding, and multi-LLM providers).
 
 ![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit?color=14B8A6)
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
@@ -13,11 +13,11 @@ Every number below is from a reproducible local run on this commit. No hosted de
 
 | Metric | Value | Method |
 |---|---|---|
-| Cache hit latency | P50 0.008 ms, P95 0.009 ms | `python benchmarks/bench_cache.py` (500 iters, 20 warmup) |
-| Cache miss latency | P50 0.022 ms | same run |
-| Cache speedup | 2.9x vs. miss | same run, median miss / median hit |
-| Test suite | 600 tests | `pytest tests/ --collect-only -q` |
-| Test coverage | 82.87% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
+| Cache hit latency | P50 0.008 ms, P95 0.009 ms | `python benchmarks/bench_cache.py` (500 iters, 20 warmup); median of 3 runs |
+| Cache miss latency | P50 0.024 ms | same run; median of 3 runs |
+| Cache speedup | 3.1x vs. miss | same run, median miss / median hit; median of 3 runs |
+| Test suite | 628 passed, 2 skipped | `pytest tests/ -q` |
+| Test coverage | 84% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
 | Python support | 3.10 / 3.11 / 3.12 | CI matrix in `.github/workflows/ci.yml` |
@@ -27,6 +27,10 @@ Every number below is from a reproducible local run on this commit. No hosted de
 ```bash
 pip install mcp-server-toolkit
 ```
+
+> **Release status:** the latest *published* PyPI release is **0.1.0**. The
+> 0.3.0 feature set documented below is in active development and not yet on
+> PyPI — install from source to use it before the 0.3.0 release.
 
 ```python
 from mcp_toolkit import EnhancedMCP
@@ -63,11 +67,11 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 | Tool registration | Manual decorator wiring | Automatic via `EnhancedMCP` |
 | Response caching | Not included | TTL cache, in-memory or Redis |
 | Rate limiting | Not included | Per-caller windows |
-| Auth | Not included | API key + JWT (HS256 / RS256 / JWKS), scope RBAC |
+| Auth | Not included | API key + JWT (HS256 / RS256 / JWKS), scope RBAC via SDK bearer middleware (HTTP transport) |
 | Telemetry | Not included | OpenTelemetry spans, OTLP export |
 | Cost attribution | Not included | Per-call `cost_usd` from a dated pricing table |
 | Test client | Manual mocking | `MCPTestClient` |
-| Pre-built servers | Build your own | 9 ready servers |
+| Pre-built servers | Build your own | 9 servers (5 zero-config, 4 wire from env) |
 | Agent-to-Agent | Not included | `A2AAdapter`, SSE + webhooks |
 
 ## Installation
@@ -78,7 +82,7 @@ pip install mcp-server-toolkit[database]  # + PostgreSQL/pgvector (sqlglot, asyn
 pip install mcp-server-toolkit[web]       # + web scraping (beautifulsoup4, lxml)
 pip install mcp-server-toolkit[files]     # + file processing (PyPDF2, openpyxl)
 pip install mcp-server-toolkit[redis]     # + Redis-backed caching
-pip install mcp-server-toolkit[auth]      # + JWT/OAuth 2.1 (PyJWT[cryptography])
+pip install mcp-server-toolkit[auth]      # + JWT/OAuth 2.1 (PyJWT[crypto])
 pip install mcp-server-toolkit[telemetry] # + OpenTelemetry + OTLP exporter
 pip install mcp-server-toolkit[gmail]     # + Gmail client
 pip install mcp-server-toolkit[gcal]      # + Google Calendar client
@@ -91,29 +95,32 @@ Nine servers, import and run, no boilerplate.
 
 | Server | Description | Install extra |
 |--------|-------------|---------------|
-| `database_query` | Natural language to SQL with sqlglot validation and schema introspection | `[database]` |
-| `web_scraping` | Agent-driven web scraping with structured data extraction | `[web]` |
+| `database_query` | sqlglot SELECT-only validation gate + schema introspection; wire a real LLM via `configure(llm=...)` for NL→SQL | `[database]` |
+| `web_scraping` | Web scraping with robots.txt support; structured extraction requires a wired `LLMProvider` via `configure(llm=...)` | `[web]` |
 | `file_processing` | PDF/CSV/Excel/TXT parsing with RAG-optimized chunking | `[files]` |
 | `analytics` | Metrics recording, aggregation, anomaly detection (z-score), chart generation | core |
-| `email` | Email composition with template engine | core |
-| `calendar` | Availability checking and scheduling | core |
-| `crm_ghl` | GoHighLevel CRM: contact CRUD, pipeline summaries, opportunity tracking with field mapping | core |
-| `gemini_embedding` | Gemini Embedding 2: text embedding, semantic search, vector indexing, cosine similarity | core |
-| `multi_llm` | Multi-provider LLM router: Gemini/OpenAI/xAI with cost routing, circuit breakers, parallel second opinions | core |
+| `email` | Email send/search with template engine; set `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` to wire real SMTP | core |
+| `calendar` | Availability checking and scheduling; set `GOOGLE_CALENDAR_CREDENTIALS` to wire Google Calendar | core |
+| `crm_ghl` | GoHighLevel CRM: contact CRUD, pipeline summaries, opportunity tracking with field mapping; runs mock by default (no GHL API client bundled) | core |
+| `gemini_embedding` | Gemini Embedding 2: text embedding, semantic search, vector indexing, cosine similarity; set `GEMINI_API_KEY` | core |
+| `multi_llm` | Multi-provider LLM router: Gemini/OpenAI/xAI with cost routing, circuit breakers, parallel second opinions; set `GEMINI_API_KEY` / `OPENAI_API_KEY` / `XAI_API_KEY` | core |
 
 <details>
-<summary><strong>database_query</strong>: Natural language to SQL with sqlglot validation and schema introspection</summary>
+<summary><strong>database_query</strong>: sqlglot validation gate + schema introspection (wire a real LLM for NL→SQL)</summary>
+
+The real value here is the **sqlglot SELECT-only validation gate**: all generated SQL is AST-parsed and rejected if it contains mutations (INSERT/UPDATE/DELETE/DROP). Schema introspection and PostgreSQL execution work out of the box when a DB connection is wired. The default `DefaultLLMProvider` returns `"SELECT 1"` — it is a reference stub, not a working NL→SQL engine. Wire a real provider to enable natural-language queries.
 
 ```python
 from mcp_toolkit.servers.database_query.server import mcp, configure
+from mcp_toolkit.servers.database_query.sql_generator import LLMProvider
 
-# Connect to your database
-configure(db_connection=my_async_db, dialect="postgres")
+# Wire a real LLM (any class with async generate(prompt) -> str)
+configure(db_connection=my_async_db, llm=my_llm_provider, dialect="postgres")
 
 # Tools available to agents:
-# - query_database("How many users signed up last week?")
-# - explain_query("Show me top customers by revenue")
-# - list_tables()
+# - query_database("How many users signed up last week?")  # needs real LLM
+# - explain_query("Show me top customers by revenue")       # needs real LLM
+# - list_tables()                                            # works with DB only
 ```
 
 </details>
@@ -137,14 +144,20 @@ configure(store=store)
 </details>
 
 <details>
-<summary><strong>web_scraping</strong>: Agent-driven web scraping with structured data extraction</summary>
+<summary><strong>web_scraping</strong>: Web scraping with robots.txt support; structured extraction requires a wired LLM</summary>
+
+`scrape_url` works out of the box — fetches pages, respects robots.txt, returns text/title/links. `extract_data` requires a real `LLMProvider` wired via `configure(llm=...)`: the default provider returns empty JSON `{}` and is a reference stub, not a working extractor.
 
 ```python
-from mcp_toolkit.servers.web_scraping.server import mcp
+from mcp_toolkit.servers.web_scraping.server import mcp, configure
 
-# Tools available:
-# - scrape_page(url="https://example.com", extract="product prices")
-# - extract_structured(url="...", schema={"name": "str", "price": "float"})
+# scrape_url works with no setup:
+# - scrape_url(url="https://example.com")
+
+# extract_data needs a real LLM wired in (any class with async generate(prompt) -> str):
+configure(llm=my_llm_provider)
+# - extract_data(url="...", description="product names and prices")
+# - extract_data(url="...", schema={"name": "str", "price": "float"})
 ```
 
 </details>
@@ -152,13 +165,14 @@ from mcp_toolkit.servers.web_scraping.server import mcp
 <details>
 <summary><strong>crm_ghl</strong>: GoHighLevel CRM contact management, pipeline tracking, and opportunity creation</summary>
 
-Contact management, pipeline tracking, and opportunity creation for GoHighLevel CRM. Includes a `GHLFieldMapper` for resolving natural language field names to GHL custom field IDs. Falls back to a `MockGHLClient` when no real client is configured, so agents can demo the tools without API credentials.
+Contact management, pipeline tracking, and opportunity creation for GoHighLevel CRM. Includes a `GHLFieldMapper` for resolving natural language field names to GHL custom field IDs. Runs a `MockGHLClient` by default — no GHL HTTP client is bundled. Bring your own client that satisfies the `GHLClient` protocol and wire it via `configure(client=...)`.
 
 ```python
 from mcp_toolkit.servers.crm_ghl.server import mcp, configure
 
-# Use the mock client for demos (default), or provide your own GHL API client
-# configure(client=my_ghl_client)
+# Default: MockGHLClient (in-memory, no API calls — useful for demos/testing)
+# Wire a real client that implements the GHLClient protocol:
+# configure(client=my_ghl_api_client)
 
 # Tools available to agents:
 # - search_contacts("John", limit=10)
@@ -220,12 +234,23 @@ Set `GEMINI_API_KEY`, `OPENAI_API_KEY`, and/or `XAI_API_KEY` to enable each prov
 </details>
 
 <details>
-<summary><strong>email</strong>: Email composition with template engine</summary>
+<summary><strong>email</strong>: Email send/search with template engine</summary>
+
+Set `SMTP_HOST` (and optionally `SMTP_USER`, `SMTP_PASS`, `SMTP_PORT`, `IMAP_HOST`) to wire a real SMTP/IMAP client at startup. Without those vars the server runs a `MockEmailClient` — useful for demos and testing but does not send real email.
 
 ```python
-from mcp_toolkit.servers.email.server import mcp
+# Env-based startup (zero code):
+# SMTP_HOST=smtp.gmail.com SMTP_USER=you@gmail.com SMTP_PASS=app-pw mcp-toolkit-email
 
-# Tools available to agents for email composition and templating
+# Or wire programmatically:
+from mcp_toolkit.servers.email.server import mcp, configure
+from mcp_toolkit.servers.email.smtp_client import SMTPEmailClient
+
+configure(client=SMTPEmailClient(host="smtp.gmail.com", port=587,
+                                  username="you@gmail.com", credential="app-pw",
+                                  use_tls=True, imap_host="imap.gmail.com"))
+
+# Tools: send_email, search_emails, draft_from_template, list_templates
 ```
 
 </details>
@@ -233,10 +258,21 @@ from mcp_toolkit.servers.email.server import mcp
 <details>
 <summary><strong>calendar</strong>: Availability checking and scheduling</summary>
 
-```python
-from mcp_toolkit.servers.calendar.server import mcp
+Set `GOOGLE_CALENDAR_CREDENTIALS` to a Google OAuth token file path (and optionally `GOOGLE_CALENDAR_ID`) to wire the real Google Calendar provider at startup. Requires `pip install mcp-server-toolkit[gcal]`. If `GOOGLE_CALENDAR_CREDENTIALS` is set but the `[gcal]` extra is not installed, the server logs a warning and falls back to `MockCalendarProvider` (it does not silently pretend to be the real calendar). Without the env var the server runs a `MockCalendarProvider` — in-memory, useful for demos and testing but does not read or write a real calendar.
 
-# Tools available to agents for availability checking and scheduling
+```python
+# Env-based startup:
+# GOOGLE_CALENDAR_CREDENTIALS=token.json mcp-toolkit-calendar
+
+# Or wire programmatically (requires [gcal] extra):
+from google.oauth2.credentials import Credentials
+from mcp_toolkit.servers.calendar.server import mcp, configure
+from mcp_toolkit.servers.calendar.google_calendar import GoogleCalendarProvider
+
+creds = Credentials.from_authorized_user_file("token.json")
+configure(provider=GoogleCalendarProvider(credentials=creds, calendar_id="primary"))
+
+# Tools: list_events, create_event, delete_event, find_free_slots
 ```
 
 </details>
@@ -248,8 +284,9 @@ from mcp_toolkit.servers.calendar.server import mcp
 from mcp_toolkit.servers.file_processing.server import mcp
 
 # Tools available:
-# - parse_file(path="report.pdf")
-# - chunk_for_rag(text="...", chunk_size=512)
+# - process_file(file_content_base64="...", filename="report.pdf")
+# - chunk_text(text="...", chunk_size=1000, chunk_overlap=200, strategy="fixed")
+# - detect_file_type(filename="report.pdf")
 ```
 
 </details>
@@ -280,18 +317,54 @@ async def my_tool(query: str) -> str:
 
 ### Authentication
 
-API key authentication with SHA-256 hashed key storage:
+`JWTAuth` validates OAuth 2.1 bearer tokens — HS256 (symmetric secret) or
+RS256 via a JWKS endpoint (`APIKeyAuth` is the SHA-256-hashed API-key
+equivalent). Both expose `authenticate(credential) -> AuthResult`.
+
+Tools are gated with `@requires_scope("db:read")`. The credential is **never a
+tool argument**: `JWTTokenVerifier` plugs `JWTAuth` into the MCP SDK's
+bearer-auth middleware, which validates the request's `Authorization` header
+*before* the tool runs and exposes the verified token to `requires_scope` via
+the SDK's per-request context. Nothing auth-related appears in `list_tools()`.
 
 ```python
-from mcp_toolkit.framework.auth import APIKeyAuth
+from mcp.server.auth.settings import AuthSettings
+from mcp_toolkit import EnhancedMCP, JWTAuth, JWTTokenVerifier, requires_scope
 
-auth = APIKeyAuth()
-auth.register_key("my-api-key", client_id="my-client", scopes=["read", "write"])
-result = await auth.authenticate("my-api-key")
-# AuthResult(authenticated=True, client_id="my-client", scopes=["read", "write"])
+mcp = EnhancedMCP(
+    "db",
+    token_verifier=JWTTokenVerifier(JWTAuth(secret=os.environ["MCP_JWT_SECRET"])),
+    auth=AuthSettings(
+        issuer_url="https://your-idp.example.com",
+        resource_server_url="https://your-server.example.com",
+        required_scopes=["db:read"],
+    ),
+)
+
+@mcp.tool()
+@requires_scope("db:read")
+async def query_database(question: str) -> str:
+    ...
 ```
 
-`JWTAuth` supports HS256 (symmetric) and RS256 via a JWKS endpoint. Add `requires_scope(auth, "db:read")` to any tool for scope-based RBAC. See [ADR-0006](docs/adr/ADR-0006-oauth-2.1-resource-server.md).
+**Transport caveat (by design):** auth is enforced only over HTTP, where an
+`Authorization` header exists. The pre-built servers default to **stdio**
+(Claude Desktop / IDE plugins), which has no header channel — so under stdio
+every `@requires_scope` tool **hard-rejects** rather than silently running
+unauthenticated. Run the opt-in HTTP transport to actually authenticate:
+
+```bash
+MCP_JWT_SECRET=… MCP_HTTP_PORT=8000 python -m mcp_toolkit.servers.database_query.server
+```
+
+HTTP mode refuses to start if `MCP_JWT_SECRET` is unset, so auth can never
+no-op by misconfiguration. Over HTTP the SDK returns RFC-compliant `401`
+(missing/invalid token, with `WWW-Authenticate`) and `403` (insufficient
+scope). What this checks: token signature/expiry/issuer/audience and scope
+membership — it is a resource server, not a token issuer (no PKCE/refresh).
+See [ADR-0008](docs/adr/ADR-0008-auth-boundary.md) (and
+[ADR-0006](docs/adr/ADR-0006-oauth-2.1-resource-server.md) for the
+`JWTAuth` design).
 
 ### Telemetry
 
@@ -409,7 +482,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 
 | Signal | Where to look |
 |--------|--------------|
-| OAuth 2.1 + JWT (HS256/RS256/JWKS) | [`mcp_toolkit/framework/auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`, `requires_scope` |
+| OAuth 2.1 + JWT (HS256/RS256/JWKS), schema-clean scope RBAC | [`mcp_toolkit/framework/auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`, `JWTTokenVerifier`, `requires_scope`; [ADR-0008](docs/adr/ADR-0008-auth-boundary.md) |
 | OpenTelemetry span on every tool call | [`mcp_toolkit/framework/telemetry.py`](mcp_toolkit/framework/telemetry.py): `TelemetryProvider`, OTLP exporter |
 | LLM cost attribution | [`mcp_toolkit/framework/costing.py`](mcp_toolkit/framework/costing.py): `CostTracker`, per-model pricing |
 | A2A streaming + push notifications | [`mcp_toolkit/framework/a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py): `stream_task()`, `handle_task(webhook_url=...)` |
@@ -434,14 +507,14 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | Claim | Proof |
 |-------|-------|
 | Real OTel spans, not in-memory stubs | [`telemetry.py`](mcp_toolkit/framework/telemetry.py): `_init_otel_tracer()` wires `BatchSpanProcessor` + OTLP/console exporter |
-| JWT/OAuth 2.1 (HS256 + RS256/JWKS) | [`auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`; [`tests/gates/test_gate_security.py`](tests/gates/test_gate_security.py) |
+| JWT/OAuth 2.1 (HS256 + RS256/JWKS); credential never in tool schema | [`auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`, `JWTTokenVerifier`; [`test_auth_wiring.py`](tests/test_framework/test_auth_wiring.py) asserts no tool schema exposes a credential + live 401/403/200 |
 | Redis fallback is opt-in, not silent | [`caching.py`](mcp_toolkit/framework/caching.py): `fallback_to_memory=False` default; typed `_REDIS_TRANSIENT` |
 | A2A streaming is real SSE | [`a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py): `stream_task()` async generator; [`test_a2a_adapter.py`](tests/test_framework/test_a2a_adapter.py) |
 | LLM cost from real API usage objects | [`costing.py`](mcp_toolkit/framework/costing.py) + [`pricing/2026.json`](mcp_toolkit/pricing/2026.json) |
 | 30-case adversarial corpus | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl): validated in CI |
 | PostgreSQL read-only enforced via AST | [`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py): `_validate_read_only()` via sqlglot |
-| 600 tests | `pytest tests/ --collect-only -q`; CI badge above |
-| Cache hit P50 0.008 ms | `python benchmarks/bench_cache.py`; [`tests/test_benchmarks.py`](tests/test_benchmarks.py): `test_cache_hit_latency_p95` |
+| 628 passed, 2 skipped | `pytest tests/ -q`; CI badge above |
+| Cache hit P50 0.008 ms | `python benchmarks/bench_cache.py`; [`tests/gates/test_gate_scale.py`](tests/gates/test_gate_scale.py): `TestCacheScaleGate::test_cache_hit_p95_under_1ms` |
 
 Certifications backing this work: IBM Generative AI Engineering (144h), IBM RAG and Agentic AI (24h), Duke LLMOps (48h), Anthropic Building with Claude (Vanderbilt). Full list and mapping at [caymanroden.com](https://caymanroden.com).
 

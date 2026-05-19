@@ -1,8 +1,17 @@
 """Tests for authentication module."""
 
+import time
+
+import jwt
 import pytest
 
-from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, OAuthAuth, requires_scope
+from mcp_toolkit.framework.auth import (
+    APIKeyAuth,
+    JWTAuth,
+    JWTTokenVerifier,
+    OAuthAuth,
+    requires_scope,
+)
 
 
 class TestAPIKeyAuth:
@@ -174,48 +183,138 @@ class TestJWTAuthHS256:
             JWTAuth(secret="s", jwks_uri="https://example.com/.well-known/jwks.json")
 
 
-class TestRequiresScope:
-    """requires_scope decorator."""
+class TestJWTTokenVerifier:
+    """JWTTokenVerifier adapts JWTAuth/APIKeyAuth to the SDK TokenVerifier."""
 
-    @pytest.fixture
-    def hs_auth(self):
-        return JWTAuth(secret="test-secret")
+    SECRET = "x" * 40
 
-    def _token(self, scopes: list[str]) -> str:
-        import jwt, time
+    def _token(self, scopes: list[str], secret: str | None = None) -> str:
         return jwt.encode(
-            {"sub": "u1", "scope": " ".join(scopes), "exp": time.time() + 3600},
-            "test-secret", algorithm="HS256",
+            {"sub": "client-9", "scope": " ".join(scopes), "exp": time.time() + 3600},
+            secret or self.SECRET,
+            algorithm="HS256",
         )
 
-    async def test_allows_with_correct_scope(self, hs_auth):
-        @requires_scope(hs_auth, "read")
-        async def my_tool(token: str = "") -> str:
+    async def test_valid_token_returns_access_token(self):
+        v = JWTTokenVerifier(JWTAuth(secret=self.SECRET))
+        at = await v.verify_token(self._token(["read", "db:read"]))
+        assert at is not None
+        assert at.client_id == "client-9"
+        assert at.scopes == ["read", "db:read"]
+
+    async def test_invalid_token_returns_none(self):
+        v = JWTTokenVerifier(JWTAuth(secret=self.SECRET))
+        assert await v.verify_token("not-a-jwt") is None
+
+    async def test_wrong_secret_returns_none(self):
+        v = JWTTokenVerifier(JWTAuth(secret=self.SECRET))
+        assert await v.verify_token(self._token(["read"], secret="wrong" * 8)) is None
+
+    async def test_adapts_api_key_auth(self):
+        api = APIKeyAuth()
+        api.register_key("sk-live-1", "client-7", scopes=["read"])
+        v = JWTTokenVerifier(api)
+        at = await v.verify_token("sk-live-1")
+        assert at is not None and at.client_id == "client-7" and at.scopes == ["read"]
+        assert await v.verify_token("sk-bogus") is None
+
+
+class TestRequiresScope:
+    """requires_scope reads the SDK per-request auth contextvar.
+
+    The credential is NEVER a tool argument — it is the verified bearer token
+    the SDK middleware places in the contextvar. These tests exercise that
+    contract with real SDK objects (AuthenticatedUser / AccessToken), not mocks,
+    via the shared ``grant_scopes`` helper.
+    """
+
+    async def test_allows_with_correct_scope(self):
+        from tests.conftest import grant_scopes
+
+        @requires_scope("read")
+        async def my_tool() -> str:
             return "ok"
 
-        result = await my_tool(token=self._token(["read", "write"]))
-        assert result == "ok"
+        with grant_scopes("read", "write"):
+            assert await my_tool() == "ok"
 
-    async def test_blocks_missing_scope(self, hs_auth):
-        @requires_scope(hs_auth, "admin")
-        async def admin_tool(token: str = "") -> str:
+    async def test_blocks_missing_scope(self):
+        from tests.conftest import grant_scopes
+
+        @requires_scope("admin")
+        async def admin_tool() -> str:
             return "ok"
 
-        result = await admin_tool(token=self._token(["read"]))
+        with grant_scopes("read"):
+            result = await admin_tool()
         assert "Forbidden" in result
 
-    async def test_blocks_invalid_token(self, hs_auth):
-        @requires_scope(hs_auth, "read")
-        async def secure_tool(token: str = "") -> str:
+    async def test_blocks_when_no_token_in_context(self):
+        """No verified token (e.g. running under stdio) -> hard reject."""
+
+        @requires_scope("read")
+        async def secure_tool() -> str:
             return "ok"
 
-        result = await secure_tool(token="bad-token")
+        # No contextvar set: emulates stdio / unauthenticated request.
+        result = await secure_tool()
         assert "Unauthorized" in result
 
-    async def test_no_scope_only_checks_auth(self, hs_auth):
-        @requires_scope(hs_auth, "")
-        async def any_authed(token: str = "") -> str:
+    async def test_no_scope_only_checks_auth(self):
+        from tests.conftest import grant_scopes
+
+        @requires_scope("")
+        async def any_authed() -> str:
             return "ok"
 
-        result = await any_authed(token=self._token(["read"]))
-        assert result == "ok"
+        with grant_scopes("read"):
+            assert await any_authed() == "ok"
+
+    async def test_credential_is_not_a_tool_argument(self):
+        """A token kwarg must NOT satisfy auth — the old vulnerable path.
+
+        Regression guard for the audit's harshest finding: the decorator no
+        longer reads ``kwargs``, so a caller-supplied ``token`` argument cannot
+        authenticate. With no verified token in context this must hard-reject
+        even though a token-shaped kwarg is present.
+        """
+
+        @requires_scope("read")
+        async def t(token: str = "") -> str:
+            return "ok"
+
+        result = await t(token="anything")
+        assert "Unauthorized" in result
+
+
+class TestAuthToolDecorator:
+    """`EnhancedMCP.auth_tool` is a public, documented convenience wrapper
+    (``@mcp.tool()`` + ``@requires_scope``). Exercise its documented path
+    end-to-end through the real MCP dispatch and the real auth contextvar."""
+
+    async def test_auth_tool_runs_with_scope_and_rejects_without_context(self):
+        from mcp_toolkit.framework.base_server import EnhancedMCP
+        from mcp_toolkit.framework.testing import MCPTestClient
+        from tests.conftest import grant_scopes
+
+        mcp = EnhancedMCP("auth-tool-probe")
+
+        @mcp.auth_tool(required_scope="reports:read")
+        async def get_report(name: str) -> str:
+            return f"report:{name}"
+
+        client = MCPTestClient(mcp)
+
+        # With the required scope in context -> the tool body runs.
+        with grant_scopes("reports:read"):
+            ok = await client.call_tool("get_report", {"name": "q3"})
+        assert ok == "report:q3"
+
+        # No verified token in context (stdio / unauthenticated) -> hard reject.
+        no_auth = await client.call_tool("get_report", {"name": "q3"})
+        assert "Unauthorized" in str(no_auth)
+
+        # Authenticated but missing the required scope -> Forbidden.
+        with grant_scopes("other:scope"):
+            forbidden = await client.call_tool("get_report", {"name": "q3"})
+        assert "Forbidden" in str(forbidden)

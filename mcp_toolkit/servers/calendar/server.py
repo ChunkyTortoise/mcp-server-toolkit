@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.servers.calendar.availability import AvailabilityFinder, BusinessHours, TimeSlot
+
+logger = logging.getLogger(__name__)
 
 mcp = EnhancedMCP("calendar")
 
@@ -184,6 +188,31 @@ async def delete_event(event_id: str) -> str:
 
 
 def main() -> None:
+    creds_path = os.environ.get("GOOGLE_CALENDAR_CREDENTIALS")
+    if creds_path:
+        try:
+            from google.oauth2.credentials import Credentials  # type: ignore[import-untyped]
+
+            from mcp_toolkit.servers.calendar.google_calendar import GoogleCalendarProvider
+
+            creds = Credentials.from_authorized_user_file(creds_path)
+            calendar_id = os.environ.get("GOOGLE_CALENDAR_ID", "primary")
+            configure(provider=GoogleCalendarProvider(credentials=creds, calendar_id=calendar_id))
+        except ImportError:
+            logger.warning(
+                "GOOGLE_CALENDAR_CREDENTIALS is set but the [gcal] extra is not "
+                "installed; the real Google Calendar provider is unavailable and "
+                "the server is falling back to MockCalendarProvider (in-memory — "
+                "it does NOT read or write your real calendar). Install with: "
+                "pip install mcp-server-toolkit[gcal]"
+            )
+    else:
+        logger.warning(
+            "GOOGLE_CALENDAR_CREDENTIALS not set — calendar server running with "
+            "MockCalendarProvider (in-memory — it does NOT read or write a real "
+            "calendar). Set GOOGLE_CALENDAR_CREDENTIALS and install "
+            "mcp-server-toolkit[gcal] to use Google Calendar."
+        )
     mcp.run()
 
 

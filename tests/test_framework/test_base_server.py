@@ -1,5 +1,7 @@
 """Tests for EnhancedMCP base server."""
 
+import asyncio
+
 import pytest
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
@@ -64,6 +66,26 @@ class TestCachedTool:
         client = MCPTestClient(server)
         await client.call_tool("greet", {"name": "Test"})
         assert len(server.telemetry.spans) >= 1
+
+
+    async def test_concurrent_misses_single_flight(self):
+        # Regression (Wave 1.11): N concurrent misses for the same key run the
+        # underlying tool once, not N times (cache stampede).
+        server = EnhancedMCP("stampede-test")
+        calls = {"n": 0}
+
+        @server.cached_tool(ttl=300)
+        async def slow(name: str) -> str:
+            calls["n"] += 1
+            await asyncio.sleep(0.05)
+            return f"hi {name}"
+
+        client = MCPTestClient(server)
+        results = await asyncio.gather(
+            *[client.call_tool("slow", {"name": "x"}) for _ in range(20)]
+        )
+        assert calls["n"] == 1
+        assert all(r == "hi x" for r in results)
 
 
 class TestRateLimitedTool:

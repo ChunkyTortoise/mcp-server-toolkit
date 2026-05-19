@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
 from dataclasses import dataclass
 from typing import Protocol
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.servers.email.template_engine import TemplateEngine
+
+logger = logging.getLogger(__name__)
 
 mcp = EnhancedMCP("email")
 
@@ -182,6 +186,30 @@ async def list_templates() -> str:
 
 
 def main() -> None:
+    smtp_host = os.environ.get("SMTP_HOST")
+    if smtp_host:
+        from mcp_toolkit.servers.email.smtp_client import SMTPEmailClient
+
+        configure(
+            client=SMTPEmailClient(
+                host=smtp_host,
+                # A non-numeric SMTP_PORT is intentionally allowed to raise
+                # ValueError and crash loudly (consistent with the calendar
+                # server's fail-loud-on-bad-config philosophy) — do not wrap
+                # this in a silent fallback.
+                port=int(os.environ.get("SMTP_PORT", "587")),
+                username=os.environ.get("SMTP_USER", ""),
+                credential=os.environ.get("SMTP_PASS", ""),
+                use_tls=os.environ.get("SMTP_USE_TLS", "true").lower() != "false",
+                imap_host=os.environ.get("IMAP_HOST", ""),
+            )
+        )
+    else:
+        logger.warning(
+            "SMTP_HOST not set — email server running with MockEmailClient "
+            "(in-memory; it does NOT send or receive real email). Set "
+            "SMTP_HOST/SMTP_USER/SMTP_PASS to send via real SMTP."
+        )
     mcp.run()
 
 

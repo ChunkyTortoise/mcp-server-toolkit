@@ -135,3 +135,55 @@ class TestToolListing:
         assert "search_emails" in names
         assert "draft_from_template" in names
         assert "list_templates" in names
+
+
+class TestMainWiring:
+    def test_main_wires_smtp_client_when_env_set(self, monkeypatch):
+        """main() with SMTP_HOST set must configure an SMTPEmailClient."""
+        import mcp_toolkit.servers.email.server as email_server
+        from mcp_toolkit.servers.email.smtp_client import SMTPEmailClient
+
+        monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
+        monkeypatch.setenv("SMTP_USER", "user@example.com")
+        monkeypatch.setenv("SMTP_PASS", "secret")
+        monkeypatch.setenv("SMTP_PORT", "587")
+        monkeypatch.setenv("IMAP_HOST", "imap.example.com")
+
+        # Patch mcp.run so main() doesn't actually start a server
+        monkeypatch.setattr(email_server.mcp, "run", lambda: None)
+
+        email_server.main()
+
+        assert isinstance(email_server._client, SMTPEmailClient)
+        assert email_server._client.host == "smtp.example.com"
+        assert email_server._client.username == "user@example.com"
+        assert email_server._client.imap_host == "imap.example.com"
+
+    def test_main_keeps_mock_client_without_env(self, monkeypatch):
+        """main() without SMTP_HOST must leave MockEmailClient in place."""
+        import mcp_toolkit.servers.email.server as email_server
+
+        monkeypatch.delenv("SMTP_HOST", raising=False)
+        monkeypatch.setattr(email_server.mcp, "run", lambda: None)
+
+        email_server.configure(client=MockEmailClient())  # reset to known mock
+        email_server.main()
+
+        assert isinstance(email_server._client, MockEmailClient)
+
+    def test_main_warns_without_smtp_env(self, monkeypatch, caplog):
+        """main() without SMTP_HOST must warn loudly that it is running the
+        in-memory mock — never silently pretend to send real email."""
+        import logging
+
+        import mcp_toolkit.servers.email.server as email_server
+
+        monkeypatch.delenv("SMTP_HOST", raising=False)
+        monkeypatch.setattr(email_server.mcp, "run", lambda: None)
+        email_server.configure(client=MockEmailClient())
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.email.server"):
+            email_server.main()
+
+        assert "SMTP_HOST" in caplog.text
+        assert "MockEmailClient" in caplog.text

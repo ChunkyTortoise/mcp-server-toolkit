@@ -160,3 +160,89 @@ class TestToolListing:
         assert "create_event" in names
         assert "find_free_slots" in names
         assert "delete_event" in names
+
+
+class TestMainWiring:
+    def test_main_wires_google_provider_when_env_set(self, monkeypatch, tmp_path):
+        """main() with GOOGLE_CALENDAR_CREDENTIALS set must configure GoogleCalendarProvider."""
+        import mcp_toolkit.servers.calendar.server as cal_server
+
+        # Write a minimal token.json so from_authorized_user_file succeeds
+        token_file = tmp_path / "token.json"
+        token_file.write_text(
+            '{"token": "tok", "refresh_token": "ref", "token_uri": "https://oauth2.googleapis.com/token",'
+            ' "client_id": "cid", "client_secret": "csec", "scopes": ["https://www.googleapis.com/auth/calendar"]}'
+        )
+
+        monkeypatch.setenv("GOOGLE_CALENDAR_CREDENTIALS", str(token_file))
+        monkeypatch.setenv("GOOGLE_CALENDAR_ID", "primary")
+        monkeypatch.setattr(cal_server.mcp, "run", lambda: None)
+
+        try:
+            from google.oauth2.credentials import Credentials  # noqa: F401
+            from mcp_toolkit.servers.calendar.google_calendar import GoogleCalendarProvider
+
+            cal_server.main()
+            assert isinstance(cal_server._provider, GoogleCalendarProvider)
+        except ImportError:
+            import pytest
+
+            pytest.skip("[gcal] extra not installed")
+
+    def test_main_keeps_mock_provider_without_env(self, monkeypatch):
+        """main() without GOOGLE_CALENDAR_CREDENTIALS must leave MockCalendarProvider in place."""
+        import mcp_toolkit.servers.calendar.server as cal_server
+
+        monkeypatch.delenv("GOOGLE_CALENDAR_CREDENTIALS", raising=False)
+        monkeypatch.setattr(cal_server.mcp, "run", lambda: None)
+
+        cal_server.configure(provider=MockCalendarProvider())  # reset
+        cal_server.main()
+
+        assert isinstance(cal_server._provider, MockCalendarProvider)
+
+    def test_main_warns_and_uses_mock_when_gcal_missing(self, monkeypatch, tmp_path, caplog):
+        """If creds env var is set but [gcal] import fails, main() must warn loudly
+        and fall back to MockCalendarProvider — never silently pretend to be real."""
+        import logging
+        import sys
+
+        import mcp_toolkit.servers.calendar.server as cal_server
+
+        token_file = tmp_path / "token.json"
+        token_file.write_text(
+            '{"token": "tok", "refresh_token": "ref", "token_uri": "https://oauth2.googleapis.com/token",'
+            ' "client_id": "cid", "client_secret": "csec", "scopes": ["https://www.googleapis.com/auth/calendar"]}'
+        )
+
+        monkeypatch.setenv("GOOGLE_CALENDAR_CREDENTIALS", str(token_file))
+        monkeypatch.setattr(cal_server.mcp, "run", lambda: None)
+        # Force the `from google.oauth2.credentials import Credentials` line to
+        # raise ImportError regardless of whether [gcal] is installed locally.
+        monkeypatch.setitem(sys.modules, "google.oauth2.credentials", None)
+
+        cal_server.configure(provider=MockCalendarProvider())  # reset
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.calendar.server"):
+            cal_server.main()
+
+        assert "[gcal]" in caplog.text
+        assert "MockCalendarProvider" in caplog.text
+
+    def test_main_warns_when_no_creds_env(self, monkeypatch, caplog):
+        """main() without GOOGLE_CALENDAR_CREDENTIALS must warn loudly that it
+        is running the in-memory mock — never silently pretend to be real."""
+        import logging
+
+        import mcp_toolkit.servers.calendar.server as cal_server
+
+        monkeypatch.delenv("GOOGLE_CALENDAR_CREDENTIALS", raising=False)
+        monkeypatch.setattr(cal_server.mcp, "run", lambda: None)
+        cal_server.configure(provider=MockCalendarProvider())
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.calendar.server"):
+            cal_server.main()
+
+        assert "GOOGLE_CALENDAR_CREDENTIALS" in caplog.text
+        assert "MockCalendarProvider" in caplog.text
+        assert isinstance(cal_server._provider, MockCalendarProvider)

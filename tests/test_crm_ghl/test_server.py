@@ -6,6 +6,19 @@ from mcp_toolkit.framework.testing import MCPTestClient
 from mcp_toolkit.servers.crm_ghl.field_mapper import GHLField, GHLFieldMapper
 from mcp_toolkit.servers.crm_ghl.server import MockGHLClient, configure
 from mcp_toolkit.servers.crm_ghl.server import mcp as crm_mcp
+from tests.conftest import grant_scopes, stub_tool_args
+
+
+@pytest.fixture(autouse=True)
+def _auth_context():
+    """crm_ghl tools are ``@requires_scope("crm:read")`` / ``"crm:write"``. The
+    SDK bearer-auth middleware supplies these from the request's verified token
+    in production; under stdio they are absent and tools hard-reject
+    (ADR-0008). Grant both scopes via the real SDK auth contextvar so these
+    logic tests run; scope enforcement is proved in test_auth_wiring.py.
+    """
+    with grant_scopes("crm:read", "crm:write"):
+        yield
 
 
 @pytest.fixture
@@ -119,3 +132,63 @@ class TestToolListing:
         assert "create_contact" in names
         assert "get_pipeline_summary" in names
         assert "create_opportunity" in names
+
+
+class TestAuthGateStillEnforced:
+    """Canary: every ``@requires_scope`` tool must hard-reject when no verified
+    token is in context. The autouse ``_auth_context`` fixture grants scopes to
+    all logic tests, so without this dynamic check, dropping ``@requires_scope``
+    from a tool would pass silently. Discovers tools via ``list_tools()`` so new
+    tools are auto-covered."""
+
+    async def test_every_tool_rejects_without_auth_context(self, client):
+        from mcp.server.auth.middleware.auth_context import auth_context_var
+
+        tools = await client.list_tools()
+        names = sorted(t["name"] for t in tools)
+        assert names == [
+            "create_contact",
+            "create_opportunity",
+            "get_pipeline_summary",
+            "search_contacts",
+        ], f"tool set changed ({names}); update the auth canary deliberately"
+
+        handle = auth_context_var.set(None)
+        try:
+            for tool in tools:
+                result = await client.call_tool(
+                    tool["name"], stub_tool_args(tool["inputSchema"])
+                )
+                assert "Unauthorized" in str(result), (
+                    f"{tool['name']} did NOT hard-reject without auth context — "
+                    f"`@requires_scope` may have been removed. Got: {result!r}"
+                )
+        finally:
+            auth_context_var.reset(handle)
+
+    async def test_write_tool_rejects_when_only_read_scope(self, client):
+        """A read-scoped caller must not reach a ``crm:write`` tool — proves
+        per-tool scope granularity, not just authn presence."""
+        with grant_scopes("crm:read"):
+            result = await client.call_tool(
+                "create_contact", {"first_name": "No", "last_name": "Access"}
+            )
+        assert "Forbidden" in result
+
+
+class TestMockModeWarning:
+    def test_main_warns_when_running_mock_ghl_client(self, monkeypatch, caplog):
+        """main() must loudly warn that crm-ghl uses the in-memory mock —
+        never silently pretend to talk to GoHighLevel."""
+        import logging
+
+        import mcp_toolkit.servers.crm_ghl.server as crm_server
+
+        monkeypatch.setattr(crm_server.mcp, "run", lambda: None)
+        crm_server.configure(client=MockGHLClient())
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.crm_ghl.server"):
+            crm_server.main()
+
+        assert "MockGHLClient" in caplog.text
+        assert "configure(" in caplog.text

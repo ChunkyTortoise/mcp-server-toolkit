@@ -1,0 +1,31 @@
+# gitleaks configuration
+#
+# Extends the default ruleset. The allowlist below scopes out paths that
+# legitimately contain secret-shaped strings as TEST FIXTURES or ADVERSARIAL
+# ATTACK PAYLOADS — not live credentials. See SECURITY.md ("Secret-scan triage").
+#
+# Verify the repo is clean with:  gitleaks detect --config .gitleaks.toml
+
+title = "mcp-server-toolkit gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = """
+Test fixtures and the adversarial security corpus contain deliberately
+secret-shaped strings (HS256 test secrets, forged/alg:none JWTs, fake API
+keys used as injection payloads). These are required by the security tests
+themselves and are not real credentials. Triaged 2026-05-18.
+"""
+paths = [
+    '''evals/quality/tasks\.py''',
+    '''tests/gates/test_gate_safety\.py''',
+    '''tests/adversarial/injection_corpus\.jsonl''',
+]
+# Self-describing fixture secrets used across the auth/gate tests.
+regexes = [
+    '''eval-secret-long-enough-32ch''',
+    '''corpus-test-secret-long-enough-for-hs256-min''',
+    '''wrong-secret''',
+]

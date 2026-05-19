@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import logging
 import time
@@ -28,6 +29,8 @@ class EnhancedMCP(FastMCP):
         self._cache = CacheLayer(InMemoryCache())
         self._rate_limiter = RateLimiter()
         self._telemetry = TelemetryProvider(name)
+        self._inflight_locks: dict[str, asyncio.Lock] = {}
+        self._inflight_master = asyncio.Lock()
         self._setup_telemetry()
         self._setup_caching()
 
@@ -49,6 +52,16 @@ class EnhancedMCP(FastMCP):
     def telemetry(self) -> TelemetryProvider:
         return self._telemetry
 
+    async def _inflight_lock_for(self, key: str) -> asyncio.Lock:
+        """Return a per-cache-key lock, creating it under a master lock so
+        concurrent first-misses serialize on one execution (single-flight)."""
+        async with self._inflight_master:
+            lock = self._inflight_locks.get(key)
+            if lock is None:
+                lock = asyncio.Lock()
+                self._inflight_locks[key] = lock
+            return lock
+
     def cached_tool(self, ttl: int = 300) -> Callable:
         """Decorator for tools with automatic response caching.
 
@@ -69,12 +82,21 @@ class EnhancedMCP(FastMCP):
                     hit_ms = (time.monotonic() - t0) * 1000
                     self._telemetry.record_tool_call(func.__name__, hit_ms, True, cache_hit=True)
                     return cached
-                start = time.monotonic()
-                result = await func(*args, **kwargs)
-                duration_ms = (time.monotonic() - start) * 1000
-                await self._cache.set(cache_key, result, ttl=ttl)
-                self._telemetry.record_tool_call(func.__name__, duration_ms, True, cache_hit=False)
-                return result
+                # Single-flight: dedupe concurrent misses for the same key so
+                # the expensive call runs once, not N times (cache stampede).
+                lock = await self._inflight_lock_for(cache_key)
+                async with lock:
+                    cached = await self._cache.get(cache_key)
+                    if cached is not None:
+                        hit_ms = (time.monotonic() - t0) * 1000
+                        self._telemetry.record_tool_call(func.__name__, hit_ms, True, cache_hit=True)
+                        return cached
+                    start = time.monotonic()
+                    result = await func(*args, **kwargs)
+                    duration_ms = (time.monotonic() - start) * 1000
+                    await self._cache.set(cache_key, result, ttl=ttl)
+                    self._telemetry.record_tool_call(func.__name__, duration_ms, True, cache_hit=False)
+                    return result
 
             wrapper.__wrapped__ = func  # type: ignore[attr-defined]
             return wrapper
@@ -130,23 +152,29 @@ class EnhancedMCP(FastMCP):
 
         return decorator
 
-    def auth_tool(self, auth: Any, required_scope: str = "") -> Callable:
-        """Decorator for tools requiring authentication and optional scope.
+    def auth_tool(self, required_scope: str = "") -> Callable:
+        """Decorator for tools requiring authentication and an optional scope.
 
-        Combines ``@mcp.tool()`` with ``@requires_scope(auth, scope)``. The
-        tool function must accept a ``token`` or ``api_key`` kwarg.
+        Combines ``@mcp.tool()`` with ``@requires_scope(scope)``. Credentials
+        are taken from the request's verified ``Authorization`` bearer token
+        (validated by the server's ``token_verifier`` before the tool runs) —
+        **never** from a tool argument. Wire a verifier into the server via
+        ``EnhancedMCP(..., token_verifier=JWTTokenVerifier(...), auth=...)``.
+
+        Under stdio (no ``Authorization`` channel) the wrapped tool always
+        returns ``Unauthorized`` by design — see ADR-0008.
 
         Usage::
 
-            @mcp.auth_tool(jwt_auth, required_scope="db:read")
-            async def query_database(sql: str, token: str = "") -> str:
+            @mcp.auth_tool(required_scope="db:read")
+            async def query_database(question: str) -> str:
                 ...
         """
         from mcp_toolkit.framework.auth import requires_scope
 
         def decorator(func: Callable) -> Callable:
             @self.tool()
-            @requires_scope(auth, required_scope)
+            @requires_scope(required_scope)
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 return await func(*args, **kwargs)

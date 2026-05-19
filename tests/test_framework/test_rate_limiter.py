@@ -1,5 +1,7 @@
 """Tests for rate limiter module."""
 
+import asyncio
+
 from mcp_toolkit.framework.rate_limiter import RateLimitConfig, RateLimiter
 
 
@@ -63,3 +65,15 @@ class TestRateLimiter:
         for _ in range(100):
             assert await rate_limiter.check("def-key") is True
         assert await rate_limiter.check("def-key") is False
+
+    async def test_concurrent_checks_do_not_exceed_limit(self, rate_limiter):
+        # Regression (Wave 1.11 / ADR-0005): check() is atomic — N concurrent
+        # awaits on one key with limit L admit at most L.
+        limit = 10
+        results = await asyncio.gather(
+            *[
+                rate_limiter.check("race-key", max_calls=limit, window=60)
+                for _ in range(100)
+            ]
+        )
+        assert sum(results) == limit

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
@@ -15,6 +16,8 @@ from mcp_toolkit.servers.multi_llm.providers import (
 from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY, CHEAP_PRIORITY
 
 mcp = EnhancedMCP("multi-llm")
+
+logger = logging.getLogger(__name__)
 
 _providers: dict[ProviderName, LLMProvider] = {}
 
@@ -114,9 +117,7 @@ async def get_second_opinion(prompt: str, context: str = "") -> str:
         prompt: The question or prompt to send to all providers.
         context: Optional context passed as system prompt to each provider.
     """
-    available = [
-        (pn, p) for pn, p in _providers.items() if not p.circuit_breaker.is_open()
-    ]
+    available = [(pn, p) for pn, p in _providers.items() if not p.circuit_breaker.is_open()]
 
     if not available:
         return "Error: No providers available. Check API keys and circuit breaker status."
@@ -251,6 +252,12 @@ def main() -> None:
             default_model="grok-4.20-0309-non-reasoning",
         )
 
+    if not providers:
+        logger.warning(
+            "No provider API keys set (GEMINI_API_KEY / OPENAI_API_KEY / "
+            "XAI_API_KEY) — multi-llm server has NO real providers configured; "
+            "query_model and routing tools will error until at least one key is set."
+        )
     configure(providers=providers)
     mcp.run()
 

@@ -66,26 +66,33 @@ class TestJWTSecurityGate:
         assert result.authenticated is False
 
     async def test_scope_gate_blocks_insufficient_scopes(self, auth):
-        @requires_scope(auth, "admin")
-        async def privileged_tool(token: str = "") -> str:
+        """Security property: a caller whose verified token lacks the required
+        scope cannot reach a privileged tool. The credential is the SDK's
+        per-request verified token (contextvar), never a tool argument."""
+        from tests.conftest import grant_scopes
+
+        @requires_scope("admin")
+        async def privileged_tool() -> str:
             return "executed"
 
-        token = _hs_token(self.SECRET, ["read"])
-        result = await privileged_tool(token=token)
+        with grant_scopes("read"):
+            result = await privileged_tool()
         assert "executed" not in result
         assert "Forbidden" in result
 
-    async def test_scope_gate_never_executes_body_on_bad_auth(self, auth):
-        """The tool body must not run if auth fails."""
+    async def test_scope_gate_never_executes_body_on_bad_auth(self):
+        """Security property: the tool body must not run when auth fails. Here
+        no verified token is in context (the stdio / unauthenticated path)."""
         side_effects: list[str] = []
 
-        @requires_scope(auth, "read")
-        async def leaky_tool(token: str = "") -> str:
+        @requires_scope("read")
+        async def leaky_tool() -> str:
             side_effects.append("ran")
             return "secret_data"
 
-        await leaky_tool(token="garbage")
+        result = await leaky_tool()  # no auth context set
         assert side_effects == [], "Tool body executed despite auth failure"
+        assert "Unauthorized" in result
 
 
 class TestAPIKeySecurityGate:

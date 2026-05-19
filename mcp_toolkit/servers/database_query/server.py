@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+import os
+import secrets
 from typing import Any
 
+from mcp.server.auth.settings import AuthSettings
+
+from mcp_toolkit.framework.auth import JWTAuth, JWTTokenVerifier, requires_scope
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.servers.database_query.schema_inspector import (
     DatabaseSchema,
@@ -15,7 +21,27 @@ from mcp_toolkit.servers.database_query.sql_generator import (
     SQLGenerator,
 )
 
-mcp = EnhancedMCP("database-query")
+logger = logging.getLogger(__name__)
+
+# Auth model — credential is the request's verified Authorization bearer token
+# (never a tool argument); stdio (default) has no header channel so
+# @requires_scope hard-rejects; HTTP mode (MCP_HTTP_PORT) enforces JWT + scope
+# and requires MCP_JWT_SECRET. Unset MCP_JWT_SECRET -> ephemeral secret so stdio
+# import still works (nothing validates against it). See ADR-0008 for rationale.
+_JWT_SECRET = os.environ.get("MCP_JWT_SECRET")
+_jwt_auth = JWTAuth(secret=_JWT_SECRET or secrets.token_urlsafe(32))
+
+mcp = EnhancedMCP(
+    "database-query",
+    token_verifier=JWTTokenVerifier(_jwt_auth),
+    auth=AuthSettings(
+        issuer_url="https://example.test",
+        resource_server_url="http://localhost:8000",
+        required_scopes=["db:read"],
+    ),
+)
+
+logger = logging.getLogger(__name__)
 
 _schema_inspector = SchemaInspector()
 _sql_generator = SQLGenerator()
@@ -72,6 +98,7 @@ def _format_results(rows: list[dict[str, Any]]) -> str:
 
 
 @mcp.tool()
+@requires_scope("db:read")
 async def query_database(question: str) -> str:
     """Convert a natural language question to SQL and execute it.
 
@@ -96,6 +123,7 @@ async def query_database(question: str) -> str:
 
 
 @mcp.tool()
+@requires_scope("db:read")
 async def explain_query(question: str) -> str:
     """Generate SQL from a natural language question and show the query without executing.
 
@@ -115,6 +143,7 @@ async def explain_query(question: str) -> str:
 
 
 @mcp.tool()
+@requires_scope("db:read")
 async def list_tables() -> str:
     """List all tables in the connected database with their column information."""
     schema = await _get_schema()
@@ -124,7 +153,37 @@ async def list_tables() -> str:
 
 
 def main() -> None:
-    mcp.run()
+    """Run the server.
+
+    Default transport is **stdio** (Claude Desktop / IDE plugins). Because
+    stdio carries no ``Authorization`` header, every ``@requires_scope`` tool
+    hard-rejects under it by design (ADR-0008).
+
+    Set ``MCP_HTTP_PORT`` to run streamable-HTTP instead, where the SDK's
+    bearer-auth middleware enforces JWT + scope. HTTP mode requires
+    ``MCP_JWT_SECRET`` to be set explicitly — it refuses to start otherwise so
+    auth can never silently no-op.
+    """
+    logger.warning(
+        "database-query running with DefaultLLMProvider — it generates "
+        "'SELECT 1' for EVERY question (placeholder, not real NL→SQL) and no "
+        "DB connection is configured. The sqlglot SELECT-only validation gate "
+        "is functional; wire a real LLM and DB via "
+        "database_query.server.configure(llm=..., db_connection=...)."
+    )
+    http_port = os.environ.get("MCP_HTTP_PORT")
+    if http_port:
+        if not _JWT_SECRET:
+            raise SystemExit(
+                "MCP_HTTP_PORT is set but MCP_JWT_SECRET is not. HTTP mode "
+                "enforces JWT bearer auth and refuses to start without an "
+                "explicit verification secret."
+            )
+        mcp.settings.port = int(http_port)
+        logger.info("Starting database-query over streamable-http on port %s", http_port)
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":

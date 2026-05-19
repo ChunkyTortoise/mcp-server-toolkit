@@ -7,6 +7,19 @@ pytest.importorskip("sqlglot")
 from mcp_toolkit.framework.testing import MCPTestClient
 from mcp_toolkit.servers.database_query import server as db_server
 from mcp_toolkit.servers.database_query.sql_generator import MockLLMProvider
+from tests.conftest import grant_scopes, stub_tool_args
+
+
+@pytest.fixture(autouse=True)
+def _auth_context():
+    """Every tool here is ``@requires_scope("db:read")``. In production the SDK
+    bearer-auth middleware supplies that scope from the request's verified
+    token; under stdio it is absent and tools hard-reject (ADR-0008). These
+    tests exercise tool *logic*, so grant the required scope via the real SDK
+    auth contextvar. Scope-enforcement itself is proved in test_auth_wiring.py.
+    """
+    with grant_scopes("db:read"):
+        yield
 
 
 @pytest.fixture
@@ -99,8 +112,18 @@ class TestQueryDatabaseTool:
         big_rows = [{"id": i, "name": f"user{i}"} for i in range(150)]
         mock_db._tables["big_table"] = {
             "columns": [
-                {"column_name": "id", "data_type": "integer", "is_nullable": "NO", "column_default": None},
-                {"column_name": "name", "data_type": "varchar", "is_nullable": "NO", "column_default": None},
+                {
+                    "column_name": "id",
+                    "data_type": "integer",
+                    "is_nullable": "NO",
+                    "column_default": None,
+                },
+                {
+                    "column_name": "name",
+                    "data_type": "varchar",
+                    "is_nullable": "NO",
+                    "column_default": None,
+                },
             ],
             "rows": big_rows,
         }
@@ -133,3 +156,49 @@ class TestToolListing:
         tools = await configured_server.list_tools()
         for tool in tools:
             assert tool["description"], f"Tool {tool['name']} missing description"
+
+
+class TestAuthGateStillEnforced:
+    """Canary: every ``@requires_scope`` tool must hard-reject when no verified
+    token is in context. The autouse ``_auth_context`` fixture grants the scope
+    to all logic tests, so without this dynamic check, dropping
+    ``@requires_scope`` from a tool would pass silently. Discovers tools via
+    ``list_tools()`` so new tools are auto-covered."""
+
+    async def test_every_tool_rejects_without_auth_context(self, configured_server):
+        from mcp.server.auth.middleware.auth_context import auth_context_var
+
+        tools = await configured_server.list_tools()
+        names = sorted(t["name"] for t in tools)
+        assert names == ["explain_query", "list_tables", "query_database"], (
+            f"tool set changed ({names}); update the auth canary deliberately"
+        )
+
+        # Drop the granted scope to emulate the stdio / unauthenticated path.
+        handle = auth_context_var.set(None)
+        try:
+            for tool in tools:
+                result = await configured_server.call_tool(
+                    tool["name"], stub_tool_args(tool["inputSchema"])
+                )
+                assert "Unauthorized" in str(result), (
+                    f"{tool['name']} did NOT hard-reject without auth context — "
+                    f"`@requires_scope` may have been removed. Got: {result!r}"
+                )
+        finally:
+            auth_context_var.reset(handle)
+
+
+class TestMockModeWarning:
+    def test_main_warns_default_llm_placeholder(self, monkeypatch, caplog):
+        """database-query main() must warn loudly that the default LLM emits
+        'SELECT 1' for everything — never silently look functional."""
+        import logging
+
+        monkeypatch.setattr(db_server.mcp, "run", lambda: None)
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.database_query.server"):
+            db_server.main()
+
+        assert "DefaultLLMProvider" in caplog.text
+        assert "SELECT 1" in caplog.text

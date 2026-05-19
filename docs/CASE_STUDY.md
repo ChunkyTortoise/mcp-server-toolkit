@@ -3,10 +3,11 @@
 One real workflow, end to end, with the numbers that matter when you're
 deciding whether an MCP framework holds up at scale.
 
-> **TL;DR** — A 4-tool agentic RAG pipeline runs at **P95 320 ms / $0.0018 per
-> call / 42 % cache hit rate** on Claude Haiku 4.5 with pgvector retrieval.
-> At 1 000 queries/day that's **$1.80/day, $54/month** — and the framework's
-> production layer (auth, rate limit, OTel, cost tracking) adds <2 ms overhead.
+> **TL;DR** — A 4-tool agentic RAG pipeline runs at **P95 320 ms / $0.000368
+> per call (cache-miss) / 42 % cache hit rate** on Claude Haiku 4.5 with
+> pgvector retrieval. At 1 000 queries/day that's **$0.21/day, ~$6/month**
+> (42 % hit) — and the framework's production layer (auth, rate limit, OTel,
+> cost tracking) adds <2 ms overhead.
 
 ## The workflow
 
@@ -104,7 +105,7 @@ production tools use. There is no mock instrumentation.
 | 1000× | 1 000 000 | $210 | Single-region latency to Anthropic API | Multi-region deployment + sticky-routing on user_id |
 
 The framework already includes the building blocks for the 100× and 1000×
-fixes — `RateLimiter` is in [`mcp_toolkit/framework/rate_limit.py`](../mcp_toolkit/framework/rate_limit.py)
+fixes — `RateLimiter` is in [`mcp_toolkit/framework/rate_limiter.py`](../mcp_toolkit/framework/rate_limiter.py)
 and the `A2AAdapter` enables horizontal sharding via webhook fan-out.
 
 ## What this case study proves

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -35,6 +36,7 @@ class RateLimiter:
         self._default = default_config or RateLimitConfig()
         self._buckets: dict[str, _BucketEntry] = {}
         self._configs: dict[str, RateLimitConfig] = {}
+        self._lock = asyncio.Lock()
 
     def configure(self, key: str, max_calls: int, window_seconds: int) -> None:
         """Set a custom rate limit for a specific key prefix."""
@@ -60,20 +62,23 @@ class RateLimiter:
         limit = max_calls if max_calls is not None else config.max_calls
         window_secs = window if window is not None else config.window_seconds
 
-        now = time.monotonic()
-        cutoff = now - window_secs
+        # Guard the read-modify-write so concurrent awaits on the same key
+        # cannot both pass the limit check (see ADR-0005).
+        async with self._lock:
+            now = time.monotonic()
+            cutoff = now - window_secs
 
-        if key not in self._buckets:
-            self._buckets[key] = _BucketEntry()
+            if key not in self._buckets:
+                self._buckets[key] = _BucketEntry()
 
-        bucket = self._buckets[key]
-        bucket.timestamps = [ts for ts in bucket.timestamps if ts > cutoff]
+            bucket = self._buckets[key]
+            bucket.timestamps = [ts for ts in bucket.timestamps if ts > cutoff]
 
-        if len(bucket.timestamps) >= limit:
-            return False
+            if len(bucket.timestamps) >= limit:
+                return False
 
-        bucket.timestamps.append(now)
-        return True
+            bucket.timestamps.append(now)
+            return True
 
     async def reset(self, key: str) -> None:
         """Reset the rate limit counter for a key."""
