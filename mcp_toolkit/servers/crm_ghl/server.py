@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Protocol
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.servers.crm_ghl.field_mapper import GHLFieldMapper
 
 mcp = EnhancedMCP("crm-ghl")
+
+logger = logging.getLogger(__name__)
 
 _field_mapper = GHLFieldMapper()
 
@@ -198,6 +201,13 @@ async def create_opportunity(
 
 
 def main() -> None:
+    if isinstance(_client, MockGHLClient):
+        logger.warning(
+            "crm-ghl server running with the in-memory MockGHLClient — it does "
+            "NOT connect to GoHighLevel (contacts, pipelines, and opportunities "
+            "are fake). No real GHL client ships with the toolkit; inject one "
+            "via crm_ghl.server.configure(client=...)."
+        )
     mcp.run()
 
 

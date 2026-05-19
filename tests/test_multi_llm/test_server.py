@@ -75,6 +75,7 @@ class TestQueryModel:
 
     async def test_circuit_breaker_open_returns_error(self, client):
         from unittest.mock import patch
+
         providers = {
             ProviderName.GEMINI: MockProvider(ProviderName.GEMINI, "gemini-2.0-flash"),
         }
@@ -115,28 +116,23 @@ class TestQueryModel:
 
 class TestGetSecondOpinion:
     async def test_no_providers_returns_error(self, empty_client):
-        result = await empty_client.call_tool(
-            "get_second_opinion", {"prompt": "What is Python?"}
-        )
+        result = await empty_client.call_tool("get_second_opinion", {"prompt": "What is Python?"})
         assert "Error" in result
         assert "No providers" in result
 
     async def test_queries_all_three_providers(self, client):
-        result = await client.call_tool(
-            "get_second_opinion", {"prompt": "What is 1+1?"}
-        )
+        result = await client.call_tool("get_second_opinion", {"prompt": "What is 1+1?"})
         assert "GEMINI" in result
         assert "OPENAI" in result
         assert "XAI" in result
 
     async def test_includes_second_opinion_header(self, client):
-        result = await client.call_tool(
-            "get_second_opinion", {"prompt": "Best language for ML?"}
-        )
+        result = await client.call_tool("get_second_opinion", {"prompt": "Best language for ML?"})
         assert "Second Opinion" in result
 
     async def test_skips_provider_with_open_circuit_breaker(self, client):
         from unittest.mock import patch
+
         providers = {
             ProviderName.GEMINI: MockProvider(ProviderName.GEMINI, "gemini-2.0-flash"),
             ProviderName.OPENAI: MockProvider(ProviderName.OPENAI, "gpt-4o"),
@@ -147,17 +143,13 @@ class TestGetSecondOpinion:
             providers[ProviderName.GEMINI].circuit_breaker.record_failure()
 
         with patch("mcp_toolkit.servers.multi_llm.models.time.monotonic", return_value=110.0):
-            result = await client.call_tool(
-                "get_second_opinion", {"prompt": "Test skip open cb"}
-            )
+            result = await client.call_tool("get_second_opinion", {"prompt": "Test skip open cb"})
         assert "OPENAI" in result
         assert "GEMINI" not in result
 
     async def test_single_provider_still_works(self, client):
         configure(providers={ProviderName.GEMINI: MockProvider(ProviderName.GEMINI)})
-        result = await client.call_tool(
-            "get_second_opinion", {"prompt": "Single provider test"}
-        )
+        result = await client.call_tool("get_second_opinion", {"prompt": "Single provider test"})
         assert "GEMINI" in result
 
     async def test_context_passed_as_system_prompt(self, client):
@@ -171,16 +163,12 @@ class TestGetSecondOpinion:
 
 class TestQueryCheap:
     async def test_routes_to_gemini_flash_lite_first(self, client):
-        result = await client.call_tool(
-            "query_cheap", {"prompt": "Quick cheap question alpha"}
-        )
+        result = await client.call_tool("query_cheap", {"prompt": "Quick cheap question alpha"})
         assert "gemini" in result
         assert "gemini-2.0-flash-lite" in result
 
     async def test_no_providers_returns_error(self, empty_client):
-        result = await empty_client.call_tool(
-            "query_cheap", {"prompt": "No providers test query"}
-        )
+        result = await empty_client.call_tool("query_cheap", {"prompt": "No providers test query"})
         assert "Error" in result
         assert "cheap providers" in result
 
@@ -190,17 +178,13 @@ class TestQueryCheap:
         }
         configure(providers=providers)
         await multi_llm_mcp._cache.clear()
-        result = await client.call_tool(
-            "query_cheap", {"prompt": "Fallback cheap test beta"}
-        )
+        result = await client.call_tool("query_cheap", {"prompt": "Fallback cheap test beta"})
         assert "openai" in result
         assert "gpt-4.1-nano" in result
 
     async def test_result_includes_cost_metadata(self, client):
         await multi_llm_mcp._cache.clear()
-        result = await client.call_tool(
-            "query_cheap", {"prompt": "Cost metadata check gamma"}
-        )
+        result = await client.call_tool("query_cheap", {"prompt": "Cost metadata check gamma"})
         assert "cost:" in result
 
     async def test_cache_returns_same_result(self, client):
@@ -212,16 +196,12 @@ class TestQueryCheap:
 
 class TestQueryBest:
     async def test_routes_to_openai_gpt55_first(self, client):
-        result = await client.call_tool(
-            "query_best", {"prompt": "Best quality answer needed"}
-        )
+        result = await client.call_tool("query_best", {"prompt": "Best quality answer needed"})
         assert "openai" in result
         assert "gpt-5.5" in result
 
     async def test_no_providers_returns_error(self, empty_client):
-        result = await empty_client.call_tool(
-            "query_best", {"prompt": "No providers premium test"}
-        )
+        result = await empty_client.call_tool("query_best", {"prompt": "No providers premium test"})
         assert "Error" in result
         assert "premium providers" in result
 
@@ -230,16 +210,12 @@ class TestQueryBest:
             ProviderName.GEMINI: MockProvider(ProviderName.GEMINI, "gemini-2.5-pro"),
         }
         configure(providers=providers)
-        result = await client.call_tool(
-            "query_best", {"prompt": "Fallback to gemini best"}
-        )
+        result = await client.call_tool("query_best", {"prompt": "Fallback to gemini best"})
         assert "gemini" in result
         assert "gemini-2.5-pro" in result
 
     async def test_result_includes_token_metadata(self, client):
-        result = await client.call_tool(
-            "query_best", {"prompt": "Token metadata best query"}
-        )
+        result = await client.call_tool("query_best", {"prompt": "Token metadata best query"})
         assert "tokens:" in result
         assert "latency:" in result
 
@@ -267,6 +243,7 @@ class TestToolListing:
 # ---------------------------------------------------------------------------
 # Wave 1: Exception path + format + enum
 # ---------------------------------------------------------------------------
+
 
 class TestQueryModelExceptionPath:
     async def test_provider_raises_returns_error_string(self, client):
@@ -334,6 +311,7 @@ class TestProviderNameEnum:
 # Wave 2: Input validation + gather timeout
 # ---------------------------------------------------------------------------
 
+
 class TestInputValidation:
     async def test_empty_prompt_returns_error(self, client):
         result = await client.call_tool(
@@ -350,7 +328,12 @@ class TestInputValidation:
     async def test_temperature_below_zero_clamped(self, client):
         result = await client.call_tool(
             "query_model",
-            {"provider": "gemini", "model": "gemini-2.0-flash", "prompt": "hi", "temperature": -1.0},
+            {
+                "provider": "gemini",
+                "model": "gemini-2.0-flash",
+                "prompt": "hi",
+                "temperature": -1.0,
+            },
         )
         assert "Error" not in result or "prompt" not in result
 
@@ -403,6 +386,7 @@ class TestGatherTimeout:
 # Wave 3: list_providers + telemetry
 # ---------------------------------------------------------------------------
 
+
 class TestListProviders:
     async def test_all_providers_listed(self, client):
         result = await client.call_tool("list_providers", {})
@@ -448,3 +432,21 @@ class TestTelemetrySpans:
         assert "provider.gemini" in span_names
         assert "provider.openai" in span_names
         assert "provider.xai" in span_names
+
+
+class TestMockModeWarning:
+    def test_main_warns_when_no_provider_keys(self, monkeypatch, caplog):
+        """No provider keys -> no real providers; main() must warn loudly,
+        never silently start a server that can only error."""
+        import logging
+
+        import mcp_toolkit.servers.multi_llm.server as ml_server
+
+        for key in ("GEMINI_API_KEY", "OPENAI_API_KEY", "XAI_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
+        monkeypatch.setattr(ml_server.mcp, "run", lambda: None)
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.multi_llm.server"):
+            ml_server.main()
+
+        assert "No provider API keys" in caplog.text

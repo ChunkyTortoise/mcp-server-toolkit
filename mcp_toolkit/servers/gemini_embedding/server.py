@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import struct
 from typing import Protocol
@@ -13,6 +14,8 @@ from mcp_toolkit.servers.gemini_embedding.embedding_client import GeminiEmbeddin
 from mcp_toolkit.servers.gemini_embedding.vector_store import IndexedItem, InMemoryVectorStore
 
 mcp = EnhancedMCP("gemini-embedding")
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_DIMENSIONS = 768
 
@@ -166,9 +169,12 @@ async def similarity(
     )
     score = cosine_similarity(vectors[0], vectors[1])
     label = (
-        "very similar" if score > 0.9
-        else "similar" if score > 0.7
-        else "somewhat related" if score > 0.4
+        "very similar"
+        if score > 0.9
+        else "similar"
+        if score > 0.7
+        else "somewhat related"
+        if score > 0.4
         else "dissimilar"
     )
     return f"Similarity score: {score:.4f} ({label})\n\nText A: {text_a[:60]!r}\nText B: {text_b[:60]!r}"
@@ -203,6 +209,13 @@ def main() -> None:
     api_key = os.environ.get("GEMINI_API_KEY")
     if api_key:
         configure(client=GeminiEmbeddingClient(api_key=api_key))
+    else:
+        logger.warning(
+            "GEMINI_API_KEY not set — gemini-embedding running with "
+            "MockEmbeddingClient (deterministic SHA-256 fake vectors, NOT real "
+            "embeddings; semantic search results are meaningless). Set "
+            "GEMINI_API_KEY for real embeddings."
+        )
     mcp.run()
 
 
