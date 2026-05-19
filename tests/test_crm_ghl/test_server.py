@@ -6,6 +6,19 @@ from mcp_toolkit.framework.testing import MCPTestClient
 from mcp_toolkit.servers.crm_ghl.field_mapper import GHLField, GHLFieldMapper
 from mcp_toolkit.servers.crm_ghl.server import MockGHLClient, configure
 from mcp_toolkit.servers.crm_ghl.server import mcp as crm_mcp
+from tests.conftest import grant_scopes
+
+
+@pytest.fixture(autouse=True)
+def _auth_context():
+    """crm_ghl tools are ``@requires_scope("crm:read")`` / ``"crm:write"``. The
+    SDK bearer-auth middleware supplies these from the request's verified token
+    in production; under stdio they are absent and tools hard-reject
+    (ADR-0008). Grant both scopes via the real SDK auth contextvar so these
+    logic tests run; scope enforcement is proved in test_auth_wiring.py.
+    """
+    with grant_scopes("crm:read", "crm:write"):
+        yield
 
 
 @pytest.fixture
@@ -119,3 +132,26 @@ class TestToolListing:
         assert "create_contact" in names
         assert "get_pipeline_summary" in names
         assert "create_opportunity" in names
+
+
+class TestAuthGateStillEnforced:
+    """Guards against the autouse auth fixture silently masking a regression
+    where ``@requires_scope`` is removed from a tool."""
+
+    async def test_search_contacts_rejects_without_auth_context(self, client):
+        from mcp.server.auth.middleware.auth_context import auth_context_var
+
+        handle = auth_context_var.set(None)
+        try:
+            result = await client.call_tool("search_contacts", {"query": "anyone"})
+        finally:
+            auth_context_var.reset(handle)
+        assert "Unauthorized" in result
+
+    async def test_write_tool_rejects_when_only_read_scope(self, client):
+        """A read-scoped caller must not reach a ``crm:write`` tool."""
+        with grant_scopes("crm:read"):
+            result = await client.call_tool(
+                "create_contact", {"first_name": "No", "last_name": "Access"}
+            )
+        assert "Forbidden" in result

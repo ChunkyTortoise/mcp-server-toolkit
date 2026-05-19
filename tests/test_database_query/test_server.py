@@ -7,6 +7,19 @@ pytest.importorskip("sqlglot")
 from mcp_toolkit.framework.testing import MCPTestClient
 from mcp_toolkit.servers.database_query import server as db_server
 from mcp_toolkit.servers.database_query.sql_generator import MockLLMProvider
+from tests.conftest import grant_scopes
+
+
+@pytest.fixture(autouse=True)
+def _auth_context():
+    """Every tool here is ``@requires_scope("db:read")``. In production the SDK
+    bearer-auth middleware supplies that scope from the request's verified
+    token; under stdio it is absent and tools hard-reject (ADR-0008). These
+    tests exercise tool *logic*, so grant the required scope via the real SDK
+    auth contextvar. Scope-enforcement itself is proved in test_auth_wiring.py.
+    """
+    with grant_scopes("db:read"):
+        yield
 
 
 @pytest.fixture
@@ -133,3 +146,21 @@ class TestToolListing:
         tools = await configured_server.list_tools()
         for tool in tools:
             assert tool["description"], f"Tool {tool['name']} missing description"
+
+
+class TestAuthGateStillEnforced:
+    """Guards against the autouse auth fixture silently masking a regression
+    where ``@requires_scope`` is removed from a tool."""
+
+    async def test_query_database_rejects_without_auth_context(self, configured_server):
+        from mcp.server.auth.middleware.auth_context import auth_context_var
+
+        # Drop the granted scope to emulate the stdio / unauthenticated path.
+        handle = auth_context_var.set(None)
+        try:
+            result = await configured_server.call_tool(
+                "query_database", {"question": "How many users are there?"}
+            )
+        finally:
+            auth_context_var.reset(handle)
+        assert "Unauthorized" in result

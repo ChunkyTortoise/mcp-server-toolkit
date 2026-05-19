@@ -54,29 +54,41 @@ class TestPromptInjectionResistance:
             "αdmin",  # looks like "admin" but isn't
         ],
     )
-    async def test_injected_query_cannot_bypass_scope(self, auth, evil_input: str):
-        """A malicious query arg must not let a low-scope caller reach admin tools."""
+    async def test_injected_query_cannot_bypass_scope(self, evil_input: str):
+        """Security property: malicious content in a tool argument cannot
+        elevate scope. The scope decision is made from the SDK-verified
+        bearer token in the request contextvar — tool arguments are never
+        consulted for auth — so a low-scope caller is blocked regardless of
+        what they put in ``query``."""
+        from tests.conftest import grant_scopes
 
-        @requires_scope(auth, "admin")
-        async def admin_tool(query: str, token: str = "") -> str:
+        @requires_scope("admin")
+        async def admin_tool(query: str) -> str:
             return f"admin result for: {query}"
 
-        low_scope_token = _hs_token(self.SECRET, ["read"])
-        result = await admin_tool(query=evil_input, token=low_scope_token)
+        with grant_scopes("read"):
+            result = await admin_tool(query=evil_input)
         assert "admin result" not in result, (
-            f"Injection via query kwarg succeeded: {evil_input!r}"
+            f"Injection via query arg succeeded: {evil_input!r}"
         )
         assert "Forbidden" in result or "Unauthorized" in result
 
-    async def test_token_override_in_kwargs_not_used(self, auth):
-        """Passing a fake token as a non-token kwarg must not authenticate the caller."""
+    async def test_kwarg_token_does_not_authenticate(self):
+        """Security property (regression guard for the audit's harshest
+        finding): the credential is NOT a tool argument. ``requires_scope`` no
+        longer reads ``kwargs`` at all, so a token-shaped argument — even a
+        validly-signed one — cannot authenticate a caller. With no verified
+        token in context this must hard-reject."""
 
-        @requires_scope(auth, "read")
+        @requires_scope("read")
         async def secure_tool(token: str = "", fake_token: str = "") -> str:
             return "secret"
 
-        # No real token provided; fake_token should not be picked up
-        result = await secure_tool(token="", fake_token=_hs_token(self.SECRET, ["read"]))
+        result = await secure_tool(
+            token=_hs_token(self.SECRET, ["read"]),
+            fake_token=_hs_token(self.SECRET, ["admin"]),
+        )
+        assert result != "secret"
         assert "Unauthorized" in result
 
     async def test_none_algorithm_token_rejected(self, auth):

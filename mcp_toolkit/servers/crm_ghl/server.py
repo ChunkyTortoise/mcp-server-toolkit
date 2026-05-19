@@ -2,12 +2,36 @@
 
 from __future__ import annotations
 
+import logging
+import os
+import secrets
 from typing import Any, Protocol
 
+from mcp.server.auth.settings import AuthSettings
+
+from mcp_toolkit.framework.auth import JWTAuth, JWTTokenVerifier, requires_scope
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.servers.crm_ghl.field_mapper import GHLFieldMapper
 
-mcp = EnhancedMCP("crm-ghl")
+logger = logging.getLogger(__name__)
+
+# Auth model — see ADR-0008 and the matching comment in
+# mcp_toolkit/servers/database_query/server.py. Credential is the request's
+# verified Authorization bearer token (never a tool argument); stdio (default)
+# has no header channel so @requires_scope hard-rejects; HTTP mode (MCP_HTTP_PORT)
+# enforces JWT + scope and requires MCP_JWT_SECRET.
+_JWT_SECRET = os.environ.get("MCP_JWT_SECRET")
+_jwt_auth = JWTAuth(secret=_JWT_SECRET or secrets.token_urlsafe(32))
+
+mcp = EnhancedMCP(
+    "crm-ghl",
+    token_verifier=JWTTokenVerifier(_jwt_auth),
+    auth=AuthSettings(
+        issuer_url="https://example.test",
+        resource_server_url="http://localhost:8000",
+        required_scopes=["crm:read"],
+    ),
+)
 
 _field_mapper = GHLFieldMapper()
 
@@ -116,6 +140,7 @@ def _format_pipeline(summary: dict) -> str:
 
 
 @mcp.tool()
+@requires_scope("crm:read")
 async def search_contacts(
     query: str,
     limit: int = 20,
@@ -132,6 +157,7 @@ async def search_contacts(
 
 
 @mcp.tool()
+@requires_scope("crm:write")
 async def create_contact(
     first_name: str,
     last_name: str,
@@ -160,6 +186,7 @@ async def create_contact(
 
 
 @mcp.tool()
+@requires_scope("crm:read")
 async def get_pipeline_summary(pipeline_id: str = "") -> str:
     """Get summary of deals/opportunities across pipeline stages.
 
@@ -171,6 +198,7 @@ async def get_pipeline_summary(pipeline_id: str = "") -> str:
 
 
 @mcp.tool()
+@requires_scope("crm:write")
 async def create_opportunity(
     contact_id: str,
     name: str,
@@ -198,7 +226,26 @@ async def create_opportunity(
 
 
 def main() -> None:
-    mcp.run()
+    """Run the server.
+
+    Default transport is **stdio**; every ``@requires_scope`` tool hard-rejects
+    under stdio by design (no ``Authorization`` channel — ADR-0008). Set
+    ``MCP_HTTP_PORT`` for streamable-HTTP, where JWT + scope are enforced;
+    HTTP mode requires ``MCP_JWT_SECRET`` and refuses to start without it.
+    """
+    http_port = os.environ.get("MCP_HTTP_PORT")
+    if http_port:
+        if not _JWT_SECRET:
+            raise SystemExit(
+                "MCP_HTTP_PORT is set but MCP_JWT_SECRET is not. HTTP mode "
+                "enforces JWT bearer auth and refuses to start without an "
+                "explicit verification secret."
+            )
+        mcp.settings.port = int(http_port)
+        logger.info("Starting crm-ghl over streamable-http on port %s", http_port)
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
 
 
 if __name__ == "__main__":

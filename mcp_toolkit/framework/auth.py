@@ -12,6 +12,9 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from mcp.server.auth.middleware.auth_context import get_access_token
+from mcp.server.auth.provider import AccessToken, TokenVerifier
+
 audit_logger = logging.getLogger("mcp_toolkit.auth.audit")
 logger = logging.getLogger(__name__)
 
@@ -216,35 +219,84 @@ class JWTAuth:
         return auth_result.authenticated and required_scope in auth_result.scopes
 
 
-def requires_scope(auth: APIKeyAuth | JWTAuth, scope: str) -> Callable:
-    """Decorator that enforces authentication and scope on an MCP tool.
+class JWTTokenVerifier(TokenVerifier):
+    """Adapts the toolkit's :class:`JWTAuth` / :class:`APIKeyAuth` to the MCP
+    SDK's :class:`~mcp.server.auth.provider.TokenVerifier` interface.
 
-    The wrapped tool must accept a ``token`` kwarg (for JWT) or ``api_key``
-    kwarg (for API keys). The decorator validates the credential and returns
-    an error string if authentication or scope check fails.
+    The SDK's transport layer (``streamable_http_app`` / ``sse_app``) installs
+    ``BearerAuthBackend`` + ``AuthContextMiddleware`` + ``RequireAuthMiddleware``
+    when a ``token_verifier`` is supplied. Those middlewares parse the
+    ``Authorization`` header (stripping ``Bearer ``), call :meth:`verify_token`,
+    and — on success — stash the resulting :class:`AccessToken` in a per-request
+    contextvar that :func:`requires_scope` reads. The credential therefore never
+    appears as a tool argument and never surfaces in ``list_tools()``.
 
-    Usage::
+    Args:
+        inner: A :class:`JWTAuth` or :class:`APIKeyAuth` instance. Its
+            ``authenticate(credential) -> AuthResult`` contract is reused
+            verbatim — no duplicated validation logic.
+    """
+
+    def __init__(self, inner: APIKeyAuth | JWTAuth) -> None:
+        self._inner = inner
+
+    async def verify_token(self, token: str) -> AccessToken | None:
+        result = await self._inner.authenticate(token)
+        if not result.authenticated:
+            return None
+        return AccessToken(
+            token=token,
+            client_id=result.client_id or "unknown",
+            scopes=result.scopes,
+            expires_at=None,
+        )
+
+
+def requires_scope(scope: str) -> Callable:
+    """Decorator that enforces authentication and an optional scope on a tool.
+
+    Credentials are **never** read from tool arguments. The MCP SDK's
+    ``BearerAuthBackend`` validates the request's ``Authorization`` header
+    against the server's :class:`JWTTokenVerifier` before the tool runs and
+    stores the verified :class:`AccessToken` in a per-request contextvar; this
+    decorator reads it via
+    :func:`~mcp.server.auth.middleware.auth_context.get_access_token`.
+
+    Behaviour:
+
+    * No verified token in context (e.g. running under **stdio**, which has no
+      ``Authorization`` channel) → returns an ``Unauthorized`` error string and
+      the tool body never executes. This stdio hard-reject is deliberate; see
+      ADR-0008.
+    * A ``scope`` is required and absent from the token's scopes → returns a
+      ``Forbidden`` error string.
+    * Otherwise the tool runs unchanged.
+
+    Wire a verifier into the server for this to function::
+
+        mcp = EnhancedMCP(
+            "db",
+            token_verifier=JWTTokenVerifier(JWTAuth(secret=...)),
+            auth=AuthSettings(issuer_url=..., resource_server_url=..., required_scopes=[...]),
+        )
 
         @mcp.tool()
-        @requires_scope(jwt_auth, "db:read")
-        async def query_database(sql: str, token: str = "") -> str:
+        @requires_scope("db:read")
+        async def query_database(question: str) -> str:
             ...
     """
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            credential = (
-                kwargs.get("token")
-                or kwargs.get("api_key")
-                or kwargs.get("authorization")
-                or ""
-            )
-            result = await auth.authenticate(credential)
-            if not result.authenticated:
-                return f"Error: Unauthorized — {result.error}"
-            if scope and not auth.check_scope(result, scope):
-                return f"Error: Forbidden — scope '{scope}' required, have {result.scopes}"
+            token = get_access_token()
+            if token is None:
+                return "Error: Unauthorized — authentication required"
+            if scope and scope not in token.scopes:
+                return (
+                    f"Error: Forbidden — scope '{scope}' required, "
+                    f"have {token.scopes}"
+                )
             return await func(*args, **kwargs)
 
         return wrapper

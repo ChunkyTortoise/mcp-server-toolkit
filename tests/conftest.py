@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Iterator
+
 import pytest
 
 from mcp_toolkit.framework.auth import APIKeyAuth, OAuthAuth
@@ -9,6 +12,36 @@ from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.framework.caching import CacheLayer, InMemoryCache
 from mcp_toolkit.framework.rate_limiter import RateLimiter
 from mcp_toolkit.framework.telemetry import TelemetryProvider
+
+
+@contextlib.contextmanager
+def grant_scopes(*scopes: str) -> Iterator[None]:
+    """Populate the SDK's per-request auth contextvar exactly as its
+    ``AuthContextMiddleware`` does for an authenticated HTTP request, so tests
+    can exercise ``@requires_scope`` tool *logic* without a live transport.
+
+    Uses real SDK objects (``AuthenticatedUser`` / ``AccessToken``) — never a
+    mock of the auth path. Outside this context the contextvar is unset, which
+    is the production stdio reality (no ``Authorization`` channel -> tools
+    hard-reject). See ADR-0008.
+    """
+    from mcp.server.auth.middleware.auth_context import auth_context_var
+    from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser
+    from mcp.server.auth.provider import AccessToken
+
+    user = AuthenticatedUser(
+        AccessToken(
+            token="test-context-token",
+            client_id="test-client",
+            scopes=list(scopes),
+            expires_at=None,
+        )
+    )
+    handle = auth_context_var.set(user)
+    try:
+        yield
+    finally:
+        auth_context_var.reset(handle)
 
 
 @pytest.fixture

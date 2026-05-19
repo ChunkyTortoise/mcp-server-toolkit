@@ -1,6 +1,12 @@
 """MCP Server Toolkit — Production-ready MCP server framework and pre-built servers."""
 
-from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, OAuthAuth, requires_scope
+from mcp_toolkit.framework.auth import (
+    APIKeyAuth,
+    JWTAuth,
+    JWTTokenVerifier,
+    OAuthAuth,
+    requires_scope,
+)
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.framework.costing import CostTracker
 from mcp_toolkit.framework.testing import MCPTestClient
@@ -10,6 +16,7 @@ __all__ = [
     "MCPTestClient",
     "APIKeyAuth",
     "JWTAuth",
+    "JWTTokenVerifier",
     "OAuthAuth",
     "requires_scope",
     "CostTracker",

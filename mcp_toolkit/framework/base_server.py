@@ -152,23 +152,29 @@ class EnhancedMCP(FastMCP):
 
         return decorator
 
-    def auth_tool(self, auth: Any, required_scope: str = "") -> Callable:
-        """Decorator for tools requiring authentication and optional scope.
+    def auth_tool(self, required_scope: str = "") -> Callable:
+        """Decorator for tools requiring authentication and an optional scope.
 
-        Combines ``@mcp.tool()`` with ``@requires_scope(auth, scope)``. The
-        tool function must accept a ``token`` or ``api_key`` kwarg.
+        Combines ``@mcp.tool()`` with ``@requires_scope(scope)``. Credentials
+        are taken from the request's verified ``Authorization`` bearer token
+        (validated by the server's ``token_verifier`` before the tool runs) —
+        **never** from a tool argument. Wire a verifier into the server via
+        ``EnhancedMCP(..., token_verifier=JWTTokenVerifier(...), auth=...)``.
+
+        Under stdio (no ``Authorization`` channel) the wrapped tool always
+        returns ``Unauthorized`` by design — see ADR-0008.
 
         Usage::
 
-            @mcp.auth_tool(jwt_auth, required_scope="db:read")
-            async def query_database(sql: str, token: str = "") -> str:
+            @mcp.auth_tool(required_scope="db:read")
+            async def query_database(question: str) -> str:
                 ...
         """
         from mcp_toolkit.framework.auth import requires_scope
 
         def decorator(func: Callable) -> Callable:
             @self.tool()
-            @requires_scope(auth, required_scope)
+            @requires_scope(required_scope)
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 return await func(*args, **kwargs)
