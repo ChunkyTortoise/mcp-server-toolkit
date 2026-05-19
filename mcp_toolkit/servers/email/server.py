@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass
 from typing import Protocol
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.servers.email.template_engine import TemplateEngine
+
+logger = logging.getLogger(__name__)
 
 mcp = EnhancedMCP("email")
 
@@ -200,6 +203,12 @@ def main() -> None:
                 use_tls=os.environ.get("SMTP_USE_TLS", "true").lower() != "false",
                 imap_host=os.environ.get("IMAP_HOST", ""),
             )
+        )
+    else:
+        logger.warning(
+            "SMTP_HOST not set — email server running with MockEmailClient "
+            "(in-memory; it does NOT send or receive real email). Set "
+            "SMTP_HOST/SMTP_USER/SMTP_PASS to send via real SMTP."
         )
     mcp.run()
 

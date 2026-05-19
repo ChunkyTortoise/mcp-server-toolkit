@@ -170,3 +170,20 @@ class TestMainWiring:
         email_server.main()
 
         assert isinstance(email_server._client, MockEmailClient)
+
+    def test_main_warns_without_smtp_env(self, monkeypatch, caplog):
+        """main() without SMTP_HOST must warn loudly that it is running the
+        in-memory mock — never silently pretend to send real email."""
+        import logging
+
+        import mcp_toolkit.servers.email.server as email_server
+
+        monkeypatch.delenv("SMTP_HOST", raising=False)
+        monkeypatch.setattr(email_server.mcp, "run", lambda: None)
+        email_server.configure(client=MockEmailClient())
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.email.server"):
+            email_server.main()
+
+        assert "SMTP_HOST" in caplog.text
+        assert "MockEmailClient" in caplog.text
