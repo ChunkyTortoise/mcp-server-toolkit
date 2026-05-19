@@ -8,6 +8,7 @@ import secrets
 from typing import Any, Protocol
 
 from mcp.server.auth.settings import AuthSettings
+from pydantic import AnyHttpUrl
 
 from mcp_toolkit.framework.auth import JWTAuth, JWTTokenVerifier, requires_scope
 from mcp_toolkit.framework.base_server import EnhancedMCP
@@ -26,8 +27,8 @@ mcp = EnhancedMCP(
     "crm-ghl",
     token_verifier=JWTTokenVerifier(_jwt_auth),
     auth=AuthSettings(
-        issuer_url="https://example.test",
-        resource_server_url="http://localhost:8000",
+        issuer_url=AnyHttpUrl("https://example.test"),
+        resource_server_url=AnyHttpUrl("http://localhost:8000"),
         required_scopes=["crm:read"],
     ),
 )
