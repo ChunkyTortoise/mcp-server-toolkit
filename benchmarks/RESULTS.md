@@ -12,7 +12,7 @@ Last run: 2026-05-19 | Python 3.12.13 | macOS (Apple Silicon)
 | Cache MISS P95 | 0.030ms |
 | Speedup | **3.1x** faster on cache hit |
 
-500 iterations, 20 warmup calls. Backend calls avoided: 499 of 1020 total calls (same output as `bench_cache.py`).
+500 iterations, 20 warmup calls. Cache effectiveness: 519 of 520 cacheable calls served from cache (99.8%); hit loop made 0 of 500 backend calls (verbatim `bench_cache.py` output).
 
 ## Reproducing
 
@@ -32,3 +32,5 @@ measure cache overhead only, not tool computation time.
 - Real tool latency dominates in production (LLM calls ~500-2000ms, DB queries ~10-100ms)
 - The L1 cache eliminates the tool call entirely -- 3.1x speedup measured here is a floor;
   speedup against a real LLM call would be 70,000-300,000x
+- Sub-millisecond latencies vary a few microseconds run-to-run on a loaded dev
+  machine; figures above are the median of 3 consecutive runs

@@ -43,6 +43,7 @@ async def run() -> dict[str, float]:
     # Warmup: prime the cache
     for _ in range(WARMUP):
         await mcp.call_tool("echo", client_args)
+    warmup_backend = call_count
 
     # Measure cache hits (same args, cache is warm)
     hit_times: list[float] = []
@@ -50,6 +51,7 @@ async def run() -> dict[str, float]:
         t0 = time.perf_counter()
         await mcp.call_tool("echo", client_args)
         hit_times.append((time.perf_counter() - t0) * 1_000)
+    hit_loop_backend = call_count - warmup_backend
 
     # Measure cache misses (unique args each time -- always a miss)
     miss_times: list[float] = []
@@ -58,6 +60,8 @@ async def run() -> dict[str, float]:
         await mcp.call_tool("echo", {"value": f"unique-{i}"})
         miss_times.append((time.perf_counter() - t0) * 1_000)
 
+    cacheable_calls = WARMUP + ITERATIONS
+    cacheable_backend = warmup_backend + hit_loop_backend
     return {
         "hit_p50_ms": statistics.median(hit_times),
         "hit_p95_ms": sorted(hit_times)[int(ITERATIONS * 0.95)],
@@ -65,6 +69,9 @@ async def run() -> dict[str, float]:
         "miss_p95_ms": sorted(miss_times)[int(ITERATIONS * 0.95)],
         "speedup_x": statistics.median(miss_times) / statistics.median(hit_times),
         "backend_calls_total": call_count,
+        "hit_loop_backend": hit_loop_backend,
+        "cacheable_calls": cacheable_calls,
+        "cacheable_served_from_cache": cacheable_calls - cacheable_backend,
     }
 
 
@@ -76,7 +83,14 @@ def main() -> None:
     print(f"  Cache HIT  -- P50: {results['hit_p50_ms']:.3f}ms  P95: {results['hit_p95_ms']:.3f}ms")
     print(f"  Cache MISS -- P50: {results['miss_p50_ms']:.3f}ms  P95: {results['miss_p95_ms']:.3f}ms")
     print(f"  Speedup:      {results['speedup_x']:.1f}x faster on cache hit")
-    print(f"  Backend calls avoided: {ITERATIONS - results['backend_calls_total'] + ITERATIONS} of {ITERATIONS * 2 + 20} total calls\n")
+    served = results["cacheable_served_from_cache"]
+    cacheable = results["cacheable_calls"]
+    hit_pct = 100.0 * served / cacheable
+    print(
+        f"  Cache effectiveness: {served} of {cacheable} cacheable calls served "
+        f"from cache ({hit_pct:.1f}%); hit loop made {results['hit_loop_backend']} "
+        f"of {ITERATIONS} backend calls\n"
+    )
 
 
 if __name__ == "__main__":
