@@ -478,7 +478,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | 30-case adversarial corpus | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl): validated in CI |
 | PostgreSQL read-only enforced via AST | [`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py): `_validate_read_only()` via sqlglot |
 | 607 passed, 2 skipped | `pytest tests/ -q`; CI badge above |
-| Cache hit P50 0.008 ms | `python benchmarks/bench_cache.py`; [`tests/test_benchmarks.py`](tests/test_benchmarks.py): `test_cache_hit_latency_p95` |
+| Cache hit P50 0.008 ms | `python benchmarks/bench_cache.py`; [`tests/gates/test_gate_scale.py`](tests/gates/test_gate_scale.py): `TestCacheScaleGate::test_cache_hit_p95_under_1ms` |
 
 Certifications backing this work: IBM Generative AI Engineering (144h), IBM RAG and Agentic AI (24h), Duke LLMOps (48h), Anthropic Building with Claude (Vanderbilt). Full list and mapping at [caymanroden.com](https://caymanroden.com).
 
