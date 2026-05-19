@@ -67,7 +67,7 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 | Tool registration | Manual decorator wiring | Automatic via `EnhancedMCP` |
 | Response caching | Not included | TTL cache, in-memory or Redis |
 | Rate limiting | Not included | Per-caller windows |
-| Auth | Not included | API key + JWT (HS256 / RS256 / JWKS), scope RBAC |
+| Auth | Not included | API key + JWT (HS256 / RS256 / JWKS), scope RBAC via SDK bearer middleware (HTTP transport) |
 | Telemetry | Not included | OpenTelemetry spans, OTLP export |
 | Cost attribution | Not included | Per-call `cost_usd` from a dated pricing table |
 | Test client | Manual mocking | `MCPTestClient` |
@@ -317,18 +317,54 @@ async def my_tool(query: str) -> str:
 
 ### Authentication
 
-API key authentication with SHA-256 hashed key storage:
+`JWTAuth` validates OAuth 2.1 bearer tokens — HS256 (symmetric secret) or
+RS256 via a JWKS endpoint (`APIKeyAuth` is the SHA-256-hashed API-key
+equivalent). Both expose `authenticate(credential) -> AuthResult`.
+
+Tools are gated with `@requires_scope("db:read")`. The credential is **never a
+tool argument**: `JWTTokenVerifier` plugs `JWTAuth` into the MCP SDK's
+bearer-auth middleware, which validates the request's `Authorization` header
+*before* the tool runs and exposes the verified token to `requires_scope` via
+the SDK's per-request context. Nothing auth-related appears in `list_tools()`.
 
 ```python
-from mcp_toolkit.framework.auth import APIKeyAuth
+from mcp.server.auth.settings import AuthSettings
+from mcp_toolkit import EnhancedMCP, JWTAuth, JWTTokenVerifier, requires_scope
 
-auth = APIKeyAuth()
-auth.register_key("my-api-key", client_id="my-client", scopes=["read", "write"])
-result = await auth.authenticate("my-api-key")
-# AuthResult(authenticated=True, client_id="my-client", scopes=["read", "write"])
+mcp = EnhancedMCP(
+    "db",
+    token_verifier=JWTTokenVerifier(JWTAuth(secret=os.environ["MCP_JWT_SECRET"])),
+    auth=AuthSettings(
+        issuer_url="https://your-idp.example.com",
+        resource_server_url="https://your-server.example.com",
+        required_scopes=["db:read"],
+    ),
+)
+
+@mcp.tool()
+@requires_scope("db:read")
+async def query_database(question: str) -> str:
+    ...
 ```
 
-`JWTAuth` supports HS256 (symmetric) and RS256 via a JWKS endpoint. Add `requires_scope(auth, "db:read")` to any tool for scope-based RBAC. See [ADR-0006](docs/adr/ADR-0006-oauth-2.1-resource-server.md).
+**Transport caveat (by design):** auth is enforced only over HTTP, where an
+`Authorization` header exists. The pre-built servers default to **stdio**
+(Claude Desktop / IDE plugins), which has no header channel — so under stdio
+every `@requires_scope` tool **hard-rejects** rather than silently running
+unauthenticated. Run the opt-in HTTP transport to actually authenticate:
+
+```bash
+MCP_JWT_SECRET=… MCP_HTTP_PORT=8000 python -m mcp_toolkit.servers.database_query.server
+```
+
+HTTP mode refuses to start if `MCP_JWT_SECRET` is unset, so auth can never
+no-op by misconfiguration. Over HTTP the SDK returns RFC-compliant `401`
+(missing/invalid token, with `WWW-Authenticate`) and `403` (insufficient
+scope). What this checks: token signature/expiry/issuer/audience and scope
+membership — it is a resource server, not a token issuer (no PKCE/refresh).
+See [ADR-0008](docs/adr/ADR-0008-auth-boundary.md) (and
+[ADR-0006](docs/adr/ADR-0006-oauth-2.1-resource-server.md) for the
+`JWTAuth` design).
 
 ### Telemetry
 
@@ -446,7 +482,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 
 | Signal | Where to look |
 |--------|--------------|
-| OAuth 2.1 + JWT (HS256/RS256/JWKS) | [`mcp_toolkit/framework/auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`, `requires_scope` |
+| OAuth 2.1 + JWT (HS256/RS256/JWKS), schema-clean scope RBAC | [`mcp_toolkit/framework/auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`, `JWTTokenVerifier`, `requires_scope`; [ADR-0008](docs/adr/ADR-0008-auth-boundary.md) |
 | OpenTelemetry span on every tool call | [`mcp_toolkit/framework/telemetry.py`](mcp_toolkit/framework/telemetry.py): `TelemetryProvider`, OTLP exporter |
 | LLM cost attribution | [`mcp_toolkit/framework/costing.py`](mcp_toolkit/framework/costing.py): `CostTracker`, per-model pricing |
 | A2A streaming + push notifications | [`mcp_toolkit/framework/a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py): `stream_task()`, `handle_task(webhook_url=...)` |
@@ -471,7 +507,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | Claim | Proof |
 |-------|-------|
 | Real OTel spans, not in-memory stubs | [`telemetry.py`](mcp_toolkit/framework/telemetry.py): `_init_otel_tracer()` wires `BatchSpanProcessor` + OTLP/console exporter |
-| JWT/OAuth 2.1 (HS256 + RS256/JWKS) | [`auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`; [`tests/gates/test_gate_security.py`](tests/gates/test_gate_security.py) |
+| JWT/OAuth 2.1 (HS256 + RS256/JWKS); credential never in tool schema | [`auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`, `JWTTokenVerifier`; [`test_auth_wiring.py`](tests/test_framework/test_auth_wiring.py) asserts no tool schema exposes a credential + live 401/403/200 |
 | Redis fallback is opt-in, not silent | [`caching.py`](mcp_toolkit/framework/caching.py): `fallback_to_memory=False` default; typed `_REDIS_TRANSIENT` |
 | A2A streaming is real SSE | [`a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py): `stream_task()` async generator; [`test_a2a_adapter.py`](tests/test_framework/test_a2a_adapter.py) |
 | LLM cost from real API usage objects | [`costing.py`](mcp_toolkit/framework/costing.py) + [`pricing/2026.json`](mcp_toolkit/pricing/2026.json) |
