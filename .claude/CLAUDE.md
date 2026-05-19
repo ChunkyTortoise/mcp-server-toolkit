@@ -12,7 +12,7 @@ Python | MCP protocol | pydantic | httpx | hatchling (build) | PyPI
 - `pyproject.toml`: hatchling build config
 
 ## Deploy
-PyPI library: `pip install mcp-server-toolkit==0.3.0`. Submit to awesome-mcp-servers after updates.
+PyPI library (published: **0.1.0**): `pip install mcp-server-toolkit`. 0.3.0 is in development (unreleased) — do not reference `==0.3.0` until it is published. Submit to awesome-mcp-servers after updates.
 
 ## Test
 ```pytest tests/  # 600 tests```

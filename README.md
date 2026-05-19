@@ -28,6 +28,10 @@ Every number below is from a reproducible local run on this commit. No hosted de
 pip install mcp-server-toolkit
 ```
 
+> **Release status:** the latest *published* PyPI release is **0.1.0**. The
+> 0.3.0 feature set documented below is in active development and not yet on
+> PyPI — install from source to use it before the 0.3.0 release.
+
 ```python
 from mcp_toolkit import EnhancedMCP
 
