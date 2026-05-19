@@ -16,7 +16,7 @@ Every number below is from a reproducible local run on this commit. No hosted de
 | Cache hit latency | P50 0.008 ms, P95 0.009 ms | `python benchmarks/bench_cache.py` (500 iters, 20 warmup); median of 3 runs |
 | Cache miss latency | P50 0.024 ms | same run; median of 3 runs |
 | Cache speedup | 3.1x vs. miss | same run, median miss / median hit; median of 3 runs |
-| Test suite | 607 passed, 2 skipped | `pytest tests/ -q` |
+| Test suite | 628 passed, 2 skipped | `pytest tests/ -q` |
 | Test coverage | 84% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
@@ -513,7 +513,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | LLM cost from real API usage objects | [`costing.py`](mcp_toolkit/framework/costing.py) + [`pricing/2026.json`](mcp_toolkit/pricing/2026.json) |
 | 30-case adversarial corpus | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl): validated in CI |
 | PostgreSQL read-only enforced via AST | [`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py): `_validate_read_only()` via sqlglot |
-| 607 passed, 2 skipped | `pytest tests/ -q`; CI badge above |
+| 628 passed, 2 skipped | `pytest tests/ -q`; CI badge above |
 | Cache hit P50 0.008 ms | `python benchmarks/bench_cache.py`; [`tests/gates/test_gate_scale.py`](tests/gates/test_gate_scale.py): `TestCacheScaleGate::test_cache_hit_p95_under_1ms` |
 
 Certifications backing this work: IBM Generative AI Engineering (144h), IBM RAG and Agentic AI (24h), Duke LLMOps (48h), Anthropic Building with Claude (Vanderbilt). Full list and mapping at [caymanroden.com](https://caymanroden.com).

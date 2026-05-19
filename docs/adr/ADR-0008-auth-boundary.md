@@ -39,8 +39,8 @@ that fell out of doing it correctly.
 
 ### 1. The credential comes from the transport, never from a tool argument
 
-The MCP SDK (`mcp` 1.26.0, whose bundled `FastMCP` this toolkit already
-extends) ships the correct mechanism. When a server is constructed with a
+The MCP SDK (developed against `mcp` 1.26.0, whose bundled `FastMCP` this
+toolkit already extends) ships the correct mechanism. When a server is constructed with a
 `token_verifier`, `streamable_http_app()` / `sse_app()` install
 `BearerAuthBackend` → `AuthContextMiddleware` → `RequireAuthMiddleware`. That
 stack parses the request's `Authorization` header, validates the bearer token,

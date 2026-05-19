@@ -46,7 +46,7 @@ Every auth event (accepted / rejected, including reason) is emitted as structure
 
 ## Consequences
 
-- `JWTAuth` adds `PyJWT[cryptography]` as a dependency (behind the new `[auth]` extra).
+- `JWTAuth` adds `PyJWT[crypto]` as a dependency (behind the new `[auth]` extra).
 - JWKS key fetching is synchronous internally (PyJWT) but wrapped with `run_in_executor` to avoid blocking the async event loop.
 - `OAuthAuth` is kept for backward compatibility and for tests that need a simple token issuer without a full IdP.
 - Full OAuth 2.1 authorization-server functionality (token issuance, PKCE, refresh) is out of scope — this library is a resource server only.
