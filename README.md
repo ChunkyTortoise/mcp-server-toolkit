@@ -258,7 +258,7 @@ configure(client=SMTPEmailClient(host="smtp.gmail.com", port=587,
 <details>
 <summary><strong>calendar</strong>: Availability checking and scheduling</summary>
 
-Set `GOOGLE_CALENDAR_CREDENTIALS` to a Google OAuth token file path (and optionally `GOOGLE_CALENDAR_ID`) to wire the real Google Calendar provider at startup. Requires `pip install mcp-server-toolkit[gcal]`. Without the env var the server runs a `MockCalendarProvider` — in-memory, useful for demos and testing but does not read or write a real calendar.
+Set `GOOGLE_CALENDAR_CREDENTIALS` to a Google OAuth token file path (and optionally `GOOGLE_CALENDAR_ID`) to wire the real Google Calendar provider at startup. Requires `pip install mcp-server-toolkit[gcal]`. If `GOOGLE_CALENDAR_CREDENTIALS` is set but the `[gcal]` extra is not installed, the server logs a warning and falls back to `MockCalendarProvider` (it does not silently pretend to be the real calendar). Without the env var the server runs a `MockCalendarProvider` — in-memory, useful for demos and testing but does not read or write a real calendar.
 
 ```python
 # Env-based startup:

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.servers.calendar.availability import AvailabilityFinder, BusinessHours, TimeSlot
+
+logger = logging.getLogger(__name__)
 
 mcp = EnhancedMCP("calendar")
 
@@ -197,7 +200,13 @@ def main() -> None:
             calendar_id = os.environ.get("GOOGLE_CALENDAR_ID", "primary")
             configure(provider=GoogleCalendarProvider(credentials=creds, calendar_id=calendar_id))
         except ImportError:
-            pass  # [gcal] extra not installed — fall through to mock
+            logger.warning(
+                "GOOGLE_CALENDAR_CREDENTIALS is set but the [gcal] extra is not "
+                "installed; the real Google Calendar provider is unavailable and "
+                "the server is falling back to MockCalendarProvider (in-memory — "
+                "it does NOT read or write your real calendar). Install with: "
+                "pip install mcp-server-toolkit[gcal]"
+            )
     mcp.run()
 
 

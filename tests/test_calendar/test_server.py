@@ -199,3 +199,32 @@ class TestMainWiring:
         cal_server.main()
 
         assert isinstance(cal_server._provider, MockCalendarProvider)
+
+    def test_main_warns_and_uses_mock_when_gcal_missing(self, monkeypatch, tmp_path, caplog):
+        """If creds env var is set but [gcal] import fails, main() must warn loudly
+        and fall back to MockCalendarProvider — never silently pretend to be real."""
+        import logging
+        import sys
+
+        import mcp_toolkit.servers.calendar.server as cal_server
+
+        token_file = tmp_path / "token.json"
+        token_file.write_text(
+            '{"token": "tok", "refresh_token": "ref", "token_uri": "https://oauth2.googleapis.com/token",'
+            ' "client_id": "cid", "client_secret": "csec", "scopes": ["https://www.googleapis.com/auth/calendar"]}'
+        )
+
+        monkeypatch.setenv("GOOGLE_CALENDAR_CREDENTIALS", str(token_file))
+        monkeypatch.setattr(cal_server.mcp, "run", lambda: None)
+        # Force the `from google.oauth2.credentials import Credentials` line to
+        # raise ImportError regardless of whether [gcal] is installed locally.
+        monkeypatch.setitem(sys.modules, "google.oauth2.credentials", None)
+
+        cal_server.configure(provider=MockCalendarProvider())  # reset
+
+        with caplog.at_level(logging.WARNING, logger="mcp_toolkit.servers.calendar.server"):
+            cal_server.main()
+
+        assert "[gcal]" in caplog.text
+        assert "MockCalendarProvider" in caplog.text
+        assert isinstance(cal_server._provider, MockCalendarProvider)
