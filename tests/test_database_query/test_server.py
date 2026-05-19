@@ -7,7 +7,7 @@ pytest.importorskip("sqlglot")
 from mcp_toolkit.framework.testing import MCPTestClient
 from mcp_toolkit.servers.database_query import server as db_server
 from mcp_toolkit.servers.database_query.sql_generator import MockLLMProvider
-from tests.conftest import grant_scopes
+from tests.conftest import grant_scopes, stub_tool_args
 
 
 @pytest.fixture(autouse=True)
@@ -149,18 +149,31 @@ class TestToolListing:
 
 
 class TestAuthGateStillEnforced:
-    """Guards against the autouse auth fixture silently masking a regression
-    where ``@requires_scope`` is removed from a tool."""
+    """Canary: every ``@requires_scope`` tool must hard-reject when no verified
+    token is in context. The autouse ``_auth_context`` fixture grants the scope
+    to all logic tests, so without this dynamic check, dropping
+    ``@requires_scope`` from a tool would pass silently. Discovers tools via
+    ``list_tools()`` so new tools are auto-covered."""
 
-    async def test_query_database_rejects_without_auth_context(self, configured_server):
+    async def test_every_tool_rejects_without_auth_context(self, configured_server):
         from mcp.server.auth.middleware.auth_context import auth_context_var
+
+        tools = await configured_server.list_tools()
+        names = sorted(t["name"] for t in tools)
+        assert names == ["explain_query", "list_tables", "query_database"], (
+            f"tool set changed ({names}); update the auth canary deliberately"
+        )
 
         # Drop the granted scope to emulate the stdio / unauthenticated path.
         handle = auth_context_var.set(None)
         try:
-            result = await configured_server.call_tool(
-                "query_database", {"question": "How many users are there?"}
-            )
+            for tool in tools:
+                result = await configured_server.call_tool(
+                    tool["name"], stub_tool_args(tool["inputSchema"])
+                )
+                assert "Unauthorized" in str(result), (
+                    f"{tool['name']} did NOT hard-reject without auth context — "
+                    f"`@requires_scope` may have been removed. Got: {result!r}"
+                )
         finally:
             auth_context_var.reset(handle)
-        assert "Unauthorized" in result

@@ -285,3 +285,36 @@ class TestRequiresScope:
 
         result = await t(token="anything")
         assert "Unauthorized" in result
+
+
+class TestAuthToolDecorator:
+    """`EnhancedMCP.auth_tool` is a public, documented convenience wrapper
+    (``@mcp.tool()`` + ``@requires_scope``). Exercise its documented path
+    end-to-end through the real MCP dispatch and the real auth contextvar."""
+
+    async def test_auth_tool_runs_with_scope_and_rejects_without_context(self):
+        from mcp_toolkit.framework.base_server import EnhancedMCP
+        from mcp_toolkit.framework.testing import MCPTestClient
+        from tests.conftest import grant_scopes
+
+        mcp = EnhancedMCP("auth-tool-probe")
+
+        @mcp.auth_tool(required_scope="reports:read")
+        async def get_report(name: str) -> str:
+            return f"report:{name}"
+
+        client = MCPTestClient(mcp)
+
+        # With the required scope in context -> the tool body runs.
+        with grant_scopes("reports:read"):
+            ok = await client.call_tool("get_report", {"name": "q3"})
+        assert ok == "report:q3"
+
+        # No verified token in context (stdio / unauthenticated) -> hard reject.
+        no_auth = await client.call_tool("get_report", {"name": "q3"})
+        assert "Unauthorized" in str(no_auth)
+
+        # Authenticated but missing the required scope -> Forbidden.
+        with grant_scopes("other:scope"):
+            forbidden = await client.call_tool("get_report", {"name": "q3"})
+        assert "Forbidden" in str(forbidden)

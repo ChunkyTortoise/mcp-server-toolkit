@@ -44,6 +44,19 @@ def grant_scopes(*scopes: str) -> Iterator[None]:
         auth_context_var.reset(handle)
 
 
+def stub_tool_args(input_schema: dict) -> dict:
+    """Minimal kwargs satisfying a tool's required params, so a call reaches
+    an ``@requires_scope`` decorator instead of failing arg validation first.
+    Used by the auth-canary tests, which discover tools via ``list_tools()``."""
+    props = (input_schema or {}).get("properties", {})
+    required = (input_schema or {}).get("required", [])
+    stub: dict = {}
+    for name in required:
+        kind = props.get(name, {}).get("type", "string")
+        stub[name] = 0 if kind in ("number", "integer") else "x"
+    return stub
+
+
 @pytest.fixture
 def enhanced_mcp():
     """Create a fresh EnhancedMCP instance for testing."""

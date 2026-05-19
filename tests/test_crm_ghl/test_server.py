@@ -6,7 +6,7 @@ from mcp_toolkit.framework.testing import MCPTestClient
 from mcp_toolkit.servers.crm_ghl.field_mapper import GHLField, GHLFieldMapper
 from mcp_toolkit.servers.crm_ghl.server import MockGHLClient, configure
 from mcp_toolkit.servers.crm_ghl.server import mcp as crm_mcp
-from tests.conftest import grant_scopes
+from tests.conftest import grant_scopes, stub_tool_args
 
 
 @pytest.fixture(autouse=True)
@@ -135,21 +135,40 @@ class TestToolListing:
 
 
 class TestAuthGateStillEnforced:
-    """Guards against the autouse auth fixture silently masking a regression
-    where ``@requires_scope`` is removed from a tool."""
+    """Canary: every ``@requires_scope`` tool must hard-reject when no verified
+    token is in context. The autouse ``_auth_context`` fixture grants scopes to
+    all logic tests, so without this dynamic check, dropping ``@requires_scope``
+    from a tool would pass silently. Discovers tools via ``list_tools()`` so new
+    tools are auto-covered."""
 
-    async def test_search_contacts_rejects_without_auth_context(self, client):
+    async def test_every_tool_rejects_without_auth_context(self, client):
         from mcp.server.auth.middleware.auth_context import auth_context_var
+
+        tools = await client.list_tools()
+        names = sorted(t["name"] for t in tools)
+        assert names == [
+            "create_contact",
+            "create_opportunity",
+            "get_pipeline_summary",
+            "search_contacts",
+        ], f"tool set changed ({names}); update the auth canary deliberately"
 
         handle = auth_context_var.set(None)
         try:
-            result = await client.call_tool("search_contacts", {"query": "anyone"})
+            for tool in tools:
+                result = await client.call_tool(
+                    tool["name"], stub_tool_args(tool["inputSchema"])
+                )
+                assert "Unauthorized" in str(result), (
+                    f"{tool['name']} did NOT hard-reject without auth context — "
+                    f"`@requires_scope` may have been removed. Got: {result!r}"
+                )
         finally:
             auth_context_var.reset(handle)
-        assert "Unauthorized" in result
 
     async def test_write_tool_rejects_when_only_read_scope(self, client):
-        """A read-scoped caller must not reach a ``crm:write`` tool."""
+        """A read-scoped caller must not reach a ``crm:write`` tool — proves
+        per-tool scope granularity, not just authn presence."""
         with grant_scopes("crm:read"):
             result = await client.call_tool(
                 "create_contact", {"first_name": "No", "last_name": "Access"}
