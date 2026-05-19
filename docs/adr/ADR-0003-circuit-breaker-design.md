@@ -25,10 +25,11 @@ failure opens only the Gemini breaker; OpenAI and xAI remain available.
 
 ## Decision
 
-**Per-provider circuit breakers (Option B).** Implemented in
-`mcp_toolkit/servers/multi_llm/providers.py`. Each `GeminiProvider` and
-`OpenAICompatibleProvider` instance tracks its own `_consecutive_failures` counter and
-`_circuit_open` flag.
+**Per-provider circuit breakers (Option B).** Implemented as a `CircuitBreaker`
+class in `mcp_toolkit/servers/multi_llm/models.py`. Each `GeminiProvider` and
+`OpenAICompatibleProvider` instance owns its own `CircuitBreaker`, which tracks a
+`_failures` counter and an `_open_until` monotonic-clock deadline (half-open on
+expiry, auto-reset on first success).
 
 ---
 
