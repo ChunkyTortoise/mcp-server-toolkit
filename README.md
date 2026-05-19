@@ -82,7 +82,7 @@ pip install mcp-server-toolkit[database]  # + PostgreSQL/pgvector (sqlglot, asyn
 pip install mcp-server-toolkit[web]       # + web scraping (beautifulsoup4, lxml)
 pip install mcp-server-toolkit[files]     # + file processing (PyPDF2, openpyxl)
 pip install mcp-server-toolkit[redis]     # + Redis-backed caching
-pip install mcp-server-toolkit[auth]      # + JWT/OAuth 2.1 (PyJWT[cryptography])
+pip install mcp-server-toolkit[auth]      # + JWT/OAuth 2.1 (PyJWT[crypto])
 pip install mcp-server-toolkit[telemetry] # + OpenTelemetry + OTLP exporter
 pip install mcp-server-toolkit[gmail]     # + Gmail client
 pip install mcp-server-toolkit[gcal]      # + Google Calendar client
