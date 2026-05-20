@@ -28,9 +28,11 @@ Every number below is from a reproducible local run on this commit. No hosted de
 pip install mcp-server-toolkit
 ```
 
-> **Release status:** the latest *published* PyPI release is **0.1.0**. The
-> 0.3.0 feature set documented below is in active development and not yet on
-> PyPI — install from source to use it before the 0.3.0 release.
+> **Release status:** PyPI ships **0.1.0** today. The 0.3.0 feature set
+> documented below (auth, telemetry, cost attribution, A2A, production backends)
+> lives on `main` at `0.3.0.dev0` and is not yet published. To use the 0.3.0
+> surface, install from source: `pip install git+https://github.com/ChunkyTortoise/mcp-server-toolkit.git`.
+> Release checklist for cutting 0.3.0 to PyPI: see [`RELEASE.md`](RELEASE.md).
 
 ```python
 from mcp_toolkit import EnhancedMCP
