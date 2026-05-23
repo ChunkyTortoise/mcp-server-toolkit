@@ -75,7 +75,7 @@ all = [
 ]
 dev = [
     "mcp-server-toolkit[all]",
-    "pytest>=8.3",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
     "ruff>=0.9",
