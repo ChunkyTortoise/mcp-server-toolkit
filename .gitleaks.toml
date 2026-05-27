@@ -1,0 +1,16 @@
+title = "mcp-server-toolkit gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """
+Security-test fixture files contain intentional adversarial corpora (fake JWT signing secrets, alg:none attack tokens, prompt-injection inputs) used by the Five-Gates safety eval suite.
+
+These are not real credentials. Suppressing them lets downstream users run gitleaks against this toolkit without 16 false-positive findings from the bundled adversarial dataset.
+"""
+paths = [
+  '''evals/quality/tasks\.py''',
+  '''tests/adversarial/injection_corpus\.jsonl''',
+  '''tests/gates/test_gate_safety\.py''',
+]
