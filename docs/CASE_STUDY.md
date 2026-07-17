@@ -70,7 +70,7 @@ intentional, because freshness matters more than the marginal $0.0004.
 ## Trace attributes you actually see
 
 A representative span emitted by [`seed_traces.py`](../examples/observability/seed_traces.py)
-and visible in the [live Jaeger dashboard](https://mcp-toolkit-jaeger.onrender.com):
+and visible in a local Jaeger UI (`docker compose` in [`examples/observability`](../examples/observability/); no hosted dashboard is deployed):
 
 ```json
 {
@@ -128,6 +128,4 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 python seed_traces.py
 open http://localhost:16686    # filter by service.name=mcp-toolkit-demo
 ```
 
-Or open the [live dashboard](https://mcp-toolkit-jaeger.onrender.com) — traces
-land every 15 minutes from the Render cron defined in
-[`render.yaml`](../examples/observability/render.yaml).
+A Render blueprint is committed at [`render.yaml`](../examples/observability/render.yaml) but is not deployed; use the local compose path above for traces.

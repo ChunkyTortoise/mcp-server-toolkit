@@ -32,9 +32,9 @@ if ! "$PYTHON_BIN" -c "import mcp_toolkit" 2>/dev/null; then
 fi
 
 # 3. Build the server entries
-WEB_SERVER="$TOOLKIT_DIR/mcp_toolkit/servers/web_scraping.py"
-FILE_SERVER="$TOOLKIT_DIR/mcp_toolkit/servers/file_processing.py"
-MULTI_LLM_SERVER="$TOOLKIT_DIR/mcp_toolkit/servers/multi_llm.py"
+WEB_SERVER="$TOOLKIT_DIR/mcp_toolkit/servers/web_scraping/server.py"
+FILE_SERVER="$TOOLKIT_DIR/mcp_toolkit/servers/file_processing/server.py"
+MULTI_LLM_SERVER="$TOOLKIT_DIR/mcp_toolkit/servers/multi_llm/server.py"
 
 NEW_SERVERS=$(cat <<JSONEOF
 {
