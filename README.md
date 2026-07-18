@@ -55,7 +55,7 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 
 | What | How | What you see |
 |---|---|---|
-| OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](examples/observability/seed_traces.py)). A Render blueprint is committed but not yet deployed ([`render.yaml`](examples/observability/render.yaml)). |
+| OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](examples/observability/seed_traces.py)). [Screenshot preview](assets/jaeger-trace-demo.png) from real `TelemetryProvider` spans. Render blueprint committed but not yet deployed ([`render.yaml`](examples/observability/render.yaml)). |
 | Agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py) | Embed, pgvector retrieve, Claude synthesize in 4 tool calls |
 | Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers and trace screenshots (numbers labeled seeded in the doc) |
 

@@ -1,0 +1,3 @@
+# Copy to .envrc and customize for your local direnv layout.
+# .envrc is gitignored so real tokens never land in git.
+use_secrets
