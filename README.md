@@ -1,8 +1,9 @@
 # MCP Server Toolkit
 
-Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 ready-to-run servers as one PyPI install, so you write tool logic instead of infrastructure.
+Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 ready-to-run servers so you write tool logic instead of infrastructure.
 
-![PyPI](https://img.shields.io/pypi/v/mcp-server-toolkit?color=14B8A6)
+**Install from source** (recommended). PyPI still publishes `0.1.0`; this repo is `0.3.0`. Use the editable install below until a release play republishes.
+
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
 
 ![mcp-server-toolkit architecture: MCP client through JWTAuth, RateLimiter, CacheLayer into 9 pre-built servers, with CostTracker and TelemetryProvider exporting OpenTelemetry spans to Jaeger](assets/architecture.png)
@@ -25,7 +26,9 @@ Every number below is from a reproducible local run on this commit. No hosted de
 ## Quickstart
 
 ```bash
-pip install mcp-server-toolkit
+git clone https://github.com/ChunkyTortoise/mcp-server-toolkit.git
+cd mcp-server-toolkit
+pip install -e ".[dev]"
 ```
 
 ```python
@@ -72,18 +75,25 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 
 ## Installation
 
+Source install (matches this repo version):
+
 ```bash
-pip install mcp-server-toolkit            # core framework
-pip install mcp-server-toolkit[database]  # + PostgreSQL/pgvector (sqlglot, asyncpg)
-pip install mcp-server-toolkit[web]       # + web scraping (beautifulsoup4, lxml)
-pip install mcp-server-toolkit[files]     # + file processing (PyPDF2, openpyxl)
-pip install mcp-server-toolkit[redis]     # + Redis-backed caching
-pip install mcp-server-toolkit[auth]      # + JWT/OAuth 2.1 (PyJWT[cryptography])
-pip install mcp-server-toolkit[telemetry] # + OpenTelemetry + OTLP exporter
-pip install mcp-server-toolkit[gmail]     # + Gmail client
-pip install mcp-server-toolkit[gcal]      # + Google Calendar client
-pip install mcp-server-toolkit[all]       # everything
+git clone https://github.com/ChunkyTortoise/mcp-server-toolkit.git
+cd mcp-server-toolkit
+pip install -e "."                 # core framework
+pip install -e ".[database]"       # + PostgreSQL/pgvector (sqlglot, asyncpg)
+pip install -e ".[web]"            # + web scraping (beautifulsoup4, lxml)
+pip install -e ".[files]"          # + file processing (PyPDF2, openpyxl)
+pip install -e ".[redis]"          # + Redis-backed caching
+pip install -e ".[auth]"           # + JWT/OAuth 2.1 (PyJWT[cryptography])
+pip install -e ".[telemetry]"      # + OpenTelemetry + OTLP exporter
+pip install -e ".[gmail]"          # + Gmail client
+pip install -e ".[gcal]"           # + Google Calendar client
+pip install -e ".[all]"            # everything
+pip install -e ".[dev]"            # tests + lint tooling
 ```
+
+PyPI package `mcp-server-toolkit==0.1.0` is stale relative to this tree (`0.3.0`). Do not treat `pip install mcp-server-toolkit` as the supported path until an owner-gated publish play ships a matching release.
 
 ## Pre-built servers
 
