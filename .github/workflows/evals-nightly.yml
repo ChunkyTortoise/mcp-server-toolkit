@@ -29,7 +29,8 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - name: Run with LLM-as-judge (if enabled)
-        if: ${{ github.event.inputs.judge == 'true' || secrets.ANTHROPIC_API_KEY != '' }}
+        # secrets.* is not allowed in job `if:` — runner.py mocks judge when key absent
+        if: ${{ github.event.inputs.judge == 'true' || github.event_name == 'schedule' }}
         run: python evals/quality/runner.py --judge --output evals/RESULTS.md
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

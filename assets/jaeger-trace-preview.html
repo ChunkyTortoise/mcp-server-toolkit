@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Jaeger — mcp-toolkit-demo</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; background: #1a1a2e; color: #e8e8e8; }
+    header { background: #16213e; padding: 12px 20px; border-bottom: 2px solid #0f3460; }
+    header h1 { margin: 0; font-size: 18px; color: #e94560; }
+    header p { margin: 4px 0 0; font-size: 13px; color: #a0a0b0; }
+    main { padding: 16px 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; background: #0f3460; padding: 8px; }
+    td { border-top: 1px solid #2a2a4a; padding: 8px; vertical-align: top; }
+    code { font-size: 11px; color: #7fdbca; word-break: break-all; }
+    .badge { display: inline-block; background: #0f3460; border-radius: 4px; padding: 2px 8px; margin-right: 6px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Jaeger UI — Trace Preview</h1>
+    <p>Service: <span class="badge">mcp-toolkit-demo</span>
+       Spans: <span class="badge">14</span>
+       Source: in-memory TelemetryProvider (same APIs as OTLP export)</p>
+  </header>
+  <main>
+    <table>
+      <thead>
+        <tr><th>Operation</th><th>Duration (ms)</th><th>cache_hit</th><th>cost_usd</th><th>Attributes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>tool.embed_query</td><td>0.01</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;embed_query&#x27;, &#x27;tool.duration_ms&#x27;: 0.007, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: True, &#x27;cost_usd_partial&#x27;: 0.00010838}</code></td></tr><tr><td>tool.retrieve_chunks</td><td>0.01</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;retrieve_chunks&#x27;, &#x27;tool.duration_ms&#x27;: 0.007, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: True, &#x27;cost_usd_partial&#x27;: 0.00010838}</code></td></tr><tr><td>tool.rerank</td><td>149.71</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;rerank&#x27;, &#x27;tool.duration_ms&#x27;: 149.714, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False, &#x27;cost_usd_partial&#x27;: 0.00010838}</code></td></tr><tr><td>tool.synthesize</td><td>95.2</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;synthesize&#x27;, &#x27;tool.duration_ms&#x27;: 95.204, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False, &#x27;cost_usd_partial&#x27;: 0.00010838}</code></td></tr><tr><td>agentic_rag.query</td><td>102.24</td><td>True</td><td>0.0004335</td><td><code>{&#x27;workflow.name&#x27;: &#x27;agentic_rag.query&#x27;, &#x27;workflow.cache_hit&#x27;: True, &#x27;llm.provider&#x27;: &#x27;anthropic&#x27;, &#x27;llm.model&#x27;: &#x27;claude-haiku-4-5-20251001&#x27;, &#x27;llm.input_tokens&#x27;: 504, &#x27;llm.output_tokens&#x27;: 246, &#x27;llm.cost_usd&#x27;: 0.0004335}</code></td></tr><tr><td>tool.dispatch</td><td>139.56</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;dispatch&#x27;, &#x27;tool.duration_ms&#x27;: 139.556, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False, &#x27;cost_usd_partial&#x27;: 0.00049}</code></td></tr><tr><td>tool.anthropic_call</td><td>128.8</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;anthropic_call&#x27;, &#x27;tool.duration_ms&#x27;: 128.801, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False, &#x27;cost_usd_partial&#x27;: 0.00049}</code></td></tr><tr><td>tool.openai_call</td><td>155.62</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;openai_call&#x27;, &#x27;tool.duration_ms&#x27;: 155.622, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False, &#x27;cost_usd_partial&#x27;: 0.00049}</code></td></tr><tr><td>tool.score</td><td>143.74</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;score&#x27;, &#x27;tool.duration_ms&#x27;: 143.735, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False, &#x27;cost_usd_partial&#x27;: 0.00049}</code></td></tr><tr><td>multi_llm.compare</td><td>203.78</td><td>True</td><td>0.00196</td><td><code>{&#x27;workflow.name&#x27;: &#x27;multi_llm.compare&#x27;, &#x27;workflow.cache_hit&#x27;: True, &#x27;llm.provider&#x27;: &#x27;openai&#x27;, &#x27;llm.model&#x27;: &#x27;gpt-5.5&#x27;, &#x27;llm.input_tokens&#x27;: 272, &#x27;llm.output_tokens&#x27;: 177, &#x27;llm.cost_usd&#x27;: 0.00196}</code></td></tr><tr><td>tool.validate_sql</td><td>13.96</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;validate_sql&#x27;, &#x27;tool.duration_ms&#x27;: 13.962, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False}</code></td></tr><tr><td>tool.execute</td><td>9.64</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;execute&#x27;, &#x27;tool.duration_ms&#x27;: 9.641, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False}</code></td></tr><tr><td>tool.format_rows</td><td>18.74</td><td></td><td></td><td><code>{&#x27;tool.name&#x27;: &#x27;format_rows&#x27;, &#x27;tool.duration_ms&#x27;: 18.742, &#x27;tool.success&#x27;: True, &#x27;cache_hit&#x27;: False}</code></td></tr><tr><td>database_query.execute</td><td>45.28</td><td>True</td><td></td><td><code>{&#x27;workflow.name&#x27;: &#x27;database_query.execute&#x27;, &#x27;workflow.cache_hit&#x27;: True}</code></td></tr>
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>
