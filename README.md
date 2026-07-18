@@ -23,6 +23,8 @@ Every number below is from a reproducible local run on this commit. No hosted de
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
 | Python support | 3.10 / 3.11 / 3.12 | CI matrix in `.github/workflows/ci.yml` |
 
+**Observability preview (no deploy required):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view.
+
 ## Quickstart
 
 ```bash
