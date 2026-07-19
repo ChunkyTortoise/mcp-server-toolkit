@@ -50,15 +50,30 @@ Target after Waves 1–3: **~42/50+** with Demo kill-gates cleared.
 9. Email/calendar README stubs; multi_agent_research using pre-builts; adversarial "30 cases validated" wording nuance.
 10. PyPI publish 0.3.0 — owner-gated, out of cycle.
 
-## Post-remediation (fill in Wave 3)
+## Post-remediation (Wave 3 — after Waves 1–2)
 
 | Dimension | Score | Notes |
 |---|---|---|
-| Hiring-manager / Demo | _TBD_ | |
-| Architect / Product honesty | _TBD_ | |
-| Security / gates | _TBD_ | |
-| Claims honesty | _TBD_ | |
-| Eval / CI rigor | _TBD_ | |
-| **Composite** | _TBD_ | |
+| Hiring-manager / Demo | 8/10 | GIF + static preview + Streamlit dual-mode; Render URL still pending workspace select |
+| Architect / Product honesty | 8/10 | EnhancedMCP tools wired (`embed_query_tool`, `retrieve_chunks_tool`, `synthesize_tool`) |
+| Security / gates | 8/10 | Substrate auditor committed + CI fixtures in `tests/security/` |
+| Claims honesty | 8/10 | Metrics refreshed; production-ready scrubbed; Makefile/CONTRIBUTING floors aligned to CI 80% |
+| Eval / CI rigor | 8/10 | CI auditor step + full pytest suite green with 80% cov gate |
+| **Composite** | **~40/50** | Up from ~27/50; interview-ready for lane C pending hosted demo URL |
 
-Kill gates post-fix: _TBD_
+### Kill gates post-fix
+
+| Gate | Result | Evidence |
+|---|---|---|
+| No clickable demo | **PARTIAL** | GIF + static preview in README; Render blueprint committed; live URL not deployed yet |
+| Claims ahead of git | **PASS** | `mcp_toolkit/security/` tracked; README claims match git |
+| production-ready without proof | **PASS** | `pyproject.toml` description scrubbed; Beta classifier honest |
+| README ≠ measured reality | **PASS** | Coverage % and test counts refreshed from measured runs |
+| Auditor documented but uncommitted | **PASS** | `mcp_toolkit/security/` + `tests/security/` in git; CI step wired |
+| Dead / misleading examples | **PASS** | `examples/agentic_rag/` imports `EnhancedMCP`; demo vs live modes labeled |
+
+### Residual P1
+
+1. **Select Render workspace** — choose workspace in Render dashboard for `examples/agentic_rag/render.yaml` deploy.
+2. **Create web service** — provision Streamlit web service from blueprint.
+3. **Push branch for auto-deploy** — push `chore/hireability-punch-list` (or merge to main) so Render picks up the blueprint and pins a live URL in README.

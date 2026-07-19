@@ -53,7 +53,8 @@ def main() -> None:
     st.caption(
         "Multi-agent retrieval pipeline using **EnhancedMCP**-registered tools "
         "(embed_query_tool, retrieve_chunks_tool, synthesize_tool). "
-        "Hosted on Render free tier — first load may take ~30s while the service wakes up."
+        "Deploy with examples/agentic_rag/render.yaml (Render). "
+        "Cold start ~30s on free tier."
     )
 
     if "rate_limiter" not in st.session_state:

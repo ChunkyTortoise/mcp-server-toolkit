@@ -54,3 +54,16 @@ async def test_run_pipeline_demo_returns_chunks(monkeypatch: pytest.MonkeyPatch)
     assert len(chunks) == 3
     assert "Demo mode" in answer
     assert elapsed >= 0
+
+@pytest.mark.asyncio
+async def test_run_pipeline_demo_answer_includes_citations(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("PGVECTOR_URL", raising=False)
+    answer, chunks, _elapsed = await run_pipeline("What is agentic RAG?", top_k=4)
+    assert len(chunks) >= 1
+    assert "Demo mode" in answer
+    assert "[1]" in answer
+    assert "[2]" in answer
+
