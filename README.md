@@ -8,6 +8,21 @@ Building an MCP server means re-writing the same auth, caching, rate-limiting, a
 
 ![mcp-server-toolkit architecture: MCP client through JWTAuth, RateLimiter, CacheLayer into 9 pre-built servers, with CostTracker and TelemetryProvider exporting OpenTelemetry spans to Jaeger](assets/architecture.png)
 
+## Live demo (agentic RAG)
+
+**Stranger-reachable in under 60 seconds — no API keys.**
+
+| Proof | Link |
+|---|---|
+| Walkthrough GIF | [`assets/agentic-rag-demo.gif`](assets/agentic-rag-demo.gif) |
+| Interactive static preview | [`assets/agentic-rag-demo-preview.html`](assets/agentic-rag-demo-preview.html) |
+| Streamlit app (local) | `streamlit run examples/agentic_rag/app.py` |
+| Host blueprint | [`examples/agentic_rag/render.yaml`](examples/agentic_rag/render.yaml) |
+
+![Agentic RAG demo walkthrough: demo mode query, seeded retrieval, cited answer](assets/agentic-rag-demo.gif)
+
+Dual mode: **demo** (default) uses seeded chunks + template synthesis; **live** turns on when the host sets `ANTHROPIC_API_KEY` (visitors never paste keys). Tools are registered on `EnhancedMCP` (`embed_query_tool`, `retrieve_chunks_tool`, `synthesize_tool`). Rate limit: 10 req/min/session. Details: [`examples/agentic_rag/README.md`](examples/agentic_rag/README.md).
+
 ## Measured results
 
 Every number below is from a reproducible local run on this commit. No hosted dependency, no API keys.
@@ -17,13 +32,13 @@ Every number below is from a reproducible local run on this commit. No hosted de
 | Cache hit latency | P50 0.008 ms, P95 0.009 ms | `python benchmarks/bench_cache.py` (500 iters, 20 warmup) |
 | Cache miss latency | P50 0.022 ms | same run |
 | Cache speedup | 2.9x vs. miss | same run, median miss / median hit |
-| Test suite | 600 tests | `pytest tests/ --collect-only -q` |
-| Test coverage | 82.87% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
+| Test suite | 616 tests | `pytest tests/ --collect-only -q` |
+| Test coverage | 83% measured | `pytest --cov`; CI gate `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
 | Python support | 3.10 / 3.11 / 3.12 | CI matrix in `.github/workflows/ci.yml` |
 
-**Observability preview (no deploy required):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view.
+**Observability preview (secondary):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view.
 
 ## Quickstart
 
@@ -53,13 +68,13 @@ async def limited_action(action: str) -> str:
 
 Run it as any MCP server, or wire it into Claude Desktop with `bash examples/claude_desktop_app/setup.sh`.
 
-## Demo (local, no hosted dependency)
+## Demo (deeper local paths)
 
 | What | How | What you see |
 |---|---|---|
-| OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](examples/observability/seed_traces.py)). [Screenshot preview](assets/jaeger-trace-demo.png) from real `TelemetryProvider` spans. Render blueprint committed but not yet deployed ([`render.yaml`](examples/observability/render.yaml)). |
-| Agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py) | Embed, pgvector retrieve, Claude synthesize in 4 tool calls |
-| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers and trace screenshots (numbers labeled seeded in the doc) |
+| Agentic RAG (hero) | GIF + [static preview](assets/agentic-rag-demo-preview.html) above; or `streamlit run examples/agentic_rag/app.py` | EnhancedMCP tools: embed → retrieve → synthesize; demo mode needs no keys |
+| OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](examples/observability/seed_traces.py)). [Screenshot](assets/jaeger-trace-demo.png). Blueprint: [`examples/observability/render.yaml`](examples/observability/render.yaml) |
+| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers (labeled seeded in the doc) |
 
 ## What you get vs. the raw MCP SDK
 
@@ -428,6 +443,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | LLM-as-judge eval suite (10 tasks) | [`evals/quality/`](evals/quality/): deterministic CI + nightly Anthropic judge |
 | Adversarial safety corpus (30 cases) | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
 | Five-gates suite | [`tests/gates/`](tests/gates/): schema, security, semantic, scale, safety |
+| Substrate auditor (CI) | [`mcp_toolkit/security/substrate_auditor.py`](mcp_toolkit/security/substrate_auditor.py): inline-XML vs typed tool-call dispatch |
 | Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md): agentic RAG with cost, latency, cache numbers |
 
 ### Full-stack AI App Developer
@@ -452,10 +468,29 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | LLM cost from real API usage objects | [`costing.py`](mcp_toolkit/framework/costing.py) + [`pricing/2026.json`](mcp_toolkit/pricing/2026.json) |
 | 30-case adversarial corpus | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl): validated in CI |
 | PostgreSQL read-only enforced via AST | [`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py): `_validate_read_only()` via sqlglot |
-| 600 tests | `pytest tests/ --collect-only -q`; CI badge above |
+| 616 tests | `pytest tests/ --collect-only -q`; CI badge above |
 | Cache hit P50 0.008 ms | `python benchmarks/bench_cache.py`; [`tests/test_benchmarks.py`](tests/test_benchmarks.py): `test_cache_hit_latency_p95` |
 
 Certifications backing this work: IBM Generative AI Engineering (144h), IBM RAG and Agentic AI (24h), Duke LLMOps (48h), Anthropic Building with Claude (Vanderbilt). Full list and mapping at [caymanroden.com](https://caymanroden.com).
+
+## MCP client substrate audit
+
+The toolkit ships a stdlib-only auditor that classifies an MCP **client** config or captured transcript for inline-XML tool dispatch (high risk) vs typed `tool_call` events (low risk). Use it in CI or before wiring a new client.
+
+```bash
+# Audit a client config — exit 1 when high risk, 0 when low/unknown
+python -m mcp_toolkit.security.substrate_auditor tests/security/samples/inline-xml-config.json
+
+# Assert expected risk (exit 0 only on match)
+python -m mcp_toolkit.security.substrate_auditor tests/security/samples/typed-toolcall-config.json --expect-risk low
+
+# JSON verdict for automation
+python -m mcp_toolkit.security.substrate_auditor path/to/config.json --json
+```
+
+**Exit codes:** `0` = low or unknown risk (or `--expect-risk` matched); `1` = high risk (or `--expect-risk` mismatch); `2` = file not found.
+
+Fixture samples live under [`tests/security/samples/`](tests/security/samples/). Pytest coverage: [`tests/security/test_substrate_auditor.py`](tests/security/test_substrate_auditor.py) (runs in CI via the main `pytest` job).
 
 ## Development
 
@@ -465,6 +500,9 @@ cd mcp-server-toolkit
 pip install -e ".[dev,auth]"
 pytest tests/ -v
 ruff check .
+
+# Substrate auditor only
+pytest tests/security/test_substrate_auditor.py -v
 
 # Integration tests (need real creds)
 INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_postgres_client.py
