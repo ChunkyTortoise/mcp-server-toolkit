@@ -25,6 +25,10 @@ jobs:
           pyright --pythonversion 3.10 mcp_toolkit
       - name: Test
         run: pytest tests/ -x -q --tb=short --cov=mcp_toolkit --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+      - name: Substrate auditor fixtures
+        run: |
+          python -m mcp_toolkit.security.substrate_auditor tests/security/samples/inline-xml-config.json --expect-risk high
+          python -m mcp_toolkit.security.substrate_auditor tests/security/samples/typed-toolcall-config.json --expect-risk low
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
