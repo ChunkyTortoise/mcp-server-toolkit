@@ -1,4 +1,4 @@
-"""MCP Server Toolkit — Production-ready MCP server framework and pre-built servers."""
+"""MCP Server Toolkit — MCP server framework and pre-built servers."""
 
 from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, OAuthAuth, requires_scope
 from mcp_toolkit.framework.base_server import EnhancedMCP

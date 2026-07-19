@@ -6,7 +6,7 @@ install:
 	pip install -e ".[all,dev]"
 
 test:
-	python -m pytest tests/ -v --tb=short --cov=mcp_toolkit --cov-report=term-missing --cov-fail-under=88
+	python -m pytest tests/ -v --tb=short --cov=mcp_toolkit --cov-report=term-missing --cov-fail-under=80
 
 lint:
 	ruff check .

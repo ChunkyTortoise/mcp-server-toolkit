@@ -25,3 +25,7 @@ NOTES.md
 .coverage
 .coverage.*
 htmlcov/
+
+# Local tooling / health markers
+.superpowers/
+.repo-health-ok

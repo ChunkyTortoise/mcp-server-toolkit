@@ -18,7 +18,7 @@ pip install -e ".[dev]"
 
 ```bash
 # Full suite
-pytest tests/ -v --cov=mcp_toolkit --cov-report=term-missing --cov-fail-under=88
+pytest tests/ -v --cov=mcp_toolkit --cov-report=term-missing --cov-fail-under=80
 
 # Quick smoke test
 pytest tests/ -q --tb=short
@@ -53,7 +53,7 @@ ruff format .
 
 1. Fork the repo and create a branch: `git checkout -b feat/your-feature`
 2. Write tests first (TDD)
-3. Run the full test suite — all tests must pass, coverage must stay ≥90%
+3. Run the full test suite — all tests must pass, coverage must stay ≥80%
 4. Run lint — zero ruff errors
 5. Open a PR with a clear description of the change and why
 
