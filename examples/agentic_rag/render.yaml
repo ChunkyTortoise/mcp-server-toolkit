@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: mcp-toolkit-agentic-rag
+    runtime: python
+    plan: free
+    buildCommand: pip install -r examples/agentic_rag/requirements-demo.txt && pip install -e .
+    startCommand: streamlit run examples/agentic_rag/app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
