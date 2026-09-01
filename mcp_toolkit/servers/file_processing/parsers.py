@@ -83,13 +83,15 @@ class FileParser:
 
     async def _parse_pdf(self, content: bytes, filename: str) -> ParsedFile:
         try:
-            from PyPDF2 import PdfReader  # type: ignore[import-untyped]
+            # pypdf is the maintained successor to PyPDF2, which was abandoned at
+            # 3.0.1 with GHSA-4vvm-4w3v-6mr8 unpatched. Same PdfReader API.
+            from pypdf import PdfReader  # type: ignore[import-untyped]
         except ImportError:
             return ParsedFile(
                 filename=filename,
                 file_type="pdf",
                 text="",
-                error="PyPDF2 not installed. Install with: pip install PyPDF2",
+                error="pypdf not installed. Install with: pip install 'mcp-server-toolkit[files]'",
             )
 
         reader = PdfReader(io.BytesIO(content))
