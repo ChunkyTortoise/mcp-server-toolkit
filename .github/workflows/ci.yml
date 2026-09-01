@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,3 +32,22 @@ jobs:
           fail_ci_if_error: false
       - name: Evals
         run: python evals/run_evals.py
+
+  package:
+    name: Wheel installs and imports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel and sdist
+        run: |
+          pip install build
+          python -m build
+      - name: Install the built wheel into a clean environment
+        run: |
+          python -m venv /tmp/wheel-env
+          /tmp/wheel-env/bin/pip install dist/*.whl
+      - name: Import from the installed wheel
+        run: /tmp/wheel-env/bin/python -c "from mcp_toolkit import EnhancedMCP; print('wheel import ok')"

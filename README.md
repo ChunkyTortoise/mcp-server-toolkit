@@ -17,11 +17,11 @@ Every number below is from a reproducible local run on this commit. No hosted de
 | Cache hit latency | P50 0.007ms, P95 0.008ms | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
 | Cache miss latency | P50 0.022 ms | same run |
 | Cache speedup | 3.1x vs. miss | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
-| Test suite | 617 tests | `uv run pytest tests/ --collect-only -q` (2026-08-12) |
+| Test suite | 600 tests (598 passing, 2 skipped) | `uv run --all-extras pytest tests/ --collect-only -q` (2026-08-31) |
 | Test coverage | 83% measured / 80% CI fail-under | README measured claim; CI `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
-| Python support | 3.10 / 3.11 / 3.12 | CI matrix in `.github/workflows/ci.yml` |
+| Python support | 3.10 through 3.14 | CI matrix in `.github/workflows/ci.yml` |
 
 **Observability preview (no deploy required):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view.
 
