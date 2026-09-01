@@ -1,0 +1,31 @@
+name: Lint Canary (non-blocking)
+
+# The CI lint gate pins its rule set and its ruff version so it cannot break
+# without a code change. This job runs the newest ruff on a schedule so that a
+# future default-rule expansion shows up here as a warning, instead of turning
+# the main CI badge red with no commit behind it. It never blocks a merge.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  latest-ruff:
+    name: Newest ruff (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the newest ruff
+        run: pip install --upgrade ruff
+      - name: Report the version under test
+        run: ruff --version
+      - name: Check with the project rule set
+        run: ruff check mcp_toolkit tests
+      - name: Check with the newest ruff defaults (informational only)
+        continue-on-error: true
+        run: ruff check --isolated --statistics mcp_toolkit tests
