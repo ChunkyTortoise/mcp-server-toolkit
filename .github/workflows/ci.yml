@@ -1,7 +1,10 @@
 name: CI
 on:
   push:
-    branches: ["*"]
+    # "**" not "*": a single star does not match across "/", so branches like
+    # fix/... or chore/... never triggered a push run. Feature branches only
+    # ever got CI once a PR was opened.
+    branches: ["**"]
   pull_request:
     branches: [main]
 jobs:
