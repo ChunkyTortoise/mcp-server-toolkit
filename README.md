@@ -1,12 +1,12 @@
 # MCP Server Toolkit
 
-Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 ready-to-run servers so you write tool logic instead of infrastructure.
+Building an MCP server means rewriting the same auth, caching, rate-limiting, and telemetry boilerplate every time. This packages that layer: JWT/OAuth 2.1, TTL cache, per-caller rate limits, and OpenTelemetry OTLP spans, so you write tool logic instead of infrastructure.
 
-**Install from source** (recommended). GitHub `v0.3.0` is the active development release featuring 9 pre-built MCP servers, OpenTelemetry tracing, and JWT/OAuth 2.1 authentication; PyPI `0.1.0` is a minimal early preview. Use the editable install below for full feature support.
+**Install from source** (recommended). GitHub `v0.3.0` is the supported artifact (600 collected tests, sqlglot read-only SQL AST checks, JWKS auth, OTel). PyPI `0.1.0` is a legacy preview. Use the editable install below.
 
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
 
-![mcp-server-toolkit architecture: MCP client through JWTAuth, RateLimiter, CacheLayer into 9 pre-built servers, with CostTracker and TelemetryProvider exporting OpenTelemetry spans to Jaeger](assets/architecture.png)
+![mcp-server-toolkit architecture: MCP client through JWTAuth, RateLimiter, CacheLayer into example servers, with CostTracker and TelemetryProvider exporting OpenTelemetry spans to Jaeger](assets/architecture.png)
 
 ## Measured results
 
