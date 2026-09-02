@@ -15,7 +15,7 @@ Every number below is from a reproducible local run on this commit. No hosted de
 | Metric | Value | Method |
 |---|---|---|
 | Cache hit latency | P50 0.007ms, P95 0.008ms | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
-| Cache miss latency | P50 0.022 ms | same run |
+| Cache miss latency | P50 0.023 ms | same run |
 | Cache speedup | 3.1x vs. miss | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
 | Test suite | 600 tests (598 passing, 2 skipped) | `uv run --all-extras pytest tests/ --collect-only -q` (2026-08-31) |
 | Test coverage | 83% measured / 80% CI fail-under | README measured claim; CI `--cov-fail-under=80` in `.github/workflows/ci.yml` |
@@ -368,7 +368,7 @@ A nightly GitHub Actions workflow re-runs the suite with LLM-as-judge scoring an
 
 ## A2A protocol support
 
-Every MCP server in this toolkit can be exposed as a [Google Agent-to-Agent (A2A)](https://google.github.io/A2A/) compatible agent. The `A2AAdapter` bridges MCP tool invocations to the A2A task protocol. SSE streaming and webhook push notifications are both implemented; the agent card advertises `streaming: true` and `pushNotifications: true` when a webhook endpoint is registered.
+Every MCP server in this toolkit can be exposed as a [Google Agent-to-Agent (A2A)](https://a2a-protocol.org/) compatible agent. The `A2AAdapter` bridges MCP tool invocations to the A2A task protocol. SSE streaming and webhook push notifications are both implemented; the agent card advertises `streaming: true` and `pushNotifications: true` when a webhook endpoint is registered.
 
 ```python
 from mcp_toolkit import EnhancedMCP
@@ -415,7 +415,7 @@ See [`examples/`](examples/) for working implementations:
 
 ## Hiring evidence
 
-Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links to the code that backs the claim.
+Built by [Cayman Roden](https://chunkytortoise.github.io). Two role lanes; each row links to the code that backs the claim.
 
 ### AI Engineer / LLM Platform
 
@@ -453,7 +453,7 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | 30-case adversarial corpus | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl): validated in CI |
 | PostgreSQL read-only enforced via AST | [`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py): `_validate_read_only()` via sqlglot |
 | 600 collected tests (598 pass, 2 skip) | `uv run --all-extras pytest tests/ --collect-only -q`; CI badge above |
-| Cache hit P50 0.007ms | `benchmarks/RESULTS.md`; [`tests/test_benchmarks.py`](tests/test_benchmarks.py): `test_cache_hit_latency_p95` |
+| Cache hit P50 0.007ms | [benchmarks/RESULTS.md](benchmarks/RESULTS.md) (2026-04-25 run); reproduce with [benchmarks/bench_cache.py](benchmarks/bench_cache.py) |
 
 Production capabilities backing this work: AST-based SQL query validation via sqlglot, cryptographic JWT verification with remote JWKS key rotation, and OpenTelemetry OTLP tracing.
 
