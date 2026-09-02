@@ -2,7 +2,7 @@
 
 Building an MCP server means re-writing the same auth, caching, rate-limiting, and telemetry boilerplate every time; this packages that layer plus 9 ready-to-run servers so you write tool logic instead of infrastructure.
 
-**Install from source** (recommended). PyPI still publishes `0.1.0`; this repo is `0.3.0`. Use the editable install below until a release play republishes.
+**Install from source** (recommended). GitHub `v0.3.0` is the active development release featuring 9 pre-built MCP servers, OpenTelemetry tracing, and JWT/OAuth 2.1 authentication; PyPI `0.1.0` is a minimal early preview. Use the editable install below for full feature support.
 
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
 
@@ -452,10 +452,10 @@ Built by [Cayman Roden](https://caymanroden.com). Two role lanes; each row links
 | LLM cost from real API usage objects | [`costing.py`](mcp_toolkit/framework/costing.py) + [`pricing/2026.json`](mcp_toolkit/pricing/2026.json) |
 | 30-case adversarial corpus | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl): validated in CI |
 | PostgreSQL read-only enforced via AST | [`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py): `_validate_read_only()` via sqlglot |
-| 617 tests | `uv run pytest tests/ --collect-only -q`; CI badge above |
+| 600 collected tests (598 pass, 2 skip) | `uv run --all-extras pytest tests/ --collect-only -q`; CI badge above |
 | Cache hit P50 0.007ms | `benchmarks/RESULTS.md`; [`tests/test_benchmarks.py`](tests/test_benchmarks.py): `test_cache_hit_latency_p95` |
 
-Certifications backing this work: IBM Generative AI Engineering (144h), IBM RAG and Agentic AI (24h), Duke LLMOps (48h), Anthropic Building with Claude (Vanderbilt). Full list and mapping at [caymanroden.com](https://caymanroden.com).
+Production capabilities backing this work: AST-based SQL query validation via sqlglot, cryptographic JWT verification with remote JWKS key rotation, and OpenTelemetry OTLP tracing.
 
 ## Development
 
