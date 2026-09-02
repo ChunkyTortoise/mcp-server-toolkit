@@ -299,7 +299,7 @@ Insert as a new section before `## Development`:
 ```markdown
 ## Certifications Applied
 
-Domain pillars from [19 completed AI/ML certifications](https://caymanroden.com) backing this toolkit:
+Domain pillars from [19 completed AI/ML certifications](https://chunkytortoise.github.io) backing this toolkit:
 
 | Domain | Certification | Applied In |
 |--------|--------------|-----------|
