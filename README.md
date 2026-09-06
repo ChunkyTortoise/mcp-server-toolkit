@@ -1,12 +1,14 @@
 # MCP Server Toolkit
 
-Building an MCP server means rewriting the same auth, caching, rate-limiting, and telemetry boilerplate every time. This packages that layer: JWT/OAuth 2.1, TTL cache, per-caller rate limits, and OpenTelemetry OTLP spans, so you write tool logic instead of infrastructure.
+Building an MCP server means rewriting the same auth, caching, rate-limiting, and telemetry boilerplate every time. This is a **library**, not a hosted product or dashboard: JWT/OAuth 2.1, TTL cache, per-caller rate limits, cost attribution, and OpenTelemetry OTLP spans wrap your tool logic so you write tools instead of infrastructure.
 
 **Install from source** (recommended). GitHub `v0.3.0` is the supported artifact (600 collected tests, sqlglot read-only SQL AST checks, JWKS auth, OTel). PyPI `0.1.0` is a legacy preview. Use the editable install below.
 
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
 
-![mcp-server-toolkit architecture: MCP client through JWTAuth, RateLimiter, CacheLayer into example servers, with CostTracker and TelemetryProvider exporting OpenTelemetry spans to Jaeger](assets/architecture.png)
+![MCP Server Toolkit library architecture: tool logic at the center, surrounded by auth, per-caller rate limits, cache, cost attribution, and OpenTelemetry. Proof rail: 600 collected tests, 83% measured coverage, 9 example servers, reproducible cache benchmark.](docs/assets/architecture.svg)
+
+Architecture labels (for small screens): Auth · Per-caller rate limits · Tool logic (center) · Cache · Cost attribution · OpenTelemetry. This is a library map, not a product dashboard or captured request trace.
 
 ## Measured results
 
@@ -17,13 +19,13 @@ Every number below is from a reproducible local run on this commit. No hosted de
 | Cache hit latency | P50 0.007ms, P95 0.008ms | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
 | Cache miss latency | P50 0.023 ms | same run |
 | Cache speedup | 3.1x vs. miss | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
-| Test suite | 600 tests (598 passing, 2 skipped) | `uv run --all-extras pytest tests/ --collect-only -q` (2026-08-31) |
+| Test suite | 600 tests (598 passing, 2 skipped) | `uv run --all-extras pytest tests/ --collect-only -q` (reconfirmed 2026-09-06: 600 collected) |
 | Test coverage | 83% measured / 80% CI fail-under | README measured claim; CI `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
 | Python support | 3.10 through 3.14 | CI matrix in `.github/workflows/ci.yml` |
 
-**Observability preview (no deploy required):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view.
+**Observability preview (secondary; no deploy required):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view. The architecture map above is the first-screen evidence; this HTML preview is a secondary local artifact, not a hosted dashboard.
 
 ## Quickstart
 
