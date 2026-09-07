@@ -25,3 +25,8 @@ NOTES.md
 .coverage
 .coverage.*
 htmlcov/
+
+# Local agent artifacts
+.maintenance/
+AGENTS.md.bak-*
+claude-progress.txt
