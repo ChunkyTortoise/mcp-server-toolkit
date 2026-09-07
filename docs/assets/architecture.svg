@@ -1,0 +1,71 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1440' height='900' viewBox='0 0 1440 900' role='img' aria-labelledby='title desc'>
+  <title id='title'>MCP Server Toolkit library architecture</title>
+  <desc id='desc'>A library architecture map with tool logic at the center, surrounded by auth, per-caller rate limits, cache, cost attribution, and OpenTelemetry. A proof rail lists 600 collected tests, 83 percent measured coverage, nine example servers, and a reproducible cache benchmark.</desc>
+  <style>
+    :root{color-scheme:light dark;--bg:#f6f7f4;--surface:#ffffff;--surface2:#eef2f1;--text:#111827;--muted:#475569;--line:#b8c5c2;--accent:#0f766e;--accentBg:#ccfbf1;--accentText:#115e59;--warm:#9a3412;--warmBg:#ffedd5;--shadow:#dbe4e1}
+    @media (prefers-color-scheme:dark){:root{--bg:#09110f;--surface:#111b19;--surface2:#172522;--text:#f8fafc;--muted:#cbd5e1;--line:#38524c;--accent:#5eead4;--accentBg:#123c37;--accentText:#ccfbf1;--warm:#fdba74;--warmBg:#432616;--shadow:#06100e}}
+    text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;fill:var(--text)}
+    .bg{fill:var(--bg)}.panel{fill:var(--surface);stroke:var(--line);stroke-width:2}.soft{fill:var(--surface2);stroke:var(--line);stroke-width:2}.core{fill:var(--accentBg);stroke:var(--accent);stroke-width:3}.proof{fill:var(--surface);stroke:var(--line);stroke-width:1.5}.connector{fill:none;stroke:var(--line);stroke-width:3;stroke-linecap:round}.dot{fill:var(--accent)}.eyebrow{font-size:16px;font-weight:700;letter-spacing:2.2px;fill:var(--accent)}.headline{font-size:40px;font-weight:760;letter-spacing:-1px}.subhead{font-size:20px;fill:var(--muted)}.metric{font-size:27px;font-weight:760}.metricLabel{font-size:15px;fill:var(--muted)}.nodeTitle{font-size:22px;font-weight:720}.nodeBody{font-size:16px;fill:var(--muted)}.coreTitle{font-size:31px;font-weight:780;fill:var(--accentText)}.coreBody{font-size:17px;fill:var(--accentText)}.caption{font-size:15px;fill:var(--muted)}
+  </style>
+  <rect class='bg' width='1440' height='900'/>
+  <text class='eyebrow' x='72' y='55'>MCP SERVER TOOLKIT</text>
+  <text class='headline' x='72' y='100'>Infrastructure around your tool logic</text>
+  <text class='subhead' x='72' y='132'>A library-first architecture backed by a measured public proof rail.</text>
+
+  <g aria-label='Measured proof rail'>
+    <rect class='proof' x='72' y='164' width='300' height='86' rx='14'/>
+    <text class='metric' x='96' y='202'>600</text><text class='metricLabel' x='96' y='229'>collected tests</text>
+    <rect class='proof' x='396' y='164' width='300' height='86' rx='14'/>
+    <text class='metric' x='420' y='202'>83%</text><text class='metricLabel' x='420' y='229'>measured coverage</text>
+    <rect class='proof' x='720' y='164' width='300' height='86' rx='14'/>
+    <text class='metric' x='744' y='202'>9</text><text class='metricLabel' x='744' y='229'>example servers</text>
+    <rect class='proof' x='1044' y='164' width='324' height='86' rx='14'/>
+    <text class='metric' x='1068' y='202'>Reproducible</text><text class='metricLabel' x='1068' y='229'>cache benchmark</text>
+  </g>
+
+  <rect class='panel' x='72' y='282' width='1296' height='546' rx='24'/>
+  <text class='eyebrow' x='108' y='326'>REUSABLE LIBRARY BOUNDARY</text>
+
+  <path class='connector' d='M430 435 H550'/><circle class='dot' cx='490' cy='435' r='6'/>
+  <path class='connector' d='M430 591 H550'/><circle class='dot' cx='490' cy='591' r='6'/>
+  <path class='connector' d='M890 435 H1010'/><circle class='dot' cx='950' cy='435' r='6'/>
+  <path class='connector' d='M890 591 H1010'/><circle class='dot' cx='950' cy='591' r='6'/>
+  <path class='connector' d='M720 574 V665'/><circle class='dot' cx='720' cy='620' r='6'/>
+
+  <g aria-label='Authentication infrastructure'>
+    <rect class='soft' x='140' y='386' width='290' height='98' rx='16'/>
+    <text class='nodeTitle' x='168' y='426'>Auth</text>
+    <text class='nodeBody' x='168' y='456'>Caller authentication</text>
+  </g>
+  <g aria-label='Per-caller rate limit infrastructure'>
+    <rect class='soft' x='140' y='542' width='290' height='98' rx='16'/>
+    <text class='nodeTitle' x='168' y='582'>Per-caller rate limits</text>
+    <text class='nodeBody' x='168' y='612'>Caller-scoped control</text>
+  </g>
+  <g aria-label='Tool logic at the center'>
+    <rect class='core' x='550' y='396' width='340' height='178' rx='22'/>
+    <text class='eyebrow' x='584' y='438'>YOUR CODE</text>
+    <text class='coreTitle' x='584' y='484'>Tool logic</text>
+    <text class='coreBody' x='584' y='520'>Kept at the center of the library</text>
+    <text class='coreBody' x='584' y='547'>architecture</text>
+  </g>
+  <g aria-label='Cache infrastructure'>
+    <rect class='soft' x='1010' y='386' width='290' height='98' rx='16'/>
+    <text class='nodeTitle' x='1038' y='426'>Cache</text>
+    <text class='nodeBody' x='1038' y='456'>Reusable caching concern</text>
+  </g>
+  <g aria-label='Cost attribution infrastructure'>
+    <rect class='soft' x='1010' y='542' width='290' height='98' rx='16'/>
+    <text class='nodeTitle' x='1038' y='582'>Cost attribution</text>
+    <text class='nodeBody' x='1038' y='612'>Attribution around tool work</text>
+  </g>
+  <g aria-label='OpenTelemetry infrastructure'>
+    <rect class='soft' x='540' y='665' width='360' height='92' rx='16'/>
+    <text class='nodeTitle' x='568' y='704'>OpenTelemetry</text>
+    <text class='nodeBody' x='568' y='734'>Instrumentation concern</text>
+  </g>
+
+  <text class='caption' x='108' y='797'>Architecture map, not a product dashboard or captured request trace.</text>
+  <rect x='72' y='855' width='1296' height='2' fill='var(--line)'/>
+  <text class='caption' x='72' y='883'>Proof and architecture first. No deployment or package-release claim.</text>
+</svg>

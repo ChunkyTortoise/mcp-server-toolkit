@@ -1,0 +1,37 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1280' height='640' viewBox='0 0 1280 640' role='img' aria-labelledby='title desc'>
+  <title id='title'>MCP Server Toolkit social preview</title>
+  <desc id='desc'>Social preview for a library that places auth, per-caller rate limits, cache, cost attribution, and OpenTelemetry around MCP tool logic. It includes a proof rail of 600 collected tests, 83 percent measured coverage, nine example servers, and a reproducible cache benchmark.</desc>
+  <style>
+    :root{color-scheme:light dark;--bg:#f6f7f4;--surface:#ffffff;--surface2:#eef2f1;--text:#111827;--muted:#475569;--line:#b8c5c2;--accent:#0f766e;--accentBg:#ccfbf1;--accentText:#115e59}
+    @media (prefers-color-scheme:dark){:root{--bg:#09110f;--surface:#111b19;--surface2:#172522;--text:#f8fafc;--muted:#cbd5e1;--line:#38524c;--accent:#5eead4;--accentBg:#123c37;--accentText:#ccfbf1}}
+    text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;fill:var(--text)}
+    .bg{fill:var(--bg)}.panel{fill:var(--surface);stroke:var(--line);stroke-width:2}.node{fill:var(--surface2);stroke:var(--line);stroke-width:2}.core{fill:var(--accentBg);stroke:var(--accent);stroke-width:3}.line{fill:none;stroke:var(--line);stroke-width:3;stroke-linecap:round}.dot{fill:var(--accent)}.eyebrow{font-size:15px;font-weight:750;letter-spacing:2.2px;fill:var(--accent)}.headline{font-size:58px;font-weight:800;letter-spacing:-2px}.subhead{font-size:24px;fill:var(--muted)}.nodeText{font-size:17px;font-weight:700}.coreTitle{font-size:25px;font-weight:800;fill:var(--accentText)}.coreSmall{font-size:14px;fill:var(--accentText)}.proofValue{font-size:24px;font-weight:800}.proofLabel{font-size:14px;fill:var(--muted)}
+  </style>
+  <rect class='bg' width='1280' height='640'/>
+  <text class='eyebrow' x='64' y='75'>LIBRARY ARCHITECTURE</text>
+  <text class='headline' x='64' y='143'>MCP Server</text>
+  <text class='headline' x='64' y='207'>Toolkit</text>
+  <text class='subhead' x='64' y='260'>Infrastructure around</text>
+  <text class='subhead' x='64' y='293'>your tool logic.</text>
+
+  <rect class='panel' x='650' y='66' width='566' height='406' rx='24'/>
+  <text class='eyebrow' x='682' y='104'>REUSABLE LIBRARY BOUNDARY</text>
+
+  <path class='line' d='M842 169 H870'/><path class='line' d='M842 331 H870'/>
+  <path class='line' d='M1002 169 H1030'/><path class='line' d='M1002 331 H1030'/>
+  <path class='line' d='M936 300 V379'/><circle class='dot' cx='936' cy='352' r='5'/>
+
+  <rect class='node' x='682' y='132' width='160' height='74' rx='13'/><text class='nodeText' x='704' y='176'>Auth</text>
+  <rect class='node' x='682' y='294' width='160' height='74' rx='13'/><text class='nodeText' x='704' y='325'>Per-caller</text><text class='nodeText' x='704' y='348'>rate limits</text>
+  <rect class='core' x='870' y='192' width='132' height='108' rx='18'/><text class='coreSmall' x='890' y='225'>YOUR CODE</text><text class='coreTitle' x='890' y='262'>Tool logic</text>
+  <rect class='node' x='1030' y='132' width='154' height='74' rx='13'/><text class='nodeText' x='1052' y='176'>Cache</text>
+  <rect class='node' x='1030' y='294' width='154' height='74' rx='13'/><text class='nodeText' x='1052' y='325'>Cost</text><text class='nodeText' x='1052' y='348'>attribution</text>
+  <rect class='node' x='850' y='379' width='172' height='62' rx='13'/><text class='nodeText' x='872' y='417'>OpenTelemetry</text>
+
+  <g aria-label='Measured proof rail'>
+    <rect class='panel' x='64' y='510' width='270' height='88' rx='14'/><text class='proofValue' x='86' y='548'>600</text><text class='proofLabel' x='86' y='576'>collected tests</text>
+    <rect class='panel' x='344' y='510' width='270' height='88' rx='14'/><text class='proofValue' x='366' y='548'>83%</text><text class='proofLabel' x='366' y='576'>measured coverage</text>
+    <rect class='panel' x='624' y='510' width='270' height='88' rx='14'/><text class='proofValue' x='646' y='548'>9</text><text class='proofLabel' x='646' y='576'>example servers</text>
+    <rect class='panel' x='904' y='510' width='312' height='88' rx='14'/><text class='proofValue' x='926' y='548'>Reproducible</text><text class='proofLabel' x='926' y='576'>cache benchmark</text>
+  </g>
+</svg>
