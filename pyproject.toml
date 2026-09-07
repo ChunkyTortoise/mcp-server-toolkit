@@ -58,12 +58,12 @@ telemetry = [
 gmail = [
     "google-api-python-client>=2.100",
     "google-auth-httplib2>=0.2",
-    "google-auth-oauthlib>=1.2",
+    "google-auth-oauthlib>=1.4.1",
 ]
 gcal = [
     "google-api-python-client>=2.100",
     "google-auth-httplib2>=0.2",
-    "google-auth-oauthlib>=1.2",
+    "google-auth-oauthlib>=1.4.1",
 ]
 all = [
     "mcp-server-toolkit[database]",
