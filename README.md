@@ -10,6 +10,18 @@ Building an MCP server means rewriting the same auth, caching, rate-limiting, an
 
 Architecture labels (for small screens): Auth · Per-caller rate limits · Tool logic (center) · Cache · Cost attribution · OpenTelemetry. This is a library map, not a product dashboard or captured request trace.
 
+## Live demo (agentic RAG)
+
+| Proof | Link |
+|---|---|
+| Walkthrough GIF | [`assets/agentic-rag-demo.gif`](assets/agentic-rag-demo.gif) |
+| Interactive static preview | [`assets/agentic-rag-demo-preview.html`](assets/agentic-rag-demo-preview.html) |
+| Streamlit app (local) | `streamlit run examples/agentic_rag/app.py` |
+
+![Agentic RAG demo walkthrough: demo mode query, seeded retrieval, cited answer](assets/agentic-rag-demo.gif)
+
+Dual mode: **demo** (default) runs on seeded chunks + template synthesis; **live** turns on when the host sets `ANTHROPIC_API_KEY` (visitors never paste keys).
+
 ## Measured results
 
 Every number below is from a reproducible local run on this commit. No hosted dependency, no API keys.
