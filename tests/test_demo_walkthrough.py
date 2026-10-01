@@ -34,7 +34,7 @@ async def test_public_cache_demo_dispatches_twice_executes_once():
 async def test_pipeline_honors_selected_chunk_count():
     answer, chunks, elapsed = await app.run_pipeline("What is RAG?", top_k=2)
     assert len(chunks) == 2
-    assert "[1] [2]" in answer
+    assert "[1]" in answer and "[2]" in answer
     assert elapsed >= 0
 
 
@@ -64,3 +64,23 @@ async def test_synthesis_error_is_explicit(monkeypatch):
     )
     with pytest.raises(RuntimeError, match="no fixture fallback"):
         await app.run_pipeline("failure")
+
+
+@pytest.mark.parametrize("count", [1, 2, 5])
+async def test_complete_fixture_answer_cites_each_selected_source(count):
+    answer, chunks, _ = await app.run_pipeline("unrelated question", top_k=count)
+    assert len(chunks) == count
+    assert "independent of the question" in answer
+    for i, chunk in enumerate(chunks, 1):
+        assert f"{chunk.text} [{i}]" in answer
+        assert chunk.metadata["url"].startswith("https://")
+    assert f"[{count + 1}]" not in answer
+    assert "..." not in answer
+
+
+def test_static_preview_embeds_exact_shared_fixtures():
+    import json
+
+    html = (ROOT / "assets/agentic-rag-demo-preview.html").read_text()
+    data = html.split("const chunks = ", 1)[1].split(";\n", 1)[0]
+    assert json.loads(data) == app.FIXTURES
