@@ -33,15 +33,15 @@ Configured synthesis and retrieval require separate dependencies and services. R
 
 ## Measured results
 
-Historical measurements below retain their original dates and methods. They are not fresh measurements of this working tree. The new cache receipt above demonstrates behavior, not a latency benchmark.
+Cache timings below come from the dated April 25 benchmark, not a run on every later commit. The October 1, 2026 offline audit at `dcf1da1` reproduced 600 collected tests (598 passed, 2 skipped) and 82.87% package coverage. The verified cache receipt demonstrates behavior, not a latency benchmark. Test and coverage figures for the combined branch are reported by CI.
 
 | Metric | Value | Method |
 |---|---|---|
 | Cache hit latency | P50 0.007ms, P95 0.008ms | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
 | Cache miss latency | P50 0.023 ms | same run |
 | Cache speedup | 3.1x vs. miss | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
-| Test suite | 600 collected (2026-09-06) | `uv run --all-extras pytest tests/ --collect-only -q` (reconfirmed 2026-09-06: 600 collected) |
-| Test coverage | 83% measured / 80% CI fail-under | Historical measured claim; CI `--cov-fail-under=80` in `.github/workflows/ci.yml` |
+| Test suite | 600 collected at audit base `dcf1da1` | `uv run --all-extras pytest tests/ --collect-only -q` (reconfirmed 2026-10-01 at `dcf1da1`: 600 collected) |
+| Test coverage | 82.87% at audit base / 80% CI fail-under | October 1, 2026 offline suite at `dcf1da1` (`--cov=mcp_toolkit`); CI `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
 | Python support | 3.10 through 3.14 | CI matrix in `.github/workflows/ci.yml` |
@@ -70,7 +70,7 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 |---|---|---|
 | OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](examples/observability/seed_traces.py)). [Screenshot preview](assets/jaeger-trace-demo.png) from real `TelemetryProvider` spans. Render blueprint committed but not yet deployed ([`render.yaml`](examples/observability/render.yaml)). |
 | Agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py) | Standalone seeded pipeline; optional configured services, not MCP tool calls |
-| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers and trace screenshots (numbers labeled seeded in the doc) |
+| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | Synthetic trace walkthrough with explicit limits; no production latency or hit-rate measurement |
 
 ## What you get vs. the raw MCP SDK
 
@@ -439,7 +439,7 @@ Built by [Cayman Roden](https://chunkytortoise.github.io). Two role lanes; each 
 | LLM-as-judge eval suite (10 tasks) | [`evals/quality/`](evals/quality/): deterministic CI + nightly Anthropic judge |
 | Adversarial safety corpus (30 cases) | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
 | Five-gates suite | [`tests/gates/`](tests/gates/): schema, security, semantic, scale, safety |
-| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md): agentic RAG with cost, latency, cache numbers |
+| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md): RAG example and synthetic trace evidence boundaries |
 
 ### Full-stack AI App Developer
 
