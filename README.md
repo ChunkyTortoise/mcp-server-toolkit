@@ -6,38 +6,47 @@ Building an MCP server means rewriting the same auth, caching, rate-limiting, an
 
 ![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
 
-![MCP Server Toolkit library architecture: tool logic at the center, surrounded by auth, per-caller rate limits, cache, cost attribution, and OpenTelemetry. Proof rail: 600 collected tests, 83% measured coverage, 9 example servers, reproducible cache benchmark.](docs/assets/architecture.svg)
+![Actual local MCP tool dispatch: two greetings, one handler execution, and cache miss then hit recorded in telemetry.](docs/assets/cache-receipt.png)
 
-Architecture labels (for small screens): Auth · Per-caller rate limits · Tool logic (center) · Cache · Cost attribution · OpenTelemetry. This is a library map, not a product dashboard or captured request trace.
+**Two calls, one execution.** The [runnable cache example](examples/verified_cache.py) dispatches through the MCP SDK and prints actual in-memory telemetry. [Captured JSON](docs/assets/cache-run.json) and [provenance](docs/VERIFIED_DEMO.md). No external exporter, hosted service or API key is used.
 
-## Live demo (agentic RAG)
+After the source install below, run `python examples/verified_cache.py`.
 
-| Proof | Link |
+<details>
+<summary>Library architecture</summary>
+
+![Library map: tool logic, auth, per-caller rate limits, cache, cost attribution and OpenTelemetry. Illustrative architecture, not a captured trace.](docs/assets/architecture.svg)
+
+</details>
+
+## Seeded RAG walkthrough
+
+This optional example uses deterministic demo vectors, fixed ranked sources and a template answer. The Python UI is a standalone pipeline example, not MCP tool dispatch. The HTML preview is an illustration; it does not run Python, retrieve documents or call a model.
+
+| Open | What to expect |
 |---|---|
-| Walkthrough GIF | [`assets/agentic-rag-demo.gif`](assets/agentic-rag-demo.gif) |
-| Interactive static preview | [`assets/agentic-rag-demo-preview.html`](assets/agentic-rag-demo-preview.html) |
-| Streamlit app (local) | `streamlit run examples/agentic_rag/app.py` |
+| [Walkthrough GIF](assets/agentic-rag-demo.gif) | Earlier fixture demonstration, optional motion |
+| [Static HTML preview](assets/agentic-rag-demo-preview.html) | Download and open locally, or serve with `python -m http.server` |
+| `streamlit run examples/agentic_rag/app.py` | Optional Streamlit dependency required; seeded mode needs no keys |
 
-![Agentic RAG demo walkthrough: demo mode query, seeded retrieval, cited answer](assets/agentic-rag-demo.gif)
-
-Dual mode: **demo** (default) runs on seeded chunks + template synthesis; **live** turns on when the host sets `ANTHROPIC_API_KEY` (visitors never paste keys).
+Configured synthesis and retrieval require separate dependencies and services. Retrieval still uses deterministic demo vectors, so it is not a verified semantic-search integration. Provider failures are shown explicitly instead of silently becoming fixture success.
 
 ## Measured results
 
-Every number below is from a reproducible local run on this commit. No hosted dependency, no API keys.
+Historical measurements below retain their original dates and methods. They are not fresh measurements of this working tree. The new cache receipt above demonstrates behavior, not a latency benchmark.
 
 | Metric | Value | Method |
 |---|---|---|
 | Cache hit latency | P50 0.007ms, P95 0.008ms | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
 | Cache miss latency | P50 0.023 ms | same run |
 | Cache speedup | 3.1x vs. miss | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
-| Test suite | 600 tests (598 passing, 2 skipped) | `uv run --all-extras pytest tests/ --collect-only -q` (reconfirmed 2026-09-06: 600 collected) |
-| Test coverage | 83% measured / 80% CI fail-under | README measured claim; CI `--cov-fail-under=80` in `.github/workflows/ci.yml` |
+| Test suite | 600 collected (2026-09-06) | `uv run --all-extras pytest tests/ --collect-only -q` (reconfirmed 2026-09-06: 600 collected) |
+| Test coverage | 83% measured / 80% CI fail-under | Historical measured claim; CI `--cov-fail-under=80` in `.github/workflows/ci.yml` |
 | Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
 | Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
 | Python support | 3.10 through 3.14 | CI matrix in `.github/workflows/ci.yml` |
 
-**Observability preview (secondary; no deploy required):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view. The architecture map above is the first-screen evidence; this HTML preview is a secondary local artifact, not a hosted dashboard.
+**Observability preview (secondary; no deploy required):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view. The actual cache receipt above is the first-screen evidence; this HTML preview is a secondary local artifact, not a hosted dashboard.
 
 ## Quickstart
 
@@ -47,23 +56,11 @@ cd mcp-server-toolkit
 pip install -e ".[dev]"
 ```
 
-```python
-from mcp_toolkit import EnhancedMCP
-
-mcp = EnhancedMCP("my-server")
-
-@mcp.tool()
-async def greet(name: str) -> str:
-    return f"Hello, {name}!"
-
-@mcp.cached_tool(ttl=300)
-async def expensive_query(query: str) -> str:
-    return await run_query(query)          # cached 5 min per arg-set
-
-@mcp.rate_limited_tool(max_calls=10, window_seconds=60)
-async def limited_action(action: str) -> str:
-    return await perform_action(action)
+```bash
+python examples/verified_cache.py
 ```
+
+Expected: two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true`. This runs through the MCP SDK in-process. See the [complete example](examples/verified_cache.py) for tool registration and dispatch.
 
 Run it as any MCP server, or wire it into Claude Desktop with `bash examples/claude_desktop_app/setup.sh`.
 
@@ -72,7 +69,7 @@ Run it as any MCP server, or wire it into Claude Desktop with `bash examples/cla
 | What | How | What you see |
 |---|---|---|
 | OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](examples/observability/seed_traces.py)). [Screenshot preview](assets/jaeger-trace-demo.png) from real `TelemetryProvider` spans. Render blueprint committed but not yet deployed ([`render.yaml`](examples/observability/render.yaml)). |
-| Agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py) | Embed, pgvector retrieve, Claude synthesize in 4 tool calls |
+| Agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py) | Standalone seeded pipeline; optional configured services, not MCP tool calls |
 | Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers and trace screenshots (numbers labeled seeded in the doc) |
 
 ## What you get vs. the raw MCP SDK

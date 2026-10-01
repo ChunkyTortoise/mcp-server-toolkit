@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agentic RAG demo preview — mcp-server-toolkit</title>
+  <title>Agentic RAG demo preview :  mcp-server-toolkit</title>
   <style>
-    :root { color-scheme: dark; --bg:#12161c; --panel:#1c222b; --text:#e6e6e6; --muted:#8a93a0; --accent:#78c8ff; --ok:#228b54; }
-    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--text); }
-    header { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; background:var(--panel); border-bottom:1px solid #2a3340; }
+    :root { color-scheme: dark; --bg:#12161c; --panel:#1c222b; --text:#e6e6e6; --muted:#abb4c2; --accent:#78c8ff; --ok:#17643b; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; line-height:1.45; background:var(--bg); color:var(--text); }
+    header { display:flex; gap:1rem; flex-wrap:wrap; justify-content:space-between; align-items:center; padding:1rem 1.25rem; background:var(--panel); border-bottom:1px solid #2a3340; }
     .badge { background:var(--ok); color:#fff; padding:.35rem .7rem; border-radius:999px; font-size:.8rem; font-weight:600; }
     main { max-width:720px; margin:1.5rem auto; padding:0 1rem; }
     h1 { font-size:1.35rem; margin:0 0 .35rem; }
@@ -19,29 +19,33 @@
     .src { margin:.5rem 0; padding:.75rem; background:#0e1218; border-radius:8px; }
     .src strong { color:var(--accent); }
     footer { margin-top:2rem; color:var(--muted); font-size:.85rem; }
-    code { background:#0e1218; padding:.1rem .35rem; border-radius:4px; }
+    :focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+    input, button { font:inherit; }
+    code { overflow-wrap:anywhere; background:#0e1218; padding:.1rem .35rem; border-radius:4px; }
   </style>
 </head>
 <body>
   <header>
-    <div>Agentic RAG — mcp-server-toolkit</div>
-    <span class="badge">DEMO MODE</span>
+    <div>Agentic RAG :  mcp-server-toolkit</div>
+    <span class="badge">FIXTURE PREVIEW</span>
   </header>
   <main>
-    <h1>Static preview (no API keys)</h1>
-    <p class="sub">Mirrors the Streamlit demo path: EnhancedMCP-registered embed → retrieve → synthesize over seeded chunks. Open the hosted Streamlit URL when deployed; until then this page + the GIF are the &lt;60s proof.</p>
-    <label for="q">Ask a question</label>
+    <h1>Seeded RAG walkthrough</h1>
+    <p class="sub">Fixed sources and a template answer. This illustration does not run MCP tools, retrieval or a model. Run the Python cache example for actual tool execution.</p>
+    <form id="query-form">
+    <label for="q">Example question (does not change the sources)</label>
     <input id="q" value="What is agentic RAG?" />
-    <button id="go" type="button">Search</button>
-    <div class="card" id="out" hidden>
+    <button id="go" type="submit">Show fixture answer</button>
+    </form>
+    <div class="card" id="out" role="region" aria-label="Fixture result" tabindex="-1" hidden>
       <h2 style="margin-top:0;font-size:1.05rem;color:var(--accent)">Answer</h2>
       <p id="answer"></p>
-      <h3 style="font-size:.95rem;color:var(--muted)">Retrieved sources</h3>
+      <h3 style="font-size:.95rem;color:var(--muted)">Fixed example sources</h3>
       <div id="sources"></div>
     </div>
     <footer>
-      Run live locally: <code>streamlit run examples/agentic_rag/app.py</code><br />
-      Deploy blueprint: <code>examples/agentic_rag/render.yaml</code>
+      Run the Python walkthrough locally: <code>streamlit run examples/agentic_rag/app.py</code><br />
+      Actual MCP dispatch: <code>python examples/verified_cache.py</code>
     </footer>
   </main>
   <script>
@@ -51,14 +55,16 @@
       { source: "Agentic patterns (2024)", score: 0.88, text: "Agentic RAG adds tool-use loops: the agent decides what to retrieve, when to stop, and how to combine sources." },
       { source: "RAGAS paper", score: 0.78, text: "Faithfulness measures whether the answer is entailed by retrieved context." }
     ];
-    document.getElementById("go").onclick = () => {
+    document.getElementById("query-form").onsubmit = (event) => {
+      event.preventDefault();
       const q = document.getElementById("q").value.trim() || "What is agentic RAG?";
-      const answer = `Based on the retrieved sources [1] [2] [3] [4]: Agentic RAG adds tool-use loops so the agent decides what to retrieve and how to combine sources — rather than a single pass. (Demo mode — fixtures, no API keys.) Query: ${q}`;
+      const answer = `Illustrative answer using fixed example sources [1] [2] [3] [4]: Agentic RAG adds tool-use loops so the agent decides what to retrieve and how to combine sources, rather than a single pass. (Demo mode: fixtures, no API keys.) Query: ${q}`;
       document.getElementById("answer").textContent = answer;
       document.getElementById("sources").innerHTML = chunks.map((c, i) =>
-        `<div class="src"><strong>[${i+1}] ${c.source}</strong> — score=${c.score.toFixed(3)}<br/>${c.text}</div>`
+        `<div class="src"><strong>[${i+1}] ${c.source}</strong> :  fixture score=${c.score.toFixed(3)}<br/>${c.text}</div>`
       ).join("");
       document.getElementById("out").hidden = false;
+      document.getElementById("out").focus();
     };
   </script>
 </body>
