@@ -20,7 +20,9 @@
     .src strong { color:var(--accent); }
     footer { margin-top:2rem; color:var(--muted); font-size:.85rem; }
     :focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
-    input, button { font:inherit; }
+    input, button, select { font:inherit; }
+    a { color:var(--accent); }
+    select { min-height:44px; }
     code { overflow-wrap:anywhere; background:#0e1218; padding:.1rem .35rem; border-radius:4px; }
   </style>
 </head>
@@ -35,6 +37,8 @@
     <form id="query-form">
     <label for="q">Example question (does not change the sources)</label>
     <input id="q" value="What is agentic RAG?" />
+    <label for="count">Sources (five fixtures available)</label>
+    <select id="count"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select>
     <button id="go" type="submit">Show fixture answer</button>
     </form>
     <div class="card" id="out" role="region" aria-label="Fixture result" tabindex="-1" hidden>
@@ -49,20 +53,20 @@
     </footer>
   </main>
   <script>
-    const chunks = [
-      { source: "RAG paper (Lewis et al., 2020)", score: 0.95, text: "Retrieval-Augmented Generation (RAG) combines a retrieval step with a generative model to produce grounded, cited answers." },
-      { source: "Embedding guide", score: 0.90, text: "The retrieval step typically uses dense embeddings stored in a vector database such as pgvector." },
-      { source: "Agentic patterns (2024)", score: 0.88, text: "Agentic RAG adds tool-use loops: the agent decides what to retrieve, when to stop, and how to combine sources." },
-      { source: "RAGAS paper", score: 0.78, text: "Faithfulness measures whether the answer is entailed by retrieved context." }
-    ];
+    // Generated from examples/agentic_rag/fixtures.json by build_preview.py.
+    const chunks = [{"id": "c1", "text": "Retrieval-Augmented Generation (RAG) combines a retrieval step with a generative model to produce grounded, cited answers.", "source": "RAG paper (Lewis et al., 2020)", "score": 0.95, "url": "https://arxiv.org/abs/2005.11401"}, {"id": "c2", "text": "The retrieval step typically uses dense embeddings (e.g., text-embedding-004) stored in a vector database such as pgvector or Pinecone.", "source": "Embedding guide", "score": 0.9, "url": "https://huggingface.co/blog/getting-started-with-embeddings"}, {"id": "c3", "text": "Agentic RAG adds tool-use loops: the agent decides what to retrieve, when to stop, and how to combine sources, rather than doing a single retrieval pass.", "source": "Agentic patterns (2024)", "score": 0.88, "url": "https://www.anthropic.com/engineering/building-effective-agents"}, {"id": "c4", "text": "pgvector is a PostgreSQL extension that stores and queries dense vectors with HNSW or IVFFlat indexes.", "source": "pgvector docs", "score": 0.82, "url": "https://github.com/pgvector/pgvector"}, {"id": "c5", "text": "Faithfulness is measured by whether the answer is entailed by the retrieved context; recall measures whether relevant chunks were retrieved at all.", "source": "RAGAS paper", "score": 0.78, "url": "https://arxiv.org/abs/2309.15217"}];
     document.getElementById("query-form").onsubmit = (event) => {
       event.preventDefault();
       const q = document.getElementById("q").value.trim() || "What is agentic RAG?";
-      const answer = `Illustrative answer using fixed example sources [1] [2] [3] [4]: Agentic RAG adds tool-use loops so the agent decides what to retrieve and how to combine sources, rather than a single pass. (Demo mode: fixtures, no API keys.) Query: ${q}`;
-      document.getElementById("answer").textContent = answer;
-      document.getElementById("sources").innerHTML = chunks.map((c, i) =>
-        `<div class="src"><strong>[${i+1}] ${c.source}</strong> :  fixture score=${c.score.toFixed(3)}<br/>${c.text}</div>`
-      ).join("");
+      const selected = chunks.slice(0, Number(document.getElementById("count").value));
+      document.getElementById("answer").textContent = "Fixture answer, independent of the question; no model call. " + selected.map((c, i) => `${c.text} [${i+1}]`).join(" ") + ` Example question: ${q}`;
+      document.getElementById("sources").replaceChildren(...selected.map((c, i) => {
+        const card = document.createElement("div"); card.className = "src";
+        const link = document.createElement("a"); link.href = c.url;
+        link.textContent = `[${i+1}] ${c.source}`;
+        card.append(link, document.createElement("br"), `${c.text} Fixture score=${c.score.toFixed(3)}`);
+        return card;
+      }));
       document.getElementById("out").hidden = false;
       document.getElementById("out").focus();
     };

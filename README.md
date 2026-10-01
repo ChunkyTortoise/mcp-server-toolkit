@@ -26,8 +26,16 @@ This optional example uses deterministic demo vectors, fixed ranked sources and 
 | Open | What to expect |
 |---|---|
 | [Walkthrough GIF](assets/agentic-rag-demo.gif) | Earlier fixture demonstration, optional motion |
-| [Static HTML preview](assets/agentic-rag-demo-preview.html) | Download and open locally, or serve with `python -m http.server` |
-| `streamlit run examples/agentic_rag/app.py` | Optional Streamlit dependency required; seeded mode needs no keys |
+| [HTML source, download then open](assets/agentic-rag-demo-preview.html) | GitHub displays source; use Download raw file, then open the saved HTML in your browser |
+| `streamlit run examples/agentic_rag/app.py` | Optional Streamlit 1.64+ required for tracked expanders; seeded mode needs no keys |
+
+For a rendered preview from a local checkout, no package installation is needed:
+
+```bash
+python -m http.server 8613 --bind 127.0.0.1 --directory assets
+```
+
+Open http://127.0.0.1:8613/agentic-rag-demo-preview.html. The downloaded HTML also works offline with `file://`. Both illustrations use the five sources in `examples/agentic_rag/fixtures.json`; regenerate the embedded HTML data with `python examples/agentic_rag/build_preview.py` after editing them. Source summaries are complete, cited, and independent of the question.
 
 Configured synthesis and retrieval require separate dependencies and services. Retrieval still uses deterministic demo vectors, so it is not a verified semantic-search integration. Provider failures are shown explicitly instead of silently becoming fixture success.
 
