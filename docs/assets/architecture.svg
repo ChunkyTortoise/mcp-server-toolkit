@@ -20,7 +20,7 @@
     <rect class='proof' x='720' y='164' width='300' height='86' rx='14'/>
     <text class='metric' x='744' y='202'>TTL cache</text><text class='metricLabel' x='744' y='229'>in-memory or Redis</text>
     <rect class='proof' x='1044' y='164' width='324' height='86' rx='14'/>
-    <text class='metric' x='1068' y='202'>OpenTelemetry</text><text class='metricLabel' x='1068' y='229'>spans per tool call, OTLP export</text>
+    <text class='metric' x='1068' y='202'>OpenTelemetry</text><text class='metricLabel' x='1068' y='229'>spans on cached and rate-limited tools, OTLP export</text>
   </g>
 
   <rect class='panel' x='72' y='282' width='1296' height='546' rx='24'/>

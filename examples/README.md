@@ -259,7 +259,7 @@ result = await auth.authenticate("my-api-key")
 
 > Note: in the current code, spans are recorded automatically only by `cached_tool` and `rate_limited_tool`, the cache attribute is named `cache_hit`, and `cost_usd` appears only when you add it. See [Methodology & limits](../README.md#methodology--limits).
 
-Every tool call emits an OpenTelemetry span with `tool.name`, `tool.duration_ms`, `tool.cache_hit`, and `tool.cost_usd` attributes:
+Tools wrapped with `cached_tool` or `rate_limited_tool` record a span automatically. Other tools are instrumented only when you call `telemetry.span()` yourself. Set up the provider:
 
 ```python
 from mcp_toolkit.framework.telemetry import TelemetryProvider
@@ -301,7 +301,7 @@ print(tracker.summary())
 # {'total_cost_usd': 0.00042, 'total_calls': 3, 'by_model': {'openai/gpt-5.5': 0.00018, ...}}
 ```
 
-Cost is also emitted as a `tool.cost_usd` OTel span attribute when tracing is enabled.
+To see cost on a trace, set it as an attribute on the span yourself; `CostTracker` does not write it to spans automatically.
 
 ### Quality evals
 
