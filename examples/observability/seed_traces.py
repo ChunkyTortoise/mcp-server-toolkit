@@ -1,12 +1,11 @@
 """Seed sample MCP traces into Jaeger so the public demo dashboard stays warm.
 
-Runs as a Render cron every 15 minutes. Emits 5 representative workflows with
-real OTel attributes (cost_usd, cache_hit, tokens_in/out, latency_ms) so a
-hiring manager opening the Jaeger UI always sees live, realistic spans.
+Runs as a Render cron every 15 minutes. Emits 5 sample workflows with OTel
+attributes (cost_usd, cache_hit, tokens_in/out, latency_ms) so the Jaeger UI
+always has recent spans to browse.
 
-No API keys required — this is a pure tracing demo. Token counts and costs are
-synthesized from a deterministic distribution that matches typical MCP tool
-call patterns observed in production.
+No API keys required — this is a pure tracing demo. Token counts, latency and
+cache state are sampled from the ranges in WORKFLOWS; they are not measurements.
 
 Usage:
     # Local
@@ -84,7 +83,7 @@ async def fire_workflow(
 ) -> None:
     """Emit one parent span + child tool spans matching a real workflow."""
     rng = random.Random()
-    cache_hit = rng.random() < 0.42  # ~42% cache hit rate (matches production)
+    cache_hit = rng.random() < 0.42  # sampled probability, not an observed hit rate
     parent_attrs = {
         "workflow.name": spec["name"],
         "workflow.cache_hit": cache_hit,
