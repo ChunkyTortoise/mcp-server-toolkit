@@ -3,7 +3,7 @@
 # Deploy:
 #   1. Connect this repo at https://dashboard.render.com/blueprints/new
 #   2. Render reads this file and provisions both services
-#   3. Public Jaeger UI URL becomes mcp-toolkit-jaeger.onrender.com (free tier)
+#   3. Render assigns the Jaeger UI a URL (by default mcp-toolkit-jaeger.onrender.com)
 #   4. Cron job emits sample MCP traces every 15 min so the dashboard is never empty
 #
 # Internal wiring:

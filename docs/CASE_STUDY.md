@@ -17,9 +17,10 @@ service-failure behavior.
 3. Without `ANTHROPIC_API_KEY`, `synthesize` returns a template answer with
    source markers. These markers show formatting, not evaluated faithfulness.
 
-The source-count slider controls `top_k` (default four). The fixture has five
-chunks, so selecting six through eight still returns at most five seeded
-sources. Configured retrieval may return up to the requested count.
+The source-count slider controls `top_k` (default four). Without
+`PGVECTOR_URL` it runs from one to five, matching the five seeded chunks. With
+`PGVECTOR_URL` set it allows up to eight, and configured retrieval may return
+up to the requested count.
 The example has no agent decision loop, rerank step, MCP tool registration,
 cache decorator, auth wrapper, or telemetry wrapper.
 
@@ -45,10 +46,13 @@ cache-hit boolean with probability 0.42, and sleeps to illustrate stage timing.
 It does not execute retrieval, synthesis, SQL, SMTP, or an embedding API.
 The 0.42 probability is an input, not an observed cache-hit rate.
 
-A trace can therefore show workflow names, child spans, sampled tokens,
+A trace can therefore show workflow names, per-tool spans, sampled tokens,
 calculated cost, and simulated cache state. Cost uses the repository's
 [dated pricing table](../mcp_toolkit/pricing/2026.json); it is not a bill from
 a live API call. Latency is simulated, not a benchmark of service performance.
+The workflow span and the tool spans are separate traces, not a parent/child
+tree: `TelemetryProvider.span()` does not make the workflow span current, and
+`record_tool_call()` starts each tool span on its own.
 
 ```bash
 cd examples/observability
