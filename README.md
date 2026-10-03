@@ -1,62 +1,55 @@
-# MCP Server Toolkit
+# MCP Server Toolkit: auth, caching and telemetry for Python MCP tools
 
-Building an MCP server means rewriting the same auth, caching, rate-limiting, and telemetry boilerplate every time. This is a **library**, not a hosted product or dashboard: JWT/OAuth 2.1, TTL cache, per-caller rate limits, cost attribution, and OpenTelemetry OTLP spans wrap your tool logic so you write tools instead of infrastructure.
+[![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**Install from source** (recommended). GitHub `v0.3.0` is the supported artifact (600 collected tests, sqlglot read-only SQL AST checks, JWKS auth, OTel). PyPI `0.1.0` is a legacy preview. Use the editable install below.
+Every MCP server that touches real data needs the same guard code around each tool: verify the caller's token, check its scope, refuse writes to the database, cache repeat calls and trace what ran. This Python library puts that code in decorators on top of FastMCP, with JWT/JWKS auth, a sqlglot read-only SQL allowlist, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function. Each guard is opt-in per tool.
 
-![CI](https://github.com/ChunkyTortoise/mcp-server-toolkit/actions/workflows/ci.yml/badge.svg)
+```python
+import asyncio, jwt
+from mcp_toolkit import EnhancedMCP, JWTAuth, MCPTestClient
 
-![Actual local MCP tool dispatch: two greetings, one handler execution, and cache miss then hit recorded in telemetry.](docs/assets/cache-receipt.png)
+SECRET = "replace-with-a-32-byte-or-longer-secret"
+auth = JWTAuth(secret=SECRET)  # or JWTAuth(jwks_uri=..., audience=..., issuer=...) for RS256
+mcp = EnhancedMCP("orders")
 
-**Two calls, one execution.** The [runnable cache example](examples/verified_cache.py) dispatches through the MCP SDK and prints actual in-memory telemetry. [Captured JSON](docs/assets/cache-run.json) and [provenance](docs/VERIFIED_DEMO.md). No external exporter, hosted service or API key is used.
+@mcp.auth_tool(auth, required_scope="orders:read")
+async def get_order(order_id: str, token: str = "") -> str:
+    return f"order {order_id}: shipped"
 
-After the source install below, run `python examples/verified_cache.py`.
+async def main():
+    client = MCPTestClient(mcp)  # in-process MCP dispatch, no transport
+    token = jwt.encode({"sub": "agent-1", "scope": "orders:read"}, SECRET, algorithm="HS256")
+    print(await client.call_tool("get_order", {"order_id": "42", "token": token}))
+    print(await client.call_tool("get_order", {"order_id": "42", "token": "forged"}))
 
-<details>
-<summary>Library architecture</summary>
-
-![Library map: tool logic, auth, per-caller rate limits, cache, cost attribution and OpenTelemetry. Illustrative architecture, not a captured trace.](docs/assets/architecture.svg)
-
-</details>
-
-## Seeded RAG walkthrough
-
-This optional example uses deterministic demo vectors, fixed ranked sources and a template answer. The Python UI is a standalone pipeline example, not MCP tool dispatch. The HTML preview is an illustration; it does not run Python, retrieve documents or call a model.
-
-| Open | What to expect |
-|---|---|
-| [Walkthrough GIF](assets/agentic-rag-demo.gif) | Earlier fixture demonstration, optional motion |
-| [HTML source, download then open](assets/agentic-rag-demo-preview.html) | GitHub displays source; use Download raw file, then open the saved HTML in your browser |
-| `streamlit run examples/agentic_rag/app.py` | Optional Streamlit 1.64+ required for tracked expanders; seeded mode needs no keys |
-
-For a rendered preview from a local checkout, no package installation is needed:
-
-```bash
-python -m http.server 8613 --bind 127.0.0.1 --directory assets
+asyncio.run(main())
 ```
 
-Open http://127.0.0.1:8613/agentic-rag-demo-preview.html. The downloaded HTML also works offline with `file://`. Both illustrations use the five sources in `examples/agentic_rag/fixtures.json`; regenerate the embedded HTML data with `python examples/agentic_rag/build_preview.py` after editing them. Source summaries are complete, cited, and independent of the question.
+The first call prints `order 42: shipped`. The forged token prints `Error: Unauthorized — Malformed token` and the tool body never runs. Each auth decision is also written as a JSON audit-log line. To serve the same tool to Claude Desktop or any MCP client, call `mcp.run()` instead of using `MCPTestClient`.
 
-Configured synthesis and retrieval require separate dependencies and services. Retrieval still uses deterministic demo vectors, so it is not a verified semantic-search integration. Provider failures are shown explicitly instead of silently becoming fixture success.
+<p align="center">
+  <img src="docs/assets/architecture.svg" width="720" alt="Library map: your tool logic at the center, wrapped by auth, per-caller rate limits, cache, cost attribution and OpenTelemetry. Illustrative architecture, not a captured trace." />
+</p>
 
-## Measured results
+## Results
 
-Historical measurements below retain their original dates and methods. They are not fresh measurements of this working tree. The new cache receipt above demonstrates behavior, not a latency benchmark.
+| Kind | Result | Value | Source |
+|---|---|---|---|
+| Measured | In-memory cache latency on `cached_tool`, hit vs miss (in-process mock tool, run dated 2026-04-25) | **P50 0.007 ms** hit vs **0.023 ms** miss (**3.1x**) | [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) · reproduce with [`bench_cache.py`](benchmarks/bench_cache.py) |
+| CI gate | Test coverage floor: the CI test step fails below it | **80%** | [`ci.yml`](.github/workflows/ci.yml) (`--cov-fail-under=80`) |
+| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-03) | **627** | [`tests/`](tests/) |
+| Inventory | Adversarial corpus: prompt injection, token forgery, scope escalation, cache poisoning, data exfiltration | **30 cases** | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
+| Inventory | Pre-built MCP servers | **9** | [`mcp_toolkit/servers/`](mcp_toolkit/servers/) · `[project.scripts]` in [`pyproject.toml`](pyproject.toml) |
 
-| Metric | Value | Method |
-|---|---|---|
-| Cache hit latency | P50 0.007ms, P95 0.008ms | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
-| Cache miss latency | P50 0.023 ms | same run |
-| Cache speedup | 3.1x vs. miss | `benchmarks/RESULTS.md` (2026-04-25); reproduce `python benchmarks/bench_cache.py` |
-| Test suite | 600 collected (2026-09-06) | `uv run --all-extras pytest tests/ --collect-only -q` (reconfirmed 2026-09-06: 600 collected) |
-| Test coverage | 83% measured / 80% CI fail-under | Historical measured claim; CI `--cov-fail-under=80` in `.github/workflows/ci.yml` |
-| Pre-built servers | 9 | `mcp_toolkit/servers/*/server.py` |
-| Adversarial corpus | 30 cases | `tests/adversarial/injection_corpus.jsonl` |
-| Python support | 3.10 through 3.14 | CI matrix in `.github/workflows/ci.yml` |
-
-**Observability preview (secondary; no deploy required):** open [`assets/jaeger-trace-preview.html`](assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view. The actual cache receipt above is the first-screen evidence; this HTML preview is a secondary local artifact, not a hosted dashboard.
+This table is the one place each number is stated. The scope of each one is in [Methodology & limits](#methodology--limits).
 
 ## Quickstart
+
+> Install from source. The PyPI package is an early 0.1.0 preview and doesn't include this code.
+
+**1. Install from source.**
 
 ```bash
 git clone https://github.com/ChunkyTortoise/mcp-server-toolkit.git
@@ -64,430 +57,150 @@ cd mcp-server-toolkit
 pip install -e ".[dev]"
 ```
 
-```bash
-python examples/verified_cache.py
-```
-
-Expected: two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true`. This runs through the MCP SDK in-process. See the [complete example](examples/verified_cache.py) for tool registration and dispatch.
-
-Run it as any MCP server, or wire it into Claude Desktop with `bash examples/claude_desktop_app/setup.sh`.
-
-## Demo (local, no hosted dependency)
-
-| What | How | What you see |
-|---|---|---|
-| OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](examples/observability/seed_traces.py)). [Screenshot preview](assets/jaeger-trace-demo.png) from real `TelemetryProvider` spans. Render blueprint committed but not yet deployed ([`render.yaml`](examples/observability/render.yaml)). |
-| Agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py) | Standalone seeded pipeline; optional configured services, not MCP tool calls |
-| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers and trace screenshots (numbers labeled seeded in the doc) |
-
-## What you get vs. the raw MCP SDK
-
-| Capability | Raw MCP SDK | mcp-server-toolkit |
-|---|---|---|
-| Tool registration | Manual decorator wiring | Automatic via `EnhancedMCP` |
-| Response caching | Not included | TTL cache, in-memory or Redis |
-| Rate limiting | Not included | Per-caller windows |
-| Auth | Not included | API key + JWT (HS256 / RS256 / JWKS), scope RBAC |
-| Telemetry | Not included | OpenTelemetry spans, OTLP export |
-| Cost attribution | Not included | Per-call `cost_usd` from a dated pricing table |
-| Test client | Manual mocking | `MCPTestClient` |
-| Pre-built servers | Build your own | 9 ready servers |
-| Agent-to-Agent | Not included | `A2AAdapter`, SSE + webhooks |
-
-## Installation
-
-Source install (matches this repo version):
+<details>
+<summary>Install only the extras you need</summary>
 
 ```bash
-git clone https://github.com/ChunkyTortoise/mcp-server-toolkit.git
-cd mcp-server-toolkit
 pip install -e "."                 # core framework
-pip install -e ".[database]"       # + PostgreSQL/pgvector (sqlglot, asyncpg)
+pip install -e ".[database]"       # + PostgreSQL/pgvector (sqlglot, sqlalchemy, asyncpg)
 pip install -e ".[web]"            # + web scraping (beautifulsoup4, lxml)
-pip install -e ".[files]"          # + file processing (PyPDF2, openpyxl)
+pip install -e ".[files]"          # + file processing (pypdf, openpyxl, python-magic)
 pip install -e ".[redis]"          # + Redis-backed caching
 pip install -e ".[auth]"           # + JWT/OAuth 2.1 (PyJWT[cryptography])
 pip install -e ".[telemetry]"      # + OpenTelemetry + OTLP exporter
 pip install -e ".[gmail]"          # + Gmail client
 pip install -e ".[gcal]"           # + Google Calendar client
-pip install -e ".[all]"            # everything
-pip install -e ".[dev]"            # tests + lint tooling
+pip install -e ".[all]"            # database, web, files, redis, auth, telemetry
+pip install -e ".[dev]"            # all of the above + tests and lint tooling
 ```
 
-PyPI package `mcp-server-toolkit==0.1.0` is stale relative to this tree (`0.3.0`). Do not treat `pip install mcp-server-toolkit` as the supported path until an owner-gated publish play ships a matching release.
-
-## Pre-built servers
-
-Nine servers, import and run, no boilerplate.
-
-| Server | Description | Install extra |
-|--------|-------------|---------------|
-| `database_query` | Natural language to SQL with sqlglot validation and schema introspection | `[database]` |
-| `web_scraping` | Agent-driven web scraping with structured data extraction | `[web]` |
-| `file_processing` | PDF/CSV/Excel/TXT parsing with RAG-optimized chunking | `[files]` |
-| `analytics` | Metrics recording, aggregation, anomaly detection (z-score), chart generation | core |
-| `email` | Email composition with template engine | core |
-| `calendar` | Availability checking and scheduling | core |
-| `crm_ghl` | GoHighLevel CRM: contact CRUD, pipeline summaries, opportunity tracking with field mapping | core |
-| `gemini_embedding` | Gemini Embedding 2: text embedding, semantic search, vector indexing, cosine similarity | core |
-| `multi_llm` | Multi-provider LLM router: Gemini/OpenAI/xAI with cost routing, circuit breakers, parallel second opinions | core |
-
-<details>
-<summary><strong>database_query</strong>: Natural language to SQL with sqlglot validation and schema introspection</summary>
-
-```python
-from mcp_toolkit.servers.database_query.server import mcp, configure
-
-# Connect to your database
-configure(db_connection=my_async_db, dialect="postgres")
-
-# Tools available to agents:
-# - query_database("How many users signed up last week?")
-# - explain_query("Show me top customers by revenue")
-# - list_tables()
-```
+The example at the top of this page needs only `".[auth]"`.
 
 </details>
 
-<details>
-<summary><strong>analytics</strong>: Metrics recording, aggregation, anomaly detection, chart generation</summary>
-
-```python
-from mcp_toolkit.servers.analytics.server import mcp, configure, MetricsStore
-
-store = MetricsStore()
-store.record("response_time", 145.2, timestamp="2024-01-15T10:00:00Z")
-configure(store=store)
-
-# Tools available:
-# - query_metrics(metric="response_time", aggregation="avg")
-# - detect_anomalies(metric="error_rate", z_threshold=2.0)
-# - generate_chart(metric="response_time", chart_type="line")
-```
-
-</details>
-
-<details>
-<summary><strong>web_scraping</strong>: Agent-driven web scraping with structured data extraction</summary>
-
-```python
-from mcp_toolkit.servers.web_scraping.server import mcp
-
-# Tools available:
-# - scrape_page(url="https://example.com", extract="product prices")
-# - extract_structured(url="...", schema={"name": "str", "price": "float"})
-```
-
-</details>
-
-<details>
-<summary><strong>crm_ghl</strong>: GoHighLevel CRM contact management, pipeline tracking, and opportunity creation</summary>
-
-Contact management, pipeline tracking, and opportunity creation for GoHighLevel CRM. Includes a `GHLFieldMapper` for resolving natural language field names to GHL custom field IDs. Falls back to a `MockGHLClient` when no real client is configured, so agents can demo the tools without API credentials.
-
-```python
-from mcp_toolkit.servers.crm_ghl.server import mcp, configure
-
-# Use the mock client for demos (default), or provide your own GHL API client
-# configure(client=my_ghl_client)
-
-# Tools available to agents:
-# - search_contacts("John", limit=10)
-# - create_contact(first_name="John", last_name="Doe", email="john@example.com")
-# - get_pipeline_summary(pipeline_id="")
-# - create_opportunity(contact_id="c1", name="Website Redesign", value=5000)
-```
-
-</details>
-
-<details>
-<summary><strong>gemini_embedding</strong>: Semantic search and vector indexing powered by Gemini Embedding 2</summary>
-
-Semantic search and vector indexing powered by Gemini Embedding 2. Embeds text, indexes documents into an in-memory vector store, and performs cosine-similarity search. Uses a deterministic `MockEmbeddingClient` by default so agents can test without a Gemini API key.
-
-```python
-from mcp_toolkit.servers.gemini_embedding.server import mcp, configure
-
-# Set GEMINI_API_KEY env var for real embeddings, or use the mock client (default)
-# Tools available:
-# - embed_text("hello world", task_type="SEMANTIC_SIMILARITY")
-# - index_text(text="document content", item_id="doc1", metadata='{"source": "readme"}')
-# - search(query="async patterns", top_k=5)
-# - similarity(text_a="Python", text_b="JavaScript")
-# - list_indexed()
-# - clear_index()
-```
-
-</details>
-
-<details>
-<summary><strong>multi_llm</strong>: Multi-provider LLM router with cost routing, circuit breakers, and parallel second opinions</summary>
-
-Route prompts across Gemini, OpenAI, and xAI/Grok based on cost or quality. Includes per-provider circuit breakers, parallel second-opinion queries, and automatic fallback.
-
-```python
-from mcp_toolkit.servers.multi_llm.server import mcp, configure
-from mcp_toolkit.servers.multi_llm.providers import GeminiProvider, OpenAICompatibleProvider
-from mcp_toolkit.servers.multi_llm.models import ProviderName
-
-configure(providers={
-    ProviderName.GEMINI: GeminiProvider(api_key="...", default_model="gemini-2.5-pro"),
-    ProviderName.OPENAI: OpenAICompatibleProvider(
-        api_key="...", base_url="https://api.openai.com/v1",
-        provider=ProviderName.OPENAI, default_model="gpt-5.5",
-    ),
-})
-
-# Tools available to agents:
-# - query_model(provider="gemini", model="gemini-2.5-pro", prompt="...")
-# - query_cheap(prompt="...")          # routes to cheapest available model
-# - query_best(prompt="...")           # routes to highest-quality available model
-# - get_second_opinion(prompt="...")   # queries all providers in parallel
-# - list_providers()                   # shows status and circuit breaker state
-```
-
-Set `GEMINI_API_KEY`, `OPENAI_API_KEY`, and/or `XAI_API_KEY` to enable each provider. Providers without a key are skipped; `query_cheap` and `query_best` fall through to the next available option automatically.
-
-</details>
-
-<details>
-<summary><strong>email</strong>: Email composition with template engine</summary>
-
-```python
-from mcp_toolkit.servers.email.server import mcp
-
-# Tools available to agents for email composition and templating
-```
-
-</details>
-
-<details>
-<summary><strong>calendar</strong>: Availability checking and scheduling</summary>
-
-```python
-from mcp_toolkit.servers.calendar.server import mcp
-
-# Tools available to agents for availability checking and scheduling
-```
-
-</details>
-
-<details>
-<summary><strong>file_processing</strong>: PDF/CSV/Excel/TXT parsing with RAG-optimized chunking</summary>
-
-```python
-from mcp_toolkit.servers.file_processing.server import mcp
-
-# Tools available:
-# - parse_file(path="report.pdf")
-# - chunk_for_rag(text="...", chunk_size=512)
-```
-
-</details>
-
-## Framework features
-
-### Caching
-
-Built-in L1 (in-memory) cache with optional Redis backend:
-
-```python
-from mcp_toolkit.framework.caching import CacheLayer, RedisCache
-
-cache = CacheLayer(backend=RedisCache(url="redis://localhost:6379"))
-```
-
-Redis fallback is opt-in, not silent: `fallback_to_memory=False` is the default and a typed `_REDIS_TRANSIENT` exception signals a recoverable failure.
-
-### Rate limiting
-
-Per-caller rate limiting with configurable windows:
-
-```python
-@mcp.rate_limited_tool(max_calls=100, window_seconds=60)
-async def my_tool(query: str) -> str:
-    ...
-```
-
-### Authentication
-
-API key authentication with SHA-256 hashed key storage:
-
-```python
-from mcp_toolkit.framework.auth import APIKeyAuth
-
-auth = APIKeyAuth()
-auth.register_key("my-api-key", client_id="my-client", scopes=["read", "write"])
-result = await auth.authenticate("my-api-key")
-# AuthResult(authenticated=True, client_id="my-client", scopes=["read", "write"])
-```
-
-`JWTAuth` supports HS256 (symmetric) and RS256 via a JWKS endpoint. Add `requires_scope(auth, "db:read")` to any tool for scope-based RBAC. See [ADR-0006](docs/adr/ADR-0006-oauth-2.1-resource-server.md).
-
-### Telemetry
-
-Every tool call emits an OpenTelemetry span with `tool.name`, `tool.duration_ms`, `tool.cache_hit`, and `tool.cost_usd` attributes:
-
-```python
-from mcp_toolkit.framework.telemetry import TelemetryProvider
-
-telemetry = TelemetryProvider("my-server")
-telemetry.initialize()                 # in-memory only (good for tests)
-
-import os
-os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4318"
-telemetry.initialize(use_otel=True)    # real OTel spans via OTLP (Jaeger, Grafana Cloud)
-```
-
-See [`examples/observability/`](examples/observability/) for a Docker Compose Jaeger setup.
-
-### Testing
-
-Test client for unit testing your MCP servers:
-
-```python
-from mcp_toolkit import MCPTestClient
-
-client = MCPTestClient(mcp)
-result = await client.call_tool("greet", {"name": "World"})
-assert result == "Hello, World!"
-```
-
-### Cost attribution
-
-Track per-call USD cost across LLM providers using the dated, versioned pricing table in `mcp_toolkit/pricing/2026.json`:
-
-```python
-from mcp_toolkit import CostTracker
-
-tracker = CostTracker()
-cost = tracker.record_from_anthropic_usage(message.usage, model="claude-sonnet-4-6", tool_name="query_db")
-cost = tracker.record_from_response_dict(response, provider="google", model="gemini-2.5-pro")
-
-print(tracker.summary())
-# {'total_cost_usd': 0.00042, 'total_calls': 3, 'by_model': {'openai/gpt-5.5': 0.00018, ...}}
-```
-
-Cost is also emitted as a `tool.cost_usd` OTel span attribute when tracing is enabled.
-
-### Quality evals
-
-10-task deterministic eval suite covering routing logic, auth correctness, cost accuracy, and cache semantics. Runs in CI without API keys:
+**2. Run the cache demo (no API key, no network).**
 
 ```bash
-python evals/quality/runner.py           # deterministic (no API key)
-python evals/quality/runner.py --judge   # + LLM-as-judge scoring (needs ANTHROPIC_API_KEY)
+python examples/verified_cache.py
 ```
 
-A nightly GitHub Actions workflow re-runs the suite with LLM-as-judge scoring and uploads `evals/RESULTS.md` as an artifact.
+Expected: two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true` in the recorded telemetry. The tool is dispatched through the MCP SDK in-process. The receipt below is a layout of one captured run ([captured JSON](docs/assets/cache-run.json), [provenance](docs/VERIFIED_DEMO.md)).
 
-### Adversarial safety corpus
+<p align="center">
+  <img src="docs/assets/cache-receipt.png" width="720" alt="Actual local MCP tool dispatch: two greetings, one handler execution, and cache miss then hit recorded in telemetry." />
+</p>
 
-30-case injection corpus at `tests/adversarial/injection_corpus.jsonl` covering prompt injection, token forgery (`alg:none`, wrong secret, expired), scope escalation, cache poisoning, and data exfiltration. Each case documents whether the toolkit layer blocks the threat and the defence mechanism.
-
-## A2A protocol support
-
-Every MCP server in this toolkit can be exposed as a [Google Agent-to-Agent (A2A)](https://a2a-protocol.org/) compatible agent. The `A2AAdapter` bridges MCP tool invocations to the A2A task protocol. SSE streaming and webhook push notifications are both implemented; the agent card advertises `streaming: true` and `pushNotifications: true` when a webhook endpoint is registered.
-
-```python
-from mcp_toolkit import EnhancedMCP
-from mcp_toolkit.framework.a2a_adapter import A2AAdapter
-
-mcp = EnhancedMCP("my-server")
-
-@mcp.tool()
-async def answer(question: str) -> str:
-    return f"Answer to: {question}"
-
-adapter = A2AAdapter(mcp, base_url="https://my-server.example.com")
-
-# Agent card auto-derived from live MCP tool schemas
-agent_card = await adapter.get_agent_card()
-
-# Synchronous task: returns final status; posts webhook callbacks on each state change
-status = await adapter.handle_task(
-    "task-123", "answer", {"question": "What is 2+2?"},
-    webhook_url="https://caller.example.com/webhook",   # optional
-)
-
-# Streaming task: yields SSE events (submitted, working, completed)
-async for sse_chunk in adapter.stream_task("task-456", "answer", {"question": "..."}):
-    print(sse_chunk, end="")
-```
-
-State transitions emitted: `submitted` to `working` to `completed` or `failed`. Push notifications POST JSON to the caller's webhook on every transition; delivery failures are logged and do not affect the task result. See [`examples/a2a_bridge/`](examples/a2a_bridge/) for a Starlette server + client demo, and [ADR-0007](docs/adr/ADR-0007-mcp-a2a-boundary.md) for the MCP/A2A boundary design.
-
-## Examples
-
-See [`examples/`](examples/) for working implementations:
-
-- [`basic_server.py`](examples/basic_server.py): minimal server with 2 tools
-- [`cached_tools.py`](examples/cached_tools.py): caching with `@mcp.cached_tool()`
-- [`database_query_usage.py`](examples/database_query_usage.py): pre-built SQL database server
-- [`crm_ghl_usage.py`](examples/crm_ghl_usage.py): GoHighLevel CRM contact and pipeline management
-- [`gemini_embedding_usage.py`](examples/gemini_embedding_usage.py): embedding, vector indexing, semantic search
-- [`a2a_bridge/`](examples/a2a_bridge/): A2A bridge, Starlette server + client, SSE streaming, webhooks
-- [`agentic_rag/`](examples/agentic_rag/): Streamlit RAG app, query embedding to pgvector to cited synthesis
-- [`claude_desktop_app/`](examples/claude_desktop_app/): one-command Claude Desktop setup wiring 3 servers
-- [`multi_agent_research/`](examples/multi_agent_research/): orchestrator, parallel web search + multi-LLM synthesis + A2A output
-- [`observability/`](examples/observability/): Jaeger docker-compose + OTel span demo
-
-## Hiring evidence
-
-Built by [Cayman Roden](https://chunkytortoise.github.io). Two role lanes; each row links to the code that backs the claim.
-
-### AI Engineer / LLM Platform
-
-| Signal | Where to look |
-|--------|--------------|
-| OAuth 2.1 + JWT (HS256/RS256/JWKS) | [`mcp_toolkit/framework/auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`, `requires_scope` |
-| OpenTelemetry span on every tool call | [`mcp_toolkit/framework/telemetry.py`](mcp_toolkit/framework/telemetry.py): `TelemetryProvider`, OTLP exporter |
-| LLM cost attribution | [`mcp_toolkit/framework/costing.py`](mcp_toolkit/framework/costing.py): `CostTracker`, per-model pricing |
-| A2A streaming + push notifications | [`mcp_toolkit/framework/a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py): `stream_task()`, `handle_task(webhook_url=...)` |
-| LLM-as-judge eval suite (10 tasks) | [`evals/quality/`](evals/quality/): deterministic CI + nightly Anthropic judge |
-| Adversarial safety corpus (30 cases) | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
-| Five-gates suite | [`tests/gates/`](tests/gates/): schema, security, semantic, scale, safety |
-| Worked case study | [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md): agentic RAG with cost, latency, cache numbers |
-
-### Full-stack AI App Developer
-
-| Signal | Where to look |
-|--------|--------------|
-| Streamlit agentic RAG app | [`examples/agentic_rag/app.py`](examples/agentic_rag/app.py): embed to pgvector to cited synthesis |
-| Claude Desktop one-command setup | [`examples/claude_desktop_app/setup.sh`](examples/claude_desktop_app/setup.sh) |
-| A2A bridge with SSE streaming | [`examples/a2a_bridge/`](examples/a2a_bridge/): Starlette server + client |
-| PostgreSQL + pgvector client | [`mcp_toolkit/servers/database_query/postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py) |
-| SMTP + Gmail clients | [`mcp_toolkit/servers/email/smtp_client.py`](mcp_toolkit/servers/email/smtp_client.py), [`gmail_client.py`](mcp_toolkit/servers/email/gmail_client.py) |
-| Google Calendar provider | [`mcp_toolkit/servers/calendar/google_calendar.py`](mcp_toolkit/servers/calendar/google_calendar.py) |
-
-### Every claim is backed by a file, a test, or a CI check
-
-| Claim | Proof |
-|-------|-------|
-| Real OTel spans, not in-memory stubs | [`telemetry.py`](mcp_toolkit/framework/telemetry.py): `_init_otel_tracer()` wires `BatchSpanProcessor` + OTLP/console exporter |
-| JWT/OAuth 2.1 (HS256 + RS256/JWKS) | [`auth.py`](mcp_toolkit/framework/auth.py): `JWTAuth`; [`tests/gates/test_gate_security.py`](tests/gates/test_gate_security.py) |
-| Redis fallback is opt-in, not silent | [`caching.py`](mcp_toolkit/framework/caching.py): `fallback_to_memory=False` default; typed `_REDIS_TRANSIENT` |
-| A2A streaming is real SSE | [`a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py): `stream_task()` async generator; [`test_a2a_adapter.py`](tests/test_framework/test_a2a_adapter.py) |
-| LLM cost from real API usage objects | [`costing.py`](mcp_toolkit/framework/costing.py) + [`pricing/2026.json`](mcp_toolkit/pricing/2026.json) |
-| 30-case adversarial corpus | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl): validated in CI |
-| PostgreSQL read-only enforced via AST | [`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py): `_validate_read_only()` via sqlglot |
-| 600 collected tests (598 pass, 2 skip) | `uv run --all-extras pytest tests/ --collect-only -q`; CI badge above |
-| Cache hit P50 0.007ms | [benchmarks/RESULTS.md](benchmarks/RESULTS.md) (2026-04-25 run); reproduce with [benchmarks/bench_cache.py](benchmarks/bench_cache.py) |
-
-Production capabilities backing this work: AST-based SQL query validation via sqlglot, cryptographic JWT verification with remote JWKS key rotation, and OpenTelemetry OTLP tracing.
-
-## Development
+**3. Wire servers into Claude Desktop.**
 
 ```bash
-git clone https://github.com/ChunkyTortoise/mcp-server-toolkit.git
-cd mcp-server-toolkit
-pip install -e ".[dev,auth]"
-pytest tests/ -v
-ruff check .
+bash examples/claude_desktop_app/setup.sh
+```
 
-# Integration tests (need real creds)
+More runnable examples, per-server usage and the seeded RAG walkthrough are in [examples/README.md](examples/README.md).
+
+## How it works
+
+```mermaid
+flowchart LR
+  C["MCP client or agent"] -->|"tools/call"| S["EnhancedMCP (FastMCP subclass)"]
+  S -->|"@mcp.auth_tool"| A["JWTAuth or APIKeyAuth: verify credential, check scope"]
+  S -->|"@mcp.cached_tool"| K["CacheLayer: TTL, in-memory or Redis"]
+  S -->|"@mcp.rate_limited_tool"| R["RateLimiter: per-caller window"]
+  A --> F["your async tool function"]
+  K --> F
+  R --> F
+  K -.->|"span per call"| T["TelemetryProvider: in-memory, OTLP when enabled"]
+  R -.->|"span per call"| T
+```
+
+Each decorator registers the function as an MCP tool and runs its check before your code. The example at the top of this page uses `auth_tool`.
+
+- **Auth:** `JWTAuth` verifies HS256 tokens with a shared secret, or RS256 tokens against a JWKS endpoint with key caching and rotation through PyJWT, and checks `aud` and `iss` when configured. `requires_scope` and `auth_tool` refuse the call before the tool body runs. `APIKeyAuth` stores SHA-256 hashes of keys. Code: [`auth.py`](mcp_toolkit/framework/auth.py); design: [ADR-0006](docs/adr/ADR-0006-oauth-2.1-resource-server.md).
+- **Read-only SQL:** the database server's `PostgresClient` parses each query with sqlglot and accepts only an allowlist: `SELECT`, set operations, `VALUES` and `EXPLAIN` without `ANALYZE`. It rejects DML/DDL anywhere in the tree (including inside a CTE), `SELECT ... INTO`, `COPY`, statements sqlglot can't parse (`SET ROLE`, `VACUUM`), row locks, and side-effecting functions such as `pg_read_file`, `pg_terminate_backend`, `dblink` and `set_config` ([`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py)). Pair it with a read-only Postgres role.
+- **Caching and rate limits:** `cached_tool` keys on the tool name and arguments with a TTL; `RedisCache` raises on connection errors unless you pass `fallback_to_memory=True` ([`caching.py`](mcp_toolkit/framework/caching.py), [ADR-0002](docs/adr/ADR-0002-caching-tier-strategy.md)). `rate_limited_tool` keeps a sliding window per `caller_id`, `client_id` or `user_id` ([`rate_limiter.py`](mcp_toolkit/framework/rate_limiter.py), [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md)).
+- **Telemetry and cost:** `TelemetryProvider` records a span for each cached or rate-limited call and exports real OpenTelemetry spans over OTLP when started with `initialize(use_otel=True)` ([`telemetry.py`](mcp_toolkit/framework/telemetry.py)). `CostTracker` turns provider usage objects into USD from a dated price table ([`costing.py`](mcp_toolkit/framework/costing.py), [`pricing/2026.json`](mcp_toolkit/pricing/2026.json)).
+- **Testing, servers and A2A:** `MCPTestClient` calls tools in-process for unit tests ([`testing.py`](mcp_toolkit/framework/testing.py)). The pre-built servers counted in [Results](#results) cover database, web scraping, files, analytics, email, calendar, GoHighLevel CRM, Gemini embedding and multi-LLM routing ([`mcp_toolkit/servers/`](mcp_toolkit/servers/)). `A2AAdapter` exposes any server as an Agent-to-Agent agent with SSE streaming and webhooks ([`a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py), [ADR-0007](docs/adr/ADR-0007-mcp-a2a-boundary.md)).
+
+Usage snippets for each server and framework feature: [examples/README.md](examples/README.md).
+
+## How it's evaluated
+
+| Signal | What runs | When |
+|---|---|---|
+| **Unit and gate tests** | `pytest tests/` with the coverage floor from [Results](#results), on every Python version in the [CI matrix](.github/workflows/ci.yml) | Every push and every PR to `main` |
+| **Security gate** | Forged signatures, expired tokens, wrong algorithm, missing token, insufficient scope, and a check that the tool body never runs on bad auth ([`test_gate_security.py`](tests/gates/test_gate_security.py)) | Part of the test suite |
+| **Five gates** | Schema, security, semantic, scale and safety suites ([`tests/gates/`](tests/gates/)) | Part of the test suite |
+| **Adversarial corpus** | Structure checks on the corpus ([`test_corpus.py`](tests/adversarial/test_corpus.py)); blocking behavior in [`test_gate_safety.py`](tests/gates/test_gate_safety.py) | Part of the test suite |
+| **Lint and types** | `ruff check mcp_toolkit tests` with a pinned rule set, then `pyright` on `mcp_toolkit` | Every CI run; a weekly [lint canary](.github/workflows/lint-canary.yml) tries the newest ruff without blocking |
+| **Routing evals** | `python evals/run_evals.py`: deterministic multi-LLM routing checks, no API key | Every CI run |
+| **Wheel check** | Builds the wheel and sdist, installs the wheel into a clean venv, imports `EnhancedMCP` | Every CI run |
+| **Quality evals** | `python evals/quality/runner.py` (deterministic); `--judge` adds LLM-as-judge scoring | [Nightly workflow](.github/workflows/evals-nightly.yml) |
+
+Run the same checks locally:
+
+```bash
+pip install -e ".[dev]" pyright
+ruff check mcp_toolkit tests
+pyright mcp_toolkit
+pytest tests/ -q --cov=mcp_toolkit   # CI also enforces the coverage floor in Results
+python evals/run_evals.py
+
+# Postgres integration tests (need a real database)
 INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_postgres_client.py
 ```
+
+## Design decisions
+
+| ADR | Decision |
+|---|---|
+| [ADR-0001](docs/adr/ADR-0001-enhancedmcp-extends-fastmcp.md) | `EnhancedMCP` extends FastMCP instead of wrapping it |
+| [ADR-0002](docs/adr/ADR-0002-caching-tier-strategy.md) | Caching tiers: in-memory first, Redis opt-in |
+| [ADR-0003](docs/adr/ADR-0003-circuit-breaker-design.md) | Circuit breakers for the multi-LLM router |
+| [ADR-0004](docs/adr/ADR-0004-a2a-adapter-design.md) | A2A adapter design |
+| [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md) | Rate-limit distribution and caller-ID resolution |
+| [ADR-0006](docs/adr/ADR-0006-oauth-2.1-resource-server.md) | OAuth 2.1 resource server: JWT, JWKS, scopes |
+| [ADR-0007](docs/adr/ADR-0007-mcp-a2a-boundary.md) | Boundary between MCP and A2A |
+
+## Methodology & limits
+
+<details>
+<summary>What each number covers, and what is not established</summary>
+
+**Results table**
+- The cache latency row is a historical measurement that keeps its original date and method; it is not a fresh measurement of this tree. It times a mock tool that only awaits `asyncio.sleep(0)`, so it measures cache overhead, not tool work, on a single machine. Platform, iteration and warm-up details are in [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md).
+- The cache receipt demonstrates behavior, not a latency benchmark. Its duration values are from one run ([captured JSON](docs/assets/cache-run.json)). The demo does not exercise network transport, external OTLP export, authentication, remote services or paid model calls ([provenance](docs/VERIFIED_DEMO.md)). The receipt PNG is an editorial layout of actual results, not an application screenshot.
+- The collected-test count was taken on the date shown with the `[dev]` extras installed. It includes Postgres integration tests that skip unless `INTEGRATION=1` and `DATABASE_URL` are set. The count changes as tests are added; earlier docs stated an older figure.
+- The coverage row is the CI floor, not a measured coverage figure; each CI run prints the measured value. `make test` and [CONTRIBUTING.md](CONTRIBUTING.md) use a stricter floor than CI, which the suite does not currently meet, so `make test` fails on coverage while CI passes.
+- The adversarial corpus is a specification. [`test_corpus.py`](tests/adversarial/test_corpus.py) checks its structure; blocking behavior is tested separately in [`test_gate_safety.py`](tests/gates/test_gate_safety.py). Not every case is expected to be blocked at the toolkit layer: each case's `expected_blocked` field records whether it is, and the rest need a defence in your application.
+
+**Scope of the library**
+- This is a Python library. There is no hosted service or dashboard.
+- There is no tagged GitHub release for the version in `pyproject.toml`; the supported install is a checkout of `main`.
+- The architecture image is illustrative, not a captured trace.
+- Spans are recorded automatically only by `cached_tool` and `rate_limited_tool`. A plain `@mcp.tool()` or `@mcp.auth_tool` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend. The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
+- `rate_limited_tool` falls back to one shared `"default"` bucket, with a warning log, when the call carries no `caller_id`, `client_id` or `user_id`. The limiter is in-process, so separate server processes keep separate counters. [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md) describes an opt-in Redis backend for the limiter; it is not implemented in [`rate_limiter.py`](mcp_toolkit/framework/rate_limiter.py) yet.
+- Redis cache fallback is opt-in, not silent: `fallback_to_memory=False` is the default and a typed `_REDIS_TRANSIENT` exception signals a recoverable failure.
+- The full sqlglot allowlist runs in `PostgresClient` (`read_only=True` by default). The database server itself only checks that each generated statement starts with `SELECT` or `WITH` after sqlglot parsing ([`sql_generator.py`](mcp_toolkit/servers/database_query/sql_generator.py)), so a `db_connection` you supply yourself gets only that prefix check. Neither is a framework-wide guard for other tools.
+- The SQL allowlist is defense in depth, not a security boundary. A function list can't be complete, so connect with a read-only Postgres role as well (for example `default_transaction_read_only = on`, or a role with only `SELECT` grants).
+- `auth_tool` and `requires_scope` read the token from a tool argument, so the token passes through the model's context. That suits local and stdio servers. For a hosted server, authenticate at the HTTP transport as the MCP authorization spec describes, and keep tokens out of tool arguments.
+- `OAuthAuth` is a deprecated test-only stub; use `JWTAuth`.
+- Several pre-built servers default to mock clients so they run without credentials: `crm_ghl` uses `MockGHLClient` and `gemini_embedding` uses a deterministic `MockEmbeddingClient`. The `multi_llm` router skips any provider whose API key is not set.
+
+**Evals and demos**
+- The nightly LLM-as-judge run needs an `ANTHROPIC_API_KEY` repository secret; without it the runner mocks the judge.
+- The seeded RAG walkthrough ([examples/README.md](examples/README.md#seeded-rag-walkthrough)) uses deterministic demo vectors, fixed ranked sources and a template answer. It is a standalone pipeline example, not MCP tool dispatch, and not a verified semantic-search integration. Its HTML preview is an illustration that does not run Python, retrieve documents or call a model.
+- The Jaeger trace screenshot comes from real `TelemetryProvider` spans emitted by a seeding script; the Jaeger-style HTML preview is a static local artifact, not a hosted dashboard. The observability Render blueprint is committed but not deployed.
+- [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) is a synthetic trace walkthrough with explicit evidence boundaries. Its earlier production latency, cost, cache-hit and scale figures had no committed load-test artifact and were removed.
+
+</details>
+
+## Roadmap
+
+There are no open issues; these are the next steps documented in the repository.
+
+- Ship the opt-in Redis backend for the rate limiter described in [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md).
+- Deploy the observability stack from its committed [Render blueprint](examples/observability/render.yaml) and verify OTLP export end to end.
+- Measure a real RAG workload end to end and publish a dated run artifact alongside the [case study](docs/CASE_STUDY.md).
 
 ## Contributing
 

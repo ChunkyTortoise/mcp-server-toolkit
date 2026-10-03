@@ -1,131 +1,77 @@
-# Case Study — Agentic RAG in Production
+# RAG example and synthetic trace walkthrough
 
-One real workflow, end to end, with the numbers that matter when you're
-deciding whether an MCP framework holds up at scale.
+The local [Streamlit example](../examples/agentic_rag/app.py) runs a fixed
+embed, retrieve, synthesize sequence. The separate
+[trace seeder](../examples/observability/seed_traces.py) emits synthetic workflow
+spans through the toolkit's telemetry and cost APIs. These are two examples,
+not a measured production deployment. This documentation builds on the
+verified walkthrough in [PR #44](https://github.com/ChunkyTortoise/mcp-server-toolkit/pull/44),
+base `b4b53fe`. It describes that branch's source-count controls and explicit
+service-failure behavior.
 
-> **TL;DR** — A 4-tool agentic RAG pipeline runs at **P95 320 ms / $0.0018 per
-> call / 42 % cache hit rate** on Claude Haiku 4.5 with pgvector retrieval.
-> At 1 000 queries/day that's **$1.80/day, $54/month** — and the framework's
-> production layer (auth, rate limit, OTel, cost tracking) adds <2 ms overhead.
+## What the Python example does
 
-## The workflow
+1. `embed_query` returns a deterministic fake 128-dimensional vector.
+2. Without `PGVECTOR_URL`, `retrieve_chunks` returns seeded chunks in a fixed
+   score order. Changing the query does not change the ranking.
+3. Without `ANTHROPIC_API_KEY`, `synthesize` returns a template answer with
+   source markers. These markers show formatting, not evaluated faithfulness.
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant S as Streamlit UI
-    participant E as embed_query
-    participant R as retrieve_chunks
-    participant K as TTL Cache
-    participant V as pgvector
-    participant L as Claude Haiku 4.5
+The source-count slider controls `top_k` (default four). The fixture has five
+chunks, so selecting six through eight still returns at most five seeded
+sources. Configured retrieval may return up to the requested count.
+The example has no agent decision loop, rerank step, MCP tool registration,
+cache decorator, auth wrapper, or telemetry wrapper.
 
-    U->>S: "What is agentic RAG?"
-    S->>E: span: workflow.agentic_rag.query
-    E->>K: cache lookup
-    alt Cache HIT (~42%)
-        K-->>E: chunks (0.007 ms P50)
-    else Cache MISS
-        E->>V: vector similarity (top_k=4)
-        V-->>E: chunks (~12 ms)
-    end
-    E->>L: synthesize cited answer
-    L-->>S: 198 output tokens
-    S-->>U: answer + cited sources
+```bash
+# After a source install and a separate Streamlit install:
+streamlit run examples/agentic_rag/app.py
 ```
 
-Source: [`examples/agentic_rag/app.py`](../examples/agentic_rag/app.py).
+The host can configure service attempts: Anthropic synthesis needs the
+`anthropic` package; pgvector retrieval needs `asyncpg`, a prepared `documents`
+table, and compatible stored vectors. The query embedding remains fake.
+Configured retrieval or synthesis errors raise a `RuntimeError`, which the UI
+displays; they do not silently turn into fixture success. Empty retrieval
+returns "No sources found. No answer was generated." Configuration labels
+do not prove successful backend execution. No live API or database path was
+verified in this audit.
 
-## Per-call breakdown
+## What the trace seeder demonstrates
 
-Numbers from a 500-query synthetic load test, mixed cold and warm cache,
-measured against `examples/observability/` running on a Render free-tier
-instance + Supabase pgvector.
+The seeder calls `TelemetryProvider.span()` and `CostTracker.record_usage()`.
+It samples token counts and delays from ranges in `WORKFLOWS`, samples a
+cache-hit boolean with probability 0.42, and sleeps to illustrate stage timing.
+It does not execute retrieval, synthesis, SQL, SMTP, or an embedding API.
+The 0.42 probability is an input, not an observed cache-hit rate.
 
-| Stage | Tool | P50 latency | P95 latency | Notes |
-|---|---|---:|---:|---|
-| 1 | `embed_query` | 0.007 ms (hit) / 12 ms (miss) | 18 ms | TTL cache, 5-min expiry |
-| 2 | `retrieve_chunks` | 14 ms | 38 ms | pgvector HNSW, top_k=4 |
-| 3 | `rerank` | 0.4 ms | 0.9 ms | In-process cosine |
-| 4 | `synthesize` | 240 ms | 268 ms | Haiku 4.5, ~480 in / 198 out tokens |
-| **Total** | | **270 ms** | **320 ms** | end-to-end, including overhead |
-
-### Cost
-
-Pricing source: [`mcp_toolkit/pricing/2026.json`](../mcp_toolkit/pricing/2026.json) (Anthropic Haiku 4.5 — $0.25/M in, $1.25/M out).
-
-| Metric | Value | Math |
-|---|---:|---|
-| Input tokens (avg) | 480 | retrieved chunks + system prompt |
-| Output tokens (avg) | 198 | cited answer |
-| Cost per call | **$0.000368** | (480 × 0.25 + 198 × 1.25) / 1 000 000 |
-| Cost per 1 000 calls (cache miss only) | $0.37 | |
-| Cost per 1 000 calls (42 % cache hit) | **$0.21** | embed cache eliminates ~58 % of synthesis when answer is cached upstream |
-| Cost per 1 000 calls (full answer cache) | $0.00 | when query repeats — caching pays for itself in 3 calls |
-
-The synthesis step dominates cost (>97 %); the framework's TTL cache reduces
-embed and retrieval calls but does **not** cache final answers — that's
-intentional, because freshness matters more than the marginal $0.0004.
-
-## Trace attributes you actually see
-
-A representative span emitted by [`seed_traces.py`](../examples/observability/seed_traces.py)
-and visible in a local Jaeger UI (`docker compose` in [`examples/observability`](../examples/observability/); no hosted dashboard is deployed):
-
-```json
-{
-  "name": "agentic_rag.query",
-  "attributes": {
-    "workflow.name": "agentic_rag.query",
-    "workflow.cache_hit": false,
-    "llm.provider": "anthropic",
-    "llm.model": "claude-haiku-4-5-20251001",
-    "llm.input_tokens": 481,
-    "llm.output_tokens": 198,
-    "llm.cost_usd": 0.0003675,
-    "tool.name": "synthesize",
-    "tool.duration_ms": 241.3,
-    "tool.success": true
-  }
-}
-```
-
-Every attribute above comes from real framework code paths — the seeder calls
-`TelemetryProvider.span()` and `CostTracker.record_usage()`, the same APIs
-production tools use. There is no mock instrumentation.
-
-## What changes at 10× / 100× / 1000×
-
-| Scale | Calls/day | Daily cost (42% hit) | What breaks first | Fix |
-|---|---:|---:|---|---|
-| 1× | 1 000 | $0.21 | Nothing | — |
-| 10× | 10 000 | $2.10 | pgvector index size on free tier | Move to dedicated Postgres + raise `work_mem` |
-| 100× | 100 000 | $21 | Anthropic per-org rate limit (50 RPM default) | Request RPM increase + add request-level rate limiter (already in framework) |
-| 1000× | 1 000 000 | $210 | Single-region latency to Anthropic API | Multi-region deployment + sticky-routing on user_id |
-
-The framework already includes the building blocks for the 100× and 1000×
-fixes — `RateLimiter` is in [`mcp_toolkit/framework/rate_limit.py`](../mcp_toolkit/framework/rate_limit.py)
-and the `A2AAdapter` enables horizontal sharding via webhook fan-out.
-
-## What this case study proves
-
-For a hiring manager evaluating MCP framework experience, this pipeline shows:
-
-1. **Real cost accounting** — not "we have a cost tracker" but "here's what one
-   workflow costs and how it scales"
-2. **Cache strategy with evidence** — 42 % hit rate is *measured*, not asserted
-3. **Trace-driven debugging** — every span carries the attributes needed to
-   answer "where did the latency / cost go?"
-4. **Capacity planning** — 10×/100×/1000× table is the conversation a senior
-   engineer has with eng leadership before scale-up
-
-Reproduce locally:
+A trace can therefore show workflow names, child spans, sampled tokens,
+calculated cost, and simulated cache state. Cost uses the repository's
+[dated pricing table](../mcp_toolkit/pricing/2026.json); it is not a bill from
+a live API call. Latency is simulated, not a benchmark of service performance.
 
 ```bash
 cd examples/observability
 docker compose up -d
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 python seed_traces.py
-open http://localhost:16686    # filter by service.name=mcp-toolkit-demo
+# Open http://localhost:16686 and filter by service mcp-toolkit-demo
 ```
 
-A Render blueprint is committed at [`render.yaml`](../examples/observability/render.yaml) but is not deployed; use the local compose path above for traces.
+The [trace screenshot](../assets/jaeger-trace-demo.png) and
+[HTML illustration](../assets/jaeger-trace-preview.html) are static artifacts.
+A [Render blueprint](../examples/observability/render.yaml) is committed;
+this walkthrough does not establish a deployed dashboard.
+
+## Evidence boundaries
+
+| Evidence | What it supports | What it does not establish |
+|---|---|---|
+| [Cache benchmark](../benchmarks/RESULTS.md), April 25, 2026 | Local framework cache timings from that dated run | End-to-end RAG latency or a production hit rate |
+| [Python example](../examples/agentic_rag/app.py), base `b4b53fe` | Source code for fake embeddings, fixed ranking and template output | Retrieval relevance or live-provider success |
+| [Telemetry implementation](../mcp_toolkit/framework/telemetry.py) | Toolkit span and exporter code | App instrumentation or a deployed service |
+| [Cost implementation](../mcp_toolkit/framework/costing.py) | Cost calculation from supplied usage and dated rates | Current provider pricing or paid usage in this demo |
+
+The earlier production P95, 500-query load, cache-hit, monthly cost and
+scale projections had no reproducible load-test receipt in this tree.
+They have been removed from this walkthrough. A production claim would need
+actual service configuration, measured requests and a dated receipt.

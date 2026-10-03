@@ -8,14 +8,14 @@ Python | MCP protocol | pydantic | httpx | hatchling (build) | PyPI
 - `mcp_toolkit/`: main package with 9 server modules
 - `mcp_toolkit/framework/a2a_adapter.py`: A2A protocol bridge
 - `examples/`: usage examples per server
-- `tests/`: 600 tests
+- `tests/`: test suite (run `pytest --collect-only -q` for the current count)
 - `pyproject.toml`: hatchling build config
 
 ## Deploy
-PyPI library: `pip install mcp-server-toolkit==0.3.0`. Submit to awesome-mcp-servers after updates.
+Install from source: `pip install -e ".[dev]"`. The PyPI package is stale (0.1.0); 0.3.0 is not on PyPI. Submit to awesome-mcp-servers after updates.
 
 ## Test
-```pytest tests/  # 600 tests```
+```pytest tests/```
 
 ## Key Env
 PYPI_API_TOKEN (for publishing only)
