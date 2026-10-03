@@ -2,7 +2,7 @@
 
 Usage:
     docker compose up -d          # start Jaeger
-    pip install 'mcp-server-toolkit[telemetry]'
+    pip install -e '.[telemetry]'   # from the repo root; PyPI is stale
     python examples/observability/demo.py
     open http://localhost:16686   # view traces
 """
