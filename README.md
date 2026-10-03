@@ -190,7 +190,7 @@ INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_
 - The nightly LLM-as-judge run needs an `ANTHROPIC_API_KEY` repository secret; without it the runner mocks the judge.
 - The seeded RAG walkthrough ([examples/README.md](examples/README.md#seeded-rag-walkthrough)) uses deterministic demo vectors, fixed ranked sources and a template answer. It is a standalone pipeline example, not MCP tool dispatch, and not a verified semantic-search integration. Its HTML preview is an illustration that does not run Python, retrieve documents or call a model.
 - The Jaeger trace screenshot comes from real `TelemetryProvider` spans emitted by a seeding script; the Jaeger-style HTML preview is a static local artifact, not a hosted dashboard. The observability Render blueprint is committed but not deployed.
-- This README does not cite the latency and cost figures in [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) as results. Earlier README text described them as seeded, and no run artifact for that load test is committed.
+- [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) is a synthetic trace walkthrough with explicit evidence boundaries. Its earlier production latency, cost, cache-hit and scale figures had no committed load-test artifact and were removed.
 
 </details>
 
@@ -200,7 +200,7 @@ There are no open issues; these are the next steps documented in the repository.
 
 - Ship the opt-in Redis backend for the rate limiter described in [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md).
 - Deploy the observability stack from its committed [Render blueprint](examples/observability/render.yaml) and verify OTLP export end to end.
-- Commit a run artifact for the [case study](docs/CASE_STUDY.md) load test, or replace its figures with a reproducible run.
+- Measure a real RAG workload end to end and publish a dated run artifact alongside the [case study](docs/CASE_STUDY.md).
 
 ## Contributing
 

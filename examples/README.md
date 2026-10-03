@@ -43,7 +43,7 @@ Configured synthesis and retrieval require separate dependencies and services. R
 |---|---|---|
 | OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](observability/seed_traces.py)). [Screenshot preview](../assets/jaeger-trace-demo.png) from real `TelemetryProvider` spans. Render blueprint committed but not yet deployed ([`render.yaml`](observability/render.yaml)). |
 | Agentic RAG app | [`examples/agentic_rag/app.py`](agentic_rag/app.py) | Standalone seeded pipeline; optional configured services, not MCP tool calls |
-| Worked case study | [`docs/CASE_STUDY.md`](../docs/CASE_STUDY.md) | One workflow with seeded latency/cost numbers and trace screenshots (numbers labeled seeded in the doc) |
+| Worked case study | [`docs/CASE_STUDY.md`](../docs/CASE_STUDY.md) | Synthetic trace walkthrough with explicit limits; no production latency or hit-rate measurement |
 
 **Observability preview (secondary; no deploy required):** open [`assets/jaeger-trace-preview.html`](../assets/jaeger-trace-preview.html) for a static Jaeger-style cost/cache span view. The actual cache receipt in the top-level README is the first-screen evidence; this HTML preview is a secondary local artifact, not a hosted dashboard.
 
