@@ -4,7 +4,7 @@ Emits spans for 5 sample workflows with OTel attributes (cost_usd, cache_hit,
 tokens_in/out, latency_ms). render.yaml configures this script as a 15-minute
 Render cron; that deployment has not been verified.
 
-No API keys required — this is a pure tracing demo. Token counts, latency and
+No API keys required. This is a pure tracing demo. Token counts, latency and
 cache state are sampled from the ranges in WORKFLOWS; they are not measurements.
 
 Usage:
