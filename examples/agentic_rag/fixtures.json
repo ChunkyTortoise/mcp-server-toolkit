@@ -1,0 +1,37 @@
+[
+  {
+    "id": "c1",
+    "text": "Retrieval-Augmented Generation (RAG) combines a retrieval step with a generative model to produce grounded, cited answers.",
+    "source": "RAG paper (Lewis et al., 2020)",
+    "score": 0.95,
+    "url": "https://arxiv.org/abs/2005.11401"
+  },
+  {
+    "id": "c2",
+    "text": "The retrieval step typically uses dense embeddings (e.g., text-embedding-004) stored in a vector database such as pgvector or Pinecone.",
+    "source": "Embedding guide",
+    "score": 0.9,
+    "url": "https://huggingface.co/blog/getting-started-with-embeddings"
+  },
+  {
+    "id": "c3",
+    "text": "Agentic RAG adds tool-use loops: the agent decides what to retrieve, when to stop, and how to combine sources, rather than doing a single retrieval pass.",
+    "source": "Agentic patterns (2024)",
+    "score": 0.88,
+    "url": "https://www.anthropic.com/engineering/building-effective-agents"
+  },
+  {
+    "id": "c4",
+    "text": "pgvector is a PostgreSQL extension that stores and queries dense vectors with HNSW or IVFFlat indexes.",
+    "source": "pgvector docs",
+    "score": 0.82,
+    "url": "https://github.com/pgvector/pgvector"
+  },
+  {
+    "id": "c5",
+    "text": "Faithfulness is measured by whether the answer is entailed by the retrieved context; recall measures whether relevant chunks were retrieved at all.",
+    "source": "RAGAS paper",
+    "score": 0.78,
+    "url": "https://arxiv.org/abs/2309.15217"
+  }
+]
