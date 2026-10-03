@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agentic RAG demo preview :  mcp-server-toolkit</title>
+  <style>
+    :root { color-scheme: dark; --bg:#12161c; --panel:#1c222b; --text:#e6e6e6; --muted:#abb4c2; --accent:#78c8ff; --ok:#17643b; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; line-height:1.45; background:var(--bg); color:var(--text); }
+    header { display:flex; gap:1rem; flex-wrap:wrap; justify-content:space-between; align-items:center; padding:1rem 1.25rem; background:var(--panel); border-bottom:1px solid #2a3340; }
+    .badge { background:var(--ok); color:#fff; padding:.35rem .7rem; border-radius:999px; font-size:.8rem; font-weight:600; }
+    main { max-width:720px; margin:1.5rem auto; padding:0 1rem; }
+    h1 { font-size:1.35rem; margin:0 0 .35rem; }
+    .sub { color:var(--muted); margin-bottom:1.25rem; }
+    label { display:block; font-size:.85rem; color:var(--muted); margin-bottom:.35rem; }
+    input { width:100%; box-sizing:border-box; padding:.75rem; border-radius:8px; border:1px solid #2a3340; background:#0e1218; color:var(--text); }
+    button { margin-top:.75rem; background:var(--accent); color:#0e1218; border:0; padding:.65rem 1.1rem; border-radius:8px; font-weight:700; cursor:pointer; }
+    .card { margin-top:1.25rem; background:var(--panel); border:1px solid #2a3340; border-radius:12px; padding:1rem; }
+    .src { margin:.5rem 0; padding:.75rem; background:#0e1218; border-radius:8px; }
+    .src strong { color:var(--accent); }
+    footer { margin-top:2rem; color:var(--muted); font-size:.85rem; }
+    :focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+    input, button, select { font:inherit; }
+    a { color:var(--accent); }
+    select { min-height:44px; }
+    code { overflow-wrap:anywhere; background:#0e1218; padding:.1rem .35rem; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>Agentic RAG :  mcp-server-toolkit</div>
+    <span class="badge">FIXTURE PREVIEW</span>
+  </header>
+  <main>
+    <h1>Seeded RAG walkthrough</h1>
+    <p class="sub">Fixed sources and a template answer. This illustration does not run MCP tools, retrieval or a model. Run the Python cache example for actual tool execution.</p>
+    <form id="query-form">
+    <label for="q">Example question (does not change the sources)</label>
+    <input id="q" value="What is agentic RAG?" />
+    <label for="count">Sources (five fixtures available)</label>
+    <select id="count"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select>
+    <button id="go" type="submit">Show fixture answer</button>
+    </form>
+    <div class="card" id="out" role="region" aria-label="Fixture result" tabindex="-1" hidden>
+      <h2 style="margin-top:0;font-size:1.05rem;color:var(--accent)">Answer</h2>
+      <p id="answer"></p>
+      <h3 style="font-size:.95rem;color:var(--muted)">Fixed example sources</h3>
+      <div id="sources"></div>
+    </div>
+    <footer>
+      Run the Python walkthrough locally: <code>streamlit run examples/agentic_rag/app.py</code><br />
+      Actual MCP dispatch: <code>python examples/verified_cache.py</code>
+    </footer>
+  </main>
+  <script>
+    // Generated from examples/agentic_rag/fixtures.json by build_preview.py.
+    const chunks = [{"id": "c1", "text": "Retrieval-Augmented Generation (RAG) combines a retrieval step with a generative model to produce grounded, cited answers.", "source": "RAG paper (Lewis et al., 2020)", "score": 0.95, "url": "https://arxiv.org/abs/2005.11401"}, {"id": "c2", "text": "The retrieval step typically uses dense embeddings (e.g., text-embedding-004) stored in a vector database such as pgvector or Pinecone.", "source": "Embedding guide", "score": 0.9, "url": "https://huggingface.co/blog/getting-started-with-embeddings"}, {"id": "c3", "text": "Agentic RAG adds tool-use loops: the agent decides what to retrieve, when to stop, and how to combine sources, rather than doing a single retrieval pass.", "source": "Agentic patterns (2024)", "score": 0.88, "url": "https://www.anthropic.com/engineering/building-effective-agents"}, {"id": "c4", "text": "pgvector is a PostgreSQL extension that stores and queries dense vectors with HNSW or IVFFlat indexes.", "source": "pgvector docs", "score": 0.82, "url": "https://github.com/pgvector/pgvector"}, {"id": "c5", "text": "Faithfulness is measured by whether the answer is entailed by the retrieved context; recall measures whether relevant chunks were retrieved at all.", "source": "RAGAS paper", "score": 0.78, "url": "https://arxiv.org/abs/2309.15217"}];
+    document.getElementById("query-form").onsubmit = (event) => {
+      event.preventDefault();
+      const q = document.getElementById("q").value.trim() || "What is agentic RAG?";
+      const selected = chunks.slice(0, Number(document.getElementById("count").value));
+      document.getElementById("answer").textContent = "Fixture answer, independent of the question; no model call. " + selected.map((c, i) => `${c.text} [${i+1}]`).join(" ") + ` Example question: ${q}`;
+      document.getElementById("sources").replaceChildren(...selected.map((c, i) => {
+        const card = document.createElement("div"); card.className = "src";
+        const link = document.createElement("a"); link.href = c.url;
+        link.textContent = `[${i+1}] ${c.source}`;
+        card.append(link, document.createElement("br"), `${c.text} Fixture score=${c.score.toFixed(3)}`);
+        return card;
+      }));
+      document.getElementById("out").hidden = false;
+      document.getElementById("out").focus();
+    };
+  </script>
+</body>
+</html>
