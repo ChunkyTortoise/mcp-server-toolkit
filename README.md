@@ -4,7 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Every MCP server that touches real data needs the same guard code around each tool: verify the caller's token, check its scope, refuse writes to the database, cache repeat calls and trace what ran. This Python library puts that code in decorators on top of FastMCP, with JWT/JWKS auth, sqlglot read-only SQL checks, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function.
+Every MCP server that touches real data needs the same guard code around each tool: verify the caller's token, check its scope, refuse writes to the database, cache repeat calls and trace what ran. This Python library puts that code in decorators on top of FastMCP, with JWT/JWKS auth, a sqlglot read-only SQL allowlist, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function. Each guard is opt-in per tool.
 
 ```python
 import asyncio, jwt
@@ -47,7 +47,7 @@ This table is the one place each number is stated. The scope of each one is in [
 
 ## Quickstart
 
-> The PyPI package (0.1.0) is out of date; install from source.
+> Install from source. The PyPI package is an early 0.1.0 preview and doesn't include this code.
 
 **1. Install from source.**
 
@@ -116,7 +116,7 @@ flowchart LR
 Each decorator registers the function as an MCP tool and runs its check before your code. The example at the top of this page uses `auth_tool`.
 
 - **Auth:** `JWTAuth` verifies HS256 tokens with a shared secret, or RS256 tokens against a JWKS endpoint with key caching and rotation through PyJWT, and checks `aud` and `iss` when configured. `requires_scope` and `auth_tool` refuse the call before the tool body runs. `APIKeyAuth` stores SHA-256 hashes of keys. Code: [`auth.py`](mcp_toolkit/framework/auth.py); design: [ADR-0006](docs/adr/ADR-0006-oauth-2.1-resource-server.md).
-- **Read-only SQL:** the database server's `PostgresClient` parses each query with sqlglot and walks the AST to reject write and DDL statements, including ones nested inside a CTE, before the query reaches Postgres ([`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py)).
+- **Read-only SQL:** the database server's `PostgresClient` parses each query with sqlglot and accepts only an allowlist: `SELECT`, set operations, `VALUES` and `EXPLAIN` without `ANALYZE`. It rejects DML/DDL anywhere in the tree (including inside a CTE), `SELECT ... INTO`, `COPY`, statements sqlglot can't parse (`SET ROLE`, `VACUUM`), row locks, and side-effecting functions such as `pg_read_file`, `pg_terminate_backend`, `dblink` and `set_config` ([`postgres_client.py`](mcp_toolkit/servers/database_query/postgres_client.py)). Pair it with a read-only Postgres role.
 - **Caching and rate limits:** `cached_tool` keys on the tool name and arguments with a TTL; `RedisCache` raises on connection errors unless you pass `fallback_to_memory=True` ([`caching.py`](mcp_toolkit/framework/caching.py), [ADR-0002](docs/adr/ADR-0002-caching-tier-strategy.md)). `rate_limited_tool` keeps a sliding window per `caller_id`, `client_id` or `user_id` ([`rate_limiter.py`](mcp_toolkit/framework/rate_limiter.py), [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md)).
 - **Telemetry and cost:** `TelemetryProvider` records a span for each cached or rate-limited call and exports real OpenTelemetry spans over OTLP when started with `initialize(use_otel=True)` ([`telemetry.py`](mcp_toolkit/framework/telemetry.py)). `CostTracker` turns provider usage objects into USD from a dated price table ([`costing.py`](mcp_toolkit/framework/costing.py), [`pricing/2026.json`](mcp_toolkit/pricing/2026.json)).
 - **Testing, servers and A2A:** `MCPTestClient` calls tools in-process for unit tests ([`testing.py`](mcp_toolkit/framework/testing.py)). The pre-built servers counted in [Results](#results) cover database, web scraping, files, analytics, email, calendar, GoHighLevel CRM, Gemini embedding and multi-LLM routing ([`mcp_toolkit/servers/`](mcp_toolkit/servers/)). `A2AAdapter` exposes any server as an Agent-to-Agent agent with SSE streaming and webhooks ([`a2a_adapter.py`](mcp_toolkit/framework/a2a_adapter.py), [ADR-0007](docs/adr/ADR-0007-mcp-a2a-boundary.md)).
@@ -180,7 +180,9 @@ INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_
 - Spans are recorded automatically only by `cached_tool` and `rate_limited_tool`. A plain `@mcp.tool()` or `@mcp.auth_tool` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend. The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
 - `rate_limited_tool` falls back to one shared `"default"` bucket, with a warning log, when the call carries no `caller_id`, `client_id` or `user_id`. The limiter is in-process, so separate server processes keep separate counters. [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md) describes an opt-in Redis backend for the limiter; it is not implemented in [`rate_limiter.py`](mcp_toolkit/framework/rate_limiter.py) yet.
 - Redis cache fallback is opt-in, not silent: `fallback_to_memory=False` is the default and a typed `_REDIS_TRANSIENT` exception signals a recoverable failure.
-- The full sqlglot AST walk, which also rejects writes nested inside a CTE, runs in `PostgresClient` (`read_only=True` by default). The database server itself only checks that each generated statement starts with `SELECT` or `WITH` after sqlglot parsing ([`sql_generator.py`](mcp_toolkit/servers/database_query/sql_generator.py)), so a `db_connection` you supply yourself gets only that prefix check. Neither is a framework-wide guard for other tools.
+- The full sqlglot allowlist runs in `PostgresClient` (`read_only=True` by default). The database server itself only checks that each generated statement starts with `SELECT` or `WITH` after sqlglot parsing ([`sql_generator.py`](mcp_toolkit/servers/database_query/sql_generator.py)), so a `db_connection` you supply yourself gets only that prefix check. Neither is a framework-wide guard for other tools.
+- The SQL allowlist is defense in depth, not a security boundary. A function list can't be complete, so connect with a read-only Postgres role as well (for example `default_transaction_read_only = on`, or a role with only `SELECT` grants).
+- `auth_tool` and `requires_scope` read the token from a tool argument, so the token passes through the model's context. That suits local and stdio servers. For a hosted server, authenticate at the HTTP transport as the MCP authorization spec describes, and keep tokens out of tool arguments.
 - `OAuthAuth` is a deprecated test-only stub; use `JWTAuth`.
 - Several pre-built servers default to mock clients so they run without credentials: `crm_ghl` uses `MockGHLClient` and `gemini_embedding` uses a deterministic `MockEmbeddingClient`. The `multi_llm` router skips any provider whose API key is not set.
 
