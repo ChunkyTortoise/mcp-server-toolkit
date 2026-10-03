@@ -1,0 +1,30 @@
+{
+  "mode": "local MCP dispatch; in-memory telemetry; no external exporter",
+  "results": [
+    "Hello, World!",
+    "Hello, World!"
+  ],
+  "tool_executions": 1,
+  "spans": [
+    {
+      "name": "tool.greet",
+      "status": "ok",
+      "attributes": {
+        "tool.name": "greet",
+        "tool.duration_ms": 0.001,
+        "tool.success": true,
+        "cache_hit": false
+      }
+    },
+    {
+      "name": "tool.greet",
+      "status": "ok",
+      "attributes": {
+        "tool.name": "greet",
+        "tool.duration_ms": 0.001,
+        "tool.success": true,
+        "cache_hit": true
+      }
+    }
+  ]
+}
