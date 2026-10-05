@@ -1,6 +1,6 @@
 <svg xmlns='http://www.w3.org/2000/svg' width='1280' height='640' viewBox='0 0 1280 640' role='img' aria-labelledby='title desc'>
   <title id='title'>MCP Server Toolkit social preview</title>
-  <desc id='desc'>Social preview for a library that places auth, per-caller rate limits, cache, cost attribution, and OpenTelemetry around MCP tool logic. It includes a proof rail of 627 collected tests, 83 percent measured coverage, nine example servers, and a reproducible cache benchmark.</desc>
+  <desc id='desc'>Social preview for a library that places auth, per-caller rate limits, cache, cost attribution, and OpenTelemetry around MCP tool logic. It includes a proof rail of 627 collected tests, an 80 percent CI coverage floor, nine example servers, and a reproducible cache benchmark.</desc>
   <style>
     :root{color-scheme:light dark;--bg:#f6f7f4;--surface:#ffffff;--surface2:#eef2f1;--text:#111827;--muted:#475569;--line:#b8c5c2;--accent:#0f766e;--accentBg:#ccfbf1;--accentText:#115e59}
     @media (prefers-color-scheme:dark){:root{--bg:#09110f;--surface:#111b19;--surface2:#172522;--text:#f8fafc;--muted:#cbd5e1;--line:#38524c;--accent:#5eead4;--accentBg:#123c37;--accentText:#ccfbf1}}
@@ -28,9 +28,9 @@
   <rect class='node' x='1030' y='294' width='154' height='74' rx='13'/><text class='nodeText' x='1052' y='325'>Cost</text><text class='nodeText' x='1052' y='348'>attribution</text>
   <rect class='node' x='850' y='379' width='172' height='62' rx='13'/><text class='nodeText' x='872' y='417'>OpenTelemetry</text>
 
-  <g aria-label='Measured proof rail'>
+  <g aria-label='Inventory and CI gate proof rail'>
     <rect class='panel' x='64' y='510' width='270' height='88' rx='14'/><text class='proofValue' x='86' y='548'>627</text><text class='proofLabel' x='86' y='576'>collected tests</text>
-    <rect class='panel' x='344' y='510' width='270' height='88' rx='14'/><text class='proofValue' x='366' y='548'>83%</text><text class='proofLabel' x='366' y='576'>measured coverage</text>
+    <rect class='panel' x='344' y='510' width='270' height='88' rx='14'/><text class='proofValue' x='366' y='548'>80%</text><text class='proofLabel' x='366' y='576'>CI coverage floor</text>
     <rect class='panel' x='624' y='510' width='270' height='88' rx='14'/><text class='proofValue' x='646' y='548'>9</text><text class='proofLabel' x='646' y='576'>example servers</text>
     <rect class='panel' x='904' y='510' width='312' height='88' rx='14'/><text class='proofValue' x='926' y='548'>Reproducible</text><text class='proofLabel' x='926' y='576'>cache benchmark</text>
   </g>
