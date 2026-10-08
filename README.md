@@ -39,7 +39,7 @@ The first call prints `order 42: shipped`. The forged token prints `Error: Unaut
 |---|---|---|---|
 | Measured | In-memory cache latency on `cached_tool`, hit vs miss (in-process mock tool, run dated 2026-04-25) | **P50 0.007 ms** hit vs **0.023 ms** miss (**3.1x**) | [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) · reproduce with [`bench_cache.py`](benchmarks/bench_cache.py) |
 | CI gate | Test coverage floor: the CI test step fails below it | **80%** | [`ci.yml`](.github/workflows/ci.yml) (`--cov-fail-under=80`) |
-| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-03) | **627** | [`tests/`](tests/) |
+| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-08) | **628** | [`tests/`](tests/) |
 | Inventory | Adversarial corpus: prompt injection, token forgery, scope escalation, cache poisoning, data exfiltration | **30 cases** | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
 | Inventory | Pre-built MCP servers | **9** | [`mcp_toolkit/servers/`](mcp_toolkit/servers/) · `[project.scripts]` in [`pyproject.toml`](pyproject.toml) |
 
@@ -90,7 +90,15 @@ Expected: two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: fa
   <img src="docs/assets/cache-receipt.png" width="720" alt="Actual local MCP tool dispatch: two greetings, one handler execution, and cache miss then hit recorded in telemetry." />
 </p>
 
-**3. Wire servers into Claude Desktop.**
+**3. Check a real local MCP transport (no API key).**
+
+```bash
+python -m pytest tests/test_stdio_transport.py -q
+```
+
+This starts [`examples/basic_server.py`](examples/basic_server.py) in a child process. An MCP SDK client initializes a stdio session, discovers `add` and `greet`, and verifies that `add(2, 3)` returns `5`. The test has a 15-second timeout. It does not verify HTTP transport, hosted authentication, a database, external telemetry export or model quality.
+
+**4. Wire servers into Claude Desktop.**
 
 ```bash
 bash examples/claude_desktop_app/setup.sh
@@ -129,6 +137,7 @@ Usage snippets for each server and framework feature: [examples/README.md](examp
 |---|---|---|
 | **Unit and gate tests** | `pytest tests/` with the coverage floor from [Results](#results), on every Python version in the [CI matrix](.github/workflows/ci.yml) | Every push and every PR to `main` |
 | **Security gate** | Forged signatures, expired tokens, wrong algorithm, missing token, insufficient scope, and a check that the tool body never runs on bad auth ([`test_gate_security.py`](tests/gates/test_gate_security.py)) | Part of the test suite |
+| **SDK stdio round trip** | Starts the public basic-server example as a child process, initializes an MCP session and verifies a discovered tool's result ([`test_stdio_transport.py`](tests/test_stdio_transport.py)) | Part of the test suite |
 | **Five gates** | Schema, security, semantic, scale and safety suites ([`tests/gates/`](tests/gates/)) | Part of the test suite |
 | **Adversarial corpus** | Structure checks on the corpus ([`test_corpus.py`](tests/adversarial/test_corpus.py)); blocking behavior in [`test_gate_safety.py`](tests/gates/test_gate_safety.py) | Part of the test suite |
 | **Lint and types** | `ruff check mcp_toolkit tests` with a pinned rule set, then `pyright` on `mcp_toolkit` | Every CI run; a weekly [lint canary](.github/workflows/lint-canary.yml) tries the newest ruff without blocking |
@@ -170,12 +179,12 @@ INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_
 - The cache latency row is a historical measurement that keeps its original date and method; it is not a fresh measurement of this tree. It times a mock tool that only awaits `asyncio.sleep(0)`, so it measures cache overhead, not tool work, on a single machine. Platform, iteration and warm-up details are in [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md).
 - The cache receipt demonstrates behavior, not a latency benchmark. Its duration values are from one run ([captured JSON](docs/assets/cache-run.json)). The demo does not exercise network transport, external OTLP export, authentication, remote services or paid model calls ([provenance](docs/VERIFIED_DEMO.md)). The receipt PNG is an editorial layout of actual results, not an application screenshot.
 - The collected-test count was taken on the date shown with the `[dev]` extras installed. It includes Postgres integration tests that skip unless `INTEGRATION=1` and `DATABASE_URL` are set. The count changes as tests are added; earlier docs stated an older figure.
-- The coverage row is the CI floor, not a measured coverage figure; each CI run prints the measured value. `make test` and [CONTRIBUTING.md](CONTRIBUTING.md) use a stricter floor than CI, which the suite does not currently meet, so `make test` fails on coverage while CI passes.
+- The coverage row is the CI floor, not a measured coverage figure; each CI run prints the measured value. [CONTRIBUTING.md](CONTRIBUTING.md#running-tests) documents the same floor. `make test` retains a stricter 88% target, which the suite does not currently meet, so that target fails on coverage while CI passes.
 - The adversarial corpus is a specification. [`test_corpus.py`](tests/adversarial/test_corpus.py) checks its structure; blocking behavior is tested separately in [`test_gate_safety.py`](tests/gates/test_gate_safety.py). Not every case is expected to be blocked at the toolkit layer: each case's `expected_blocked` field records whether it is, and the rest need a defence in your application.
 
 **Scope of the library**
 - This is a Python library. There is no hosted service or dashboard.
-- There is no tagged GitHub release for the version in `pyproject.toml`; the supported install is a checkout of `main`.
+- [GitHub release v0.3.0](https://github.com/ChunkyTortoise/mcp-server-toolkit/releases/tag/v0.3.0) is an earlier source snapshot. The supported Quickstart installs a checkout of `main`; the PyPI preview does not include the current code.
 - The architecture image is illustrative, not a captured trace.
 - Spans are recorded automatically only by `cached_tool` and `rate_limited_tool`. A plain `@mcp.tool()` or `@mcp.auth_tool` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend. The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
 - `rate_limited_tool` falls back to one shared `"default"` bucket, with a warning log, when the call carries no `caller_id`, `client_id` or `user_id`. The limiter is in-process, so separate server processes keep separate counters. [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md) describes an opt-in Redis backend for the limiter; it is not implemented in [`rate_limiter.py`](mcp_toolkit/framework/rate_limiter.py) yet.
