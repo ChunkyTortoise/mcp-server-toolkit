@@ -10,9 +10,10 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_toolkit.framework.auth import _audit, _hash_id
 from mcp_toolkit.framework.caching import CacheLayer, InMemoryCache
-from mcp_toolkit.framework.errors import RateLimited
+from mcp_toolkit.framework.errors import Forbidden, RateLimited
+from mcp_toolkit.framework.http_auth import get_request_access_token
 from mcp_toolkit.framework.rate_limiter import RateLimiter
-from mcp_toolkit.framework.telemetry import TelemetryProvider
+from mcp_toolkit.framework.telemetry import TelemetryProvider, annotate_call
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,10 @@ class EnhancedMCP(FastMCP):
         return self.tool(**tool_kwargs)(wrapper)
 
     def cached_tool(self, ttl: int = 300, **tool_kwargs: Any) -> Callable:
-        """Decorator for tools with automatic response caching.
+        """Decorator for local tools with automatic response caching.
+
+        Authenticated HTTP calls refuse: a cache hit would skip handler-level
+        authorization and the shared local cache has no tenant boundary.
 
         Usage:
             @mcp.cached_tool(ttl=600)
@@ -82,6 +86,12 @@ class EnhancedMCP(FastMCP):
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 async with self._telemetry.tool_call(func.__name__) as call:
+                    access = get_request_access_token()
+                    if access is not None:
+                        annotate_call(**{"mcp.subject": _hash_id(access.subject or access.client_id)})
+                        raise Forbidden(
+                            "Forbidden: cached_tool is unavailable for authenticated HTTP calls"
+                        )
                     cache_key = CacheLayer.make_key(func.__name__, args, kwargs)
                     cached = await self._cache.get(cache_key)
                     if cached is not None:
@@ -102,6 +112,9 @@ class EnhancedMCP(FastMCP):
     ) -> Callable:
         """Decorator for tools with per-caller rate limiting.
 
+        Verified HTTP identity takes precedence over caller-supplied arguments.
+        Local calls fall back to caller_id, client_id or user_id arguments.
+
         Usage:
             @mcp.rate_limited_tool(max_calls=10, window_seconds=60)
             async def my_tool(query: str) -> str:
@@ -112,15 +125,16 @@ class EnhancedMCP(FastMCP):
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 async with self._telemetry.tool_call(func.__name__):
-                    # Resolve caller identity from tool kwargs. When no identifier
-                    # is found, fall back to a shared "default" bucket and emit a
-                    # warning: all unidentified callers share one rate-limit counter,
-                    # which is usually not the intended behaviour.
-                    caller_id = (
-                        kwargs.get("caller_id")
-                        or kwargs.get("client_id")
-                        or kwargs.get("user_id")
-                    )
+                    access = get_request_access_token()
+                    if access is not None:
+                        caller_id = access.subject or access.client_id
+                        annotate_call(**{"mcp.subject": _hash_id(caller_id)})
+                    else:
+                        caller_id = (
+                            kwargs.get("caller_id")
+                            or kwargs.get("client_id")
+                            or kwargs.get("user_id")
+                        )
                     if not caller_id:
                         caller_id = "default"
                         logger.warning(
@@ -130,6 +144,12 @@ class EnhancedMCP(FastMCP):
                             func.__name__,
                         )
                     rate_key = f"{func.__name__}:{caller_id}"
+                    if access is not None:
+                        issuer = (access.claims or {}).get("iss", "")
+                        kind = "sub" if access.subject else "client"
+                        rate_key = (
+                            f"{func.__name__}:{_hash_id(str(issuer))}:{kind}:{_hash_id(caller_id)}"
+                        )
                     allowed = await self._rate_limiter.check(
                         key=rate_key,
                         max_calls=max_calls,
