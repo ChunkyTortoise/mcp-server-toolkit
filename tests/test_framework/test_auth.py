@@ -221,3 +221,31 @@ class TestRequiresScope:
 
         result = await any_authed(token=self._token(["read"]))
         assert result == "ok"
+
+
+@pytest.mark.parametrize("client_id", ["reader@example.test", "tenant-user-93"])
+@pytest.mark.parametrize("revoked", [False, True])
+async def test_api_key_audit_hashes_identity_without_changing_auth_result(
+    client_id, revoked, caplog
+):
+    import hashlib
+    import json
+    import logging
+
+    auth = APIKeyAuth()
+    key = "audit-test-key"
+    auth.register_key(key, client_id)
+    if revoked:
+        auth.revoke_key(key)
+    with caplog.at_level(logging.INFO, logger="mcp_toolkit.auth.audit"):
+        result = await auth.authenticate(key)
+
+    assert result.authenticated is not revoked
+    if not revoked:
+        assert result.client_id == client_id
+    entries = [json.loads(r.getMessage()) for r in caplog.records]
+    assert len(entries) == 1
+    assert entries[0]["client_hash"] == hashlib.sha256(client_id.encode()).hexdigest()[:16]
+    assert "client_id" not in entries[0]
+    assert client_id not in caplog.text
+    assert key not in caplog.text

@@ -235,3 +235,19 @@ def test_unexpected_jwt_error_text_is_not_echoed():
     from mcp_toolkit.framework.auth import _jwt_error_message
 
     assert _jwt_error_message(RuntimeError("secret detail 123")) == "Token validation failed"
+
+
+def test_readme_hero_handles_a_forged_token():
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    readme = (root / "README.md").read_text()
+    snippet = readme.split("```python\n", 1)[1].split("```", 1)[0]
+    result = subprocess.run(
+        [sys.executable, "-c", snippet], cwd=root, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+    assert "order 42: shipped" in result.stdout
+    assert "Unauthorized: malformed token" in result.stdout

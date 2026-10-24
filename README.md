@@ -8,6 +8,7 @@ Every MCP server that touches real data needs the same guard code around each to
 
 ```python
 import asyncio, jwt
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp_toolkit import EnhancedMCP, JWTAuth, MCPTestClient
 
 SECRET = "replace-with-a-32-byte-or-longer-secret"
@@ -22,12 +23,15 @@ async def main():
     client = MCPTestClient(mcp)  # in-process MCP dispatch, no transport
     token = jwt.encode({"sub": "agent-1", "scope": "orders:read", "exp": 4102444800}, SECRET, algorithm="HS256")
     print(await client.call_tool("get_order", {"order_id": "42", "token": token}))
-    print(await client.call_tool("get_order", {"order_id": "42", "token": "forged"}))
+    try:
+        await client.call_tool("get_order", {"order_id": "42", "token": "forged"})
+    except ToolError as exc:
+        print(exc)
 
 asyncio.run(main())
 ```
 
-The first call prints `order 42: shipped`. The forged token prints `Error: Unauthorized — Malformed token` and the tool body never runs. Each auth decision is also written as a JSON audit-log line. To serve the same tool to Claude Desktop or any MCP client, call `mcp.run()` instead of using `MCPTestClient`.
+The first call prints `order 42: shipped`. The forged call raises `ToolError`, which the example catches and prints as `Error executing tool get_order: Unauthorized: malformed token`; the tool body never runs. Each auth decision is also written as a JSON audit-log line. To serve the same tool to Claude Desktop or any MCP client, call `mcp.run()` instead of using `MCPTestClient`.
 
 <p align="center">
   <img src="docs/assets/architecture.svg" width="720" alt="Library map: your tool logic at the center, wrapped by auth, per-caller rate limits, cache, cost attribution and OpenTelemetry. Illustrative architecture, not a captured trace." />

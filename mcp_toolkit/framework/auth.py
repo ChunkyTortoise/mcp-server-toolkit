@@ -396,5 +396,8 @@ def _jwt_error_message(exc: Exception) -> str:
 
 
 def _audit(event: str, **fields: Any) -> None:
-    """Emit a structured audit log entry."""
+    """Emit a structured audit log entry with pseudonymous client identity."""
+    if "client_id" in fields:
+        client_id = fields.pop("client_id")
+        fields["client_hash"] = _hash_id(str(client_id)) if client_id is not None else ""
     audit_logger.info(json.dumps({"event": event, "ts": time.time(), **fields}))
