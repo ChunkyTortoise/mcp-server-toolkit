@@ -2,7 +2,9 @@
 
 All notable changes to mcp-server-toolkit are documented here.
 
-## [0.3.0] — 2026-04-26
+## [Unreleased]
+
+## [0.3.0] - 2026-04-26
 
 ### Breaking Changes
 
@@ -14,7 +16,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 **Auth (W2):** `JWTAuth` (HS256/RS256/JWKS, audience+issuer verify, scope-based RBAC), `requires_scope` decorator, audit log sink.
 
-**Telemetry (W1):** Full OTel rewrite — real spans via `BatchSpanProcessor`, OTLP HTTP exporter, env-var config (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`). Fixed hardcoded `0.1ms` cache-hit duration.
+**Telemetry (W1):** Full OTel rewrite, real spans via `BatchSpanProcessor`, OTLP HTTP exporter, env-var config (`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_SERVICE_NAME`). Fixed hardcoded `0.1ms` cache-hit duration.
 
 **Cost Attribution (W3):** `CostTracker` reads token counts from Anthropic/OpenAI/Gemini/xAI responses; `mcp_toolkit/pricing/2026.json` price table.
 
@@ -45,13 +47,13 @@ from mcp_toolkit.framework.caching import RedisCache
 cache = RedisCache(fallback_to_memory=True)  # dev only
 ```
 
-## [0.2.0] — 2026-03-18
+## [0.2.0] - 2026-03-18
 
 ### Added
-- **Multi-LLM router server** (`multi_llm`) — route prompts to Gemini, OpenAI, and xAI/Grok with cost-based routing, circuit breakers, and `get_second_opinion` parallel queries. Now documented in README with full usage example.
-- **A2A protocol adapter** (`A2AAdapter`) — bridges MCP servers to Google's Agent-to-Agent protocol for multi-vendor agent interoperability. Now documented in README with usage example.
+- **Multi-LLM router server** (`multi_llm`): route prompts to Gemini, OpenAI, and xAI/Grok with cost-based routing, circuit breakers, and `get_second_opinion` parallel queries. Now documented in README with full usage example.
+- **A2A protocol adapter** (`A2AAdapter`): bridges MCP servers to Google's Agent-to-Agent protocol for multi-vendor agent interoperability. Now documented in README with usage example.
 - CI badge and coverage badge in README
-- `examples/multi_llm_router.py` — working example for multi-LLM router server
+- `examples/multi_llm_router.py`: working example for multi-LLM router server
 
 ### Fixed
 - `auth.add_key(...)` example in README corrected to `auth.register_key(api_key, client_id, scopes)`
@@ -70,7 +72,7 @@ cache = RedisCache(fallback_to_memory=True)  # dev only
 - README: added A2A Protocol Support section
 - CLAUDE.md: updated test count (233 → 420+) and server count (8 → 9)
 
-## [0.1.0] — 2026-03-05
+## [0.1.0] - 2026-03-05
 
 ### Added
 - Initial PyPI release
@@ -85,11 +87,11 @@ cache = RedisCache(fallback_to_memory=True)  # dev only
 - 233 tests with 100% core coverage
 
 ### Servers
-- **DatabaseServer** — query any SQL database (PostgreSQL, MySQL, SQLite)
-- **WebServer** — HTTP fetch, scraping, and link extraction
-- **FileServer** — read/write/search local files safely
-- **AnalyticsServer** — data aggregation and statistics tools
-- **EmailServer** — SMTP send + IMAP read tools
-- **CalendarServer** — iCal read/write tools
-- **CrmGhlServer** — GoHighLevel CRM integration tools
-- **GeminiEmbeddingServer** — Gemini-powered embedding and vector search tools
+- **DatabaseServer**: query any SQL database (PostgreSQL, MySQL, SQLite)
+- **WebServer**: HTTP fetch, scraping, and link extraction
+- **FileServer**: read/write/search local files safely
+- **AnalyticsServer**: data aggregation and statistics tools
+- **EmailServer**: SMTP send + IMAP read tools
+- **CalendarServer**: iCal read/write tools
+- **CrmGhlServer**: GoHighLevel CRM integration tools
+- **GeminiEmbeddingServer**: Gemini-powered embedding and vector search tools

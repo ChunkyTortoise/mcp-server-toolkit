@@ -312,7 +312,7 @@ python evals/quality/runner.py           # deterministic (no API key)
 python evals/quality/runner.py --judge   # + LLM-as-judge scoring (needs ANTHROPIC_API_KEY)
 ```
 
-A nightly GitHub Actions workflow re-runs the suite with LLM-as-judge scoring and uploads `evals/RESULTS.md` as an artifact.
+The nightly GitHub Actions workflow runs the deterministic quality evals and uploads `evals/RESULTS.md` as an artifact. LLM-as-judge scoring runs only on a manual `workflow_dispatch` with `judge=true`, and needs the `ANTHROPIC_API_KEY` secret.
 
 ### Adversarial safety corpus
 

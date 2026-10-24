@@ -22,7 +22,7 @@ sampled from ranges in `seed_traces.py`, not measured:
 The seeder calls the framework's `TelemetryProvider.span()`,
 `TelemetryProvider.record_tool_call()` and `CostTracker.record_usage()` APIs.
 
-## Local — Docker Compose
+## Local, Docker Compose
 
 ```bash
 docker compose up -d                                   # start Jaeger
@@ -38,8 +38,8 @@ open http://localhost:16686                            # browse traces
 
 `render.yaml` defines two services:
 
-1. **`mcp-toolkit-jaeger`** — Jaeger all-in-one web service (free plan)
-2. **`mcp-toolkit-trace-seeder`** — cron that runs `seed_traces.py` every 15 min
+1. **`mcp-toolkit-jaeger`**: Jaeger all-in-one web service (free plan)
+2. **`mcp-toolkit-trace-seeder`**: cron that runs `seed_traces.py` every 15 min
    over Render's private network
 
 Deploy:

@@ -179,7 +179,7 @@ INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_
 - The cache latency row is a historical measurement that keeps its original date and method; it is not a fresh measurement of this tree. It times a mock tool that only awaits `asyncio.sleep(0)`, so it measures cache overhead, not tool work, on a single machine. Platform, iteration and warm-up details are in [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md).
 - The cache receipt demonstrates behavior, not a latency benchmark. Its duration values are from one run ([captured JSON](docs/assets/cache-run.json)). The demo does not exercise network transport, external OTLP export, authentication, remote services or paid model calls ([provenance](docs/VERIFIED_DEMO.md)). The receipt PNG is an editorial layout of actual results, not an application screenshot.
 - The collected-test count was taken on the date shown with the `[dev]` extras installed. It includes Postgres integration tests that skip unless `INTEGRATION=1` and `DATABASE_URL` are set. The count changes as tests are added; earlier docs stated an older figure.
-- The coverage row is the CI floor, not a measured coverage figure; each CI run prints the measured value. [CONTRIBUTING.md](CONTRIBUTING.md#running-tests) documents the same floor. `make test` retains a stricter 88% target, which the suite does not currently meet, so that target fails on coverage while CI passes.
+- The coverage row is the CI floor, not a measured coverage figure; each CI run prints the measured value. [CONTRIBUTING.md](CONTRIBUTING.md#running-tests) documents the same floor. `make test` uses the same 80% floor.
 - The adversarial corpus is a specification. [`test_corpus.py`](tests/adversarial/test_corpus.py) checks its structure; blocking behavior is tested separately in [`test_gate_safety.py`](tests/gates/test_gate_safety.py). Not every case is expected to be blocked at the toolkit layer: each case's `expected_blocked` field records whether it is, and the rest need a defence in your application.
 
 **Scope of the library**
@@ -196,7 +196,7 @@ INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_
 - Several pre-built servers default to mock clients so they run without credentials: `crm_ghl` uses `MockGHLClient` and `gemini_embedding` uses a deterministic `MockEmbeddingClient`. The `multi_llm` router skips any provider whose API key is not set.
 
 **Evals and demos**
-- The nightly LLM-as-judge run needs an `ANTHROPIC_API_KEY` repository secret; without it the runner mocks the judge.
+- The nightly LLM-as-judge run needs an `ANTHROPIC_API_KEY` repository secret; without it the judge is skipped.
 - The seeded RAG walkthrough ([examples/README.md](examples/README.md#seeded-rag-walkthrough)) uses deterministic demo vectors, fixed ranked sources and a template answer. It is a standalone pipeline example, not MCP tool dispatch, and not a verified semantic-search integration. Its HTML preview is an illustration that does not run Python, retrieve documents or call a model.
 - The Jaeger trace screenshot comes from real `TelemetryProvider` spans emitted by a seeding script; the Jaeger-style HTML preview is a static local artifact, not a hosted dashboard. The observability Render blueprint is committed but not deployed.
 - [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) is a synthetic trace walkthrough with explicit evidence boundaries. Its earlier production latency, cost, cache-hit and scale figures had no committed load-test artifact and were removed.

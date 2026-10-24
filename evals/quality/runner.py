@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Quality eval runner — executes tasks and optionally scores with LLM-as-judge.
+"""Quality eval runner - executes tasks and optionally scores with LLM-as-judge.
 
 Usage:
     python evals/quality/runner.py                 # deterministic tasks only
@@ -86,7 +86,7 @@ def _write_results(results: list[TaskResult], output_path: Path, use_judge: bool
             p50 = sorted(means)[len(means) // 2]
             p95 = sorted(means)[int(len(means) * 0.95)] if len(means) > 1 else means[0]
             lines += [
-                "### LLM-as-Judge Scores (1–5)",
+                "### LLM-as-Judge Scores (1-5)",
                 "",
                 f"| Metric | Value |",
                 f"|--------|-------|",
@@ -161,14 +161,18 @@ async def main(argv: list[str] | None = None) -> int:
         tasks = [t for t in tasks if t.category == args.category]
 
     print(f"mcp-server-toolkit quality evals -- {len(tasks)} tasks")
-    if args.judge:
+    use_judge = args.judge
+    if use_judge:
         import os
-        key = os.environ.get("ANTHROPIC_API_KEY", "")
-        print(f"LLM-as-judge: {'enabled (real)' if key else 'enabled (mock — set ANTHROPIC_API_KEY for real scores)'}")
+        if os.environ.get("ANTHROPIC_API_KEY", ""):
+            print("LLM-as-judge: enabled")
+        else:
+            print("judge: skipped (no ANTHROPIC_API_KEY)")
+            use_judge = False
 
     results = []
     for task in tasks:
-        result = await run_task(task, use_judge=args.judge)
+        result = await run_task(task, use_judge=use_judge)
         results.append(result)
         status = "PASS" if result.passed else "FAIL"
         suffix = f" [{result.elapsed_ms:.1f}ms]"
@@ -187,7 +191,7 @@ async def main(argv: list[str] | None = None) -> int:
     print(f"\n{passed}/{total} passed")
 
     output_path = Path(args.output)
-    _write_results(results, output_path, use_judge=args.judge)
+    _write_results(results, output_path, use_judge=use_judge)
     print(f"Results written to {output_path}")
 
     return 0 if passed == total else 1

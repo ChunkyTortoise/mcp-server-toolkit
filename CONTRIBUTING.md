@@ -26,7 +26,7 @@ python -m pytest tests/ -q --tb=short
 python -m pytest tests/test_file_processing/test_server.py -v
 ```
 
-The required coverage floor is 80%, matching [CI](.github/workflows/ci.yml). `make test` retains an optional 88% target that the suite does not currently meet; use the command above to reproduce the CI requirement. Postgres integration tests skip unless `INTEGRATION=1` and `DATABASE_URL` are set. A passing default run does not verify external services.
+The required coverage floor is 80%, matching [CI](.github/workflows/ci.yml). Postgres integration tests skip unless `INTEGRATION=1` and `DATABASE_URL` are set. A passing default run does not verify external services.
 
 ## Lint
 
@@ -57,7 +57,7 @@ ruff format .
 1. Fork the repo and create a branch: `git checkout -b feat/your-feature`
 2. Write tests first (TDD)
 3. Run the suite with the CI coverage floor above. All executed tests must pass; report skipped integration tests separately.
-4. Run lint — zero ruff errors
+4. Run lint: zero ruff errors
 5. Open a PR with a clear description of the change and why
 
 ## Release Process (maintainers only)
