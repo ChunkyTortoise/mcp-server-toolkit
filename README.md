@@ -20,7 +20,7 @@ async def get_order(order_id: str, token: str = "") -> str:
 
 async def main():
     client = MCPTestClient(mcp)  # in-process MCP dispatch, no transport
-    token = jwt.encode({"sub": "agent-1", "scope": "orders:read"}, SECRET, algorithm="HS256")
+    token = jwt.encode({"sub": "agent-1", "scope": "orders:read", "exp": 4102444800}, SECRET, algorithm="HS256")
     print(await client.call_tool("get_order", {"order_id": "42", "token": token}))
     print(await client.call_tool("get_order", {"order_id": "42", "token": "forged"}))
 

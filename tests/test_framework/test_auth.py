@@ -1,6 +1,7 @@
 """Tests for authentication module."""
 
 import pytest
+from mcp.server.fastmcp.exceptions import ToolError
 
 from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, OAuthAuth, requires_scope
 
@@ -201,16 +202,16 @@ class TestRequiresScope:
         async def admin_tool(token: str = "") -> str:
             return "ok"
 
-        result = await admin_tool(token=self._token(["read"]))
-        assert "Forbidden" in result
+        with pytest.raises(ToolError, match="Forbidden:"):
+            await admin_tool(token=self._token(["read"]))
 
     async def test_blocks_invalid_token(self, hs_auth):
         @requires_scope(hs_auth, "read")
         async def secure_tool(token: str = "") -> str:
             return "ok"
 
-        result = await secure_tool(token="bad-token")
-        assert "Unauthorized" in result
+        with pytest.raises(ToolError, match="Unauthorized:"):
+            await secure_tool(token="bad-token")
 
     async def test_no_scope_only_checks_auth(self, hs_auth):
         @requires_scope(hs_auth, "")
