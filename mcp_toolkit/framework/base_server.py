@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import hashlib
 import logging
 from typing import Any, Callable
 
@@ -139,7 +140,9 @@ class EnhancedMCP(FastMCP):
                         _audit(
                             "rate_limit.rejected",
                             tool=func.__name__,
-                            caller=str(caller_id),
+                            # caller_id is a tool argument and may be personal data;
+                            # a hash prefix still correlates repeat offenders.
+                            caller_hash=hashlib.sha256(str(caller_id).encode()).hexdigest()[:16],
                             max_calls=max_calls,
                             window_seconds=window_seconds,
                         )

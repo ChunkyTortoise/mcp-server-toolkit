@@ -4,6 +4,7 @@ Also proves the console exporter fallback stays off stdout, the JSON-RPC channel
 stdio server.
 """
 
+import hashlib
 import json
 import logging
 import sys
@@ -132,7 +133,10 @@ async def test_spans_and_audit_lines_never_hold_token_or_arguments(server, expor
     assert "scope.denied" in audit_text
     span_text = json.dumps(_spans(exporter), default=str)
     otel_text = "".join(s.to_json() for s in exporter.get_finished_spans())
-    for secret in (token, bad_token, sql, "secret_column", "hidden_table"):
+    # The caller id is a tool argument, so the audit line carries only a hash prefix.
+    caller_hash = hashlib.sha256(b"caller-xyz").hexdigest()[:16]
+    assert f'"caller_hash": "{caller_hash}"' in audit_text
+    for secret in (token, bad_token, sql, "secret_column", "hidden_table", "caller-xyz"):
         for text in (audit_text, span_text, otel_text):
             assert secret not in text
 
