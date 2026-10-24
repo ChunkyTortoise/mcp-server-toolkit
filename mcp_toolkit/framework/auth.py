@@ -1,4 +1,4 @@
-"""OAuth 2.1 and API key authentication for MCP servers."""
+"""JWT bearer and API key authentication for MCP tools."""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ class APIKeyAuth:
 
 
 class JWTAuth:
-    """Production OAuth 2.1 resource-server JWT validator.
+    """JWT bearer validator (HS256 or RS256 via JWKS) with scope checks.
 
     Supports two modes:
 

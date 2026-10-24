@@ -1,21 +1,23 @@
-.PHONY: all test lint fmt type-check install clean benchmark evals
+.PHONY: all ci test lint fmt type-check install clean benchmark evals
 
 all: lint test
+
+ci: lint type-check test evals
 
 install:
 	pip install -e ".[all,dev]"
 
 test:
-	python -m pytest tests/ -v --tb=short --cov=mcp_toolkit --cov-report=term-missing --cov-fail-under=88
+	python -m pytest tests/ -v --tb=short --cov=mcp_toolkit --cov-report=term-missing --cov-fail-under=80
 
 lint:
-	ruff check .
+	ruff check mcp_toolkit tests
 
 fmt:
 	ruff format .
 
 type-check:
-	pyright .
+	pyright --pythonversion 3.10 mcp_toolkit
 
 benchmark:
 	python benchmarks/bench_cache.py

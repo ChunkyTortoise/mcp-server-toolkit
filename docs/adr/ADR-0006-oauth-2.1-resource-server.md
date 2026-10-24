@@ -1,4 +1,4 @@
-# ADR-0006: OAuth 2.1 Resource-Server Design
+# ADR-0006: JWT bearer validation with scope checks (tool-argument mode)
 
 **Status:** Accepted  
 **Date:** 2026-04-26
@@ -7,7 +7,7 @@
 
 `OAuthAuth` (v0.2.0) stored tokens in an in-memory dict and used HMAC hex strings as the token format. This was documented as "for testing only" but was presented in the README alongside `APIKeyAuth` in a way that implied production readiness. That was misleading.
 
-MCP servers that expose sensitive data (database queries, CRM records, calendar events) need real token validation to be deployed safely. The Anthropic MCP Engineer JD explicitly calls out "guiding partners through OAuth implementations."
+MCP servers that expose sensitive data (database queries, CRM records, calendar events) need real token validation to be deployed safely. Servers that expose database, CRM and calendar data need token validation before the handler runs.
 
 ## Decision
 
@@ -15,7 +15,7 @@ Introduce `JWTAuth` as the production authentication class. Keep `OAuthAuth` as 
 
 ### `JWTAuth` design
 
-- **HS256 mode** (`secret=`): symmetric HMAC-SHA256. Suitable for single-tenant or internal services. Minimal setup — no external key store required.
+- **HS256 mode** (`secret=`): symmetric HMAC-SHA256. Suitable for single-tenant or internal services. Minimal setup, no external key store required.
 - **RS256 / JWKS mode** (`jwks_uri=`): fetches the IdP's public key set via `PyJWT.PyJWKClient`. Keys are cached in process and refreshed automatically when a new `kid` is encountered (automatic key rotation).
 - **Scope extraction**: supports `scope` (space-separated string, RFC 6749), `scp` (list, Azure AD style), and `permissions` (list, Auth0 style).
 - **Standard claims verified**: `exp` (with configurable leeway), `nbf`, `aud`, `iss`.
@@ -38,7 +38,8 @@ Every auth event (accepted / rejected, including reason) is emitted as structure
 - `JWTAuth` adds `PyJWT[cryptography]` as a dependency (behind the new `[auth]` extra).
 - JWKS key fetching is synchronous internally (PyJWT) but wrapped with `run_in_executor` to avoid blocking the async event loop.
 - `OAuthAuth` is kept for backward compatibility and for tests that need a simple token issuer without a full IdP.
-- Full OAuth 2.1 authorization-server functionality (token issuance, PKCE, refresh) is out of scope — this library is a resource server only.
+- Full OAuth 2.1 authorization-server functionality (token issuance, PKCE, refresh) is out of scope; this library is a resource server only.
+- Transport-level resource-server behavior (RFC 9728 protected resource metadata, a `WWW-Authenticate` challenge, audience bound to the server URL) is not implemented. `JWTAuth` validates a token passed as a tool argument.
 
 ## Alternatives Rejected
 

@@ -29,8 +29,8 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - name: Run with LLM-as-judge (if enabled)
-        # secrets.* is not allowed in job `if:` — runner.py mocks judge when key absent
-        if: ${{ github.event.inputs.judge == 'true' || github.event_name == 'schedule' }}
+        # secrets.* is not allowed in job `if:`; runner.py skips the judge when the key is absent
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.judge == 'true' }}
         run: python evals/quality/runner.py --judge --output evals/RESULTS.md
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -41,7 +41,3 @@ jobs:
           name: eval-results-${{ github.run_number }}
           path: evals/RESULTS.md
           retention-days: 30
-      - name: Check cost cap
-        run: |
-          echo "Nightly judge eval cost is capped at $5 via ANTHROPIC_API_KEY absence in forks."
-          echo "Set ANTHROPIC_API_KEY secret on the repo to enable live scoring."

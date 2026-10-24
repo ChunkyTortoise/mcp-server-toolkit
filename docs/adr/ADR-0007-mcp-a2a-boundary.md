@@ -1,4 +1,4 @@
-# ADR-0007 — MCP ↔ A2A Boundary: When to Bridge vs. Native
+# ADR-0007: MCP ↔ A2A Boundary: When to Bridge vs. Native
 
 **Status:** Accepted  
 **Date:** 2026-04-26  
@@ -42,7 +42,7 @@ The `A2AAdapter` wraps any `EnhancedMCP` server to expose A2A-compatible HTTP en
 
 ### 3. Bridge boundary is the MCP tool call
 
-The adapter maps every A2A task to exactly one MCP tool call. Complex orchestration (fan-out, chaining, consensus) stays in the A2A orchestrator layer — the bridge does not implement it.
+The adapter maps every A2A task to exactly one MCP tool call. Complex orchestration (fan-out, chaining, consensus) stays in the A2A orchestrator layer, the bridge does not implement it.
 
 ```
 A2A Orchestrator
@@ -60,9 +60,9 @@ A2A Orchestrator
 ### 4. Streaming via SSE
 
 `stream_task()` emits three events in sequence:
-1. `submitted` — task accepted
-2. `working` — tool invocation started
-3. `completed` | `failed` — final result or error
+1. `submitted`: task accepted
+2. `working`: tool invocation started
+3. `completed` | `failed`: final result or error
 
 Consumers that do not need streaming call `handle_task()` for a blocking response.
 
@@ -80,20 +80,20 @@ The adapter:
 
 **Positive:**
 - One server codebase; two protocol surfaces with no duplication.
-- `A2AAdapter` is zero-dependency for the MCP server — only the examples require Starlette/uvicorn.
-- Agent card is derived from live tool schemas — no manual synchronization.
+- `A2AAdapter` is zero-dependency for the MCP server, only the examples require Starlette/uvicorn.
+- Agent card is derived from live tool schemas, no manual synchronization.
 - Streaming and push notifications are fully operational (not just claimed).
 
 **Negative / Trade-offs:**
-- A2A task granularity matches MCP tool granularity — one tool per task. Multi-step workflows require orchestration above this layer.
+- A2A task granularity matches MCP tool granularity, one tool per task. Multi-step workflows require orchestration above this layer.
 - Push notification delivery is best-effort; callers that require at-least-once delivery must implement their own retry.
-- `A2AAdapter` does not implement A2A authentication verification — the HTTP server layer (Starlette/FastAPI middleware) is responsible for validating Bearer tokens.
+- `A2AAdapter` does not implement A2A authentication verification, the HTTP server layer (Starlette/FastAPI middleware) is responsible for validating Bearer tokens.
 
 ---
 
 ## Alternatives Considered
 
-**Implement A2A natively without MCP:** Rejected — duplicates all tool logic, loses EnhancedMCP features (caching, rate-limiting, telemetry, auth).
+**Implement A2A natively without MCP:** Rejected, duplicates all tool logic, loses EnhancedMCP features (caching, rate-limiting, telemetry, auth).
 
 **Use a full A2A SDK:** No stable Python A2A SDK exists as of 2026-04; the spec is evolving. A thin adapter is easier to evolve alongside the spec.
 
