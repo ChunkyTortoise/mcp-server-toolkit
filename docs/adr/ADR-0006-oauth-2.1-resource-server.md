@@ -7,7 +7,7 @@
 
 `OAuthAuth` (v0.2.0) stored tokens in an in-memory dict and used HMAC hex strings as the token format. This was documented as "for testing only" but was presented in the README alongside `APIKeyAuth` in a way that implied production readiness. That was misleading.
 
-MCP servers that expose sensitive data (database queries, CRM records, calendar events) need real token validation to be deployed safely. Servers that expose database, CRM and calendar data need token validation before the handler runs.
+MCP servers that expose sensitive data (database queries, CRM records, calendar events) need real token validation to be deployed safely.
 
 ## Decision
 
