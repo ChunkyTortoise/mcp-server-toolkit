@@ -205,7 +205,7 @@ class TelemetryProvider:
     async def tool_call(self, tool_name: str) -> AsyncIterator[dict[str, Any]]:
         """Record exactly one span for a toolkit-decorated call, whatever its outcome.
 
-        Yields a dict the body can add attributes to (``cache_hit``, or ``mcp.subject``
+        Yields a dict the body can add attributes to (``cache_hit``, or the hashed ``mcp.subject``
         via :func:`annotate_call`). ``tool.outcome`` is classified from the exception
         the tool raised, before FastMCP wraps it in a generic ToolError.
         """

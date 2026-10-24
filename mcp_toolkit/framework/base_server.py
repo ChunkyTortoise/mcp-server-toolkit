@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import functools
-import hashlib
 import logging
 from typing import Any, Callable
 
 from mcp.server.fastmcp import FastMCP
 
-from mcp_toolkit.framework.auth import _audit
+from mcp_toolkit.framework.auth import _audit, _hash_id
 from mcp_toolkit.framework.caching import CacheLayer, InMemoryCache
 from mcp_toolkit.framework.errors import RateLimited
 from mcp_toolkit.framework.rate_limiter import RateLimiter
@@ -142,7 +141,7 @@ class EnhancedMCP(FastMCP):
                             tool=func.__name__,
                             # caller_id is a tool argument and may be personal data;
                             # a hash prefix still correlates repeat offenders.
-                            caller_hash=hashlib.sha256(str(caller_id).encode()).hexdigest()[:16],
+                            caller_hash=_hash_id(str(caller_id)),
                             max_calls=max_calls,
                             window_seconds=window_seconds,
                         )

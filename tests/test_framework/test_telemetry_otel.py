@@ -100,7 +100,7 @@ async def test_one_span_per_call_with_outcome(server, exporter):
     ]
 
 
-async def test_subject_attribute_is_sub_when_token_parsed_and_empty_otherwise(server, exporter):
+async def test_subject_attribute_is_sub_hash_when_token_parsed_and_empty_otherwise(server, exporter):
     client = MCPTestClient(server)
     await client.call_tool_result("run_sql", {"sql": "x", "token": _token()})
     await client.call_tool_result("run_sql", {"sql": "x", "token": _token("other")})
@@ -108,8 +108,11 @@ async def test_subject_attribute_is_sub_when_token_parsed_and_empty_otherwise(se
     await client.call_tool_result("run_sql", {"sql": "x", "token": _token(exp_delta=-3600)})
     await client.call_tool_result("run_sql", {"sql": "x", "token": ""})
 
+    # Spans usually leave the host, so they carry a hash prefix of sub, never sub itself.
+    sub_hash = hashlib.sha256(b"agent-7").hexdigest()[:16]
     subjects = [a["mcp.subject"] for _, a in _spans(exporter)]
-    assert subjects == ["agent-7", "agent-7", "", "", ""]
+    assert subjects == [sub_hash, sub_hash, "", "", ""]
+    assert "agent-7" not in json.dumps(_spans(exporter), default=str)
     # Spans of tools without an auth guard carry no subject attribute at all.
     await client.call_tool_result("lookup", {"key": "k"})
     assert "mcp.subject" not in _spans(exporter)[-1][1]

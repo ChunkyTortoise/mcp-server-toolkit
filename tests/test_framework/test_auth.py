@@ -30,7 +30,8 @@ class TestAPIKeyAuth:
         assert api_key_auth.revoke_key("sk-revoke-me") is True
         result = await api_key_auth.authenticate("sk-revoke-me")
         assert result.authenticated is False
-        assert "revoked" in result.error.lower()
+        # Same message as an unknown key, so a caller cannot tell a key once existed.
+        assert result.error == "Invalid API key"
 
     async def test_revoke_nonexistent_key(self, api_key_auth):
         assert api_key_auth.revoke_key("sk-nonexistent") is False

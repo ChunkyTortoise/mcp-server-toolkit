@@ -95,7 +95,8 @@ class APIKeyAuth:
 
         if not record.is_active:
             _audit("api_key.rejected", client_id=record.client_id, error="revoked")
-            return AuthResult(authenticated=False, error="API key revoked")
+            # Same client message as an unknown key; only the audit line says revoked.
+            return AuthResult(authenticated=False, error="Invalid API key")
 
         _audit("api_key.accepted", client_id=record.client_id, scopes=record.scopes)
         return AuthResult(
@@ -354,14 +355,22 @@ def _extract_scopes(payload: dict[str, Any]) -> list[str]:
     return []
 
 
+def _hash_id(value: str) -> str:
+    """Pseudonymous id for telemetry and audit fields: a sha256 hex prefix."""
+    return hashlib.sha256(value.encode()).hexdigest()[:16]
+
+
 def _subject(result: AuthResult) -> str:
-    """Subject for span attributes: the verified ``sub`` claim, or "" when the token failed."""
+    """Span subject: a hash of the verified ``sub`` claim, or "" when the token failed.
+
+    Spans are usually exported off the host, and ``sub`` is often an email address.
+    """
     if not result.authenticated:
         return ""
     payload = result.metadata.get("payload")
     if isinstance(payload, dict) and payload.get("sub") is not None:
-        return str(payload["sub"])
-    return result.client_id or ""
+        return _hash_id(str(payload["sub"]))
+    return _hash_id(result.client_id) if result.client_id else ""
 
 
 def _refusal_reason(error: str | None) -> str:
