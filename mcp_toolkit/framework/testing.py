@@ -1,11 +1,12 @@
-"""MCPTestClient — test utilities for MCP servers without running a real server."""
+"""MCPTestClient: test utilities for MCP servers without running a real server."""
 
 from __future__ import annotations
 
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
-from mcp.types import TextContent
+from mcp.shared.memory import create_connected_server_and_client_session
+from mcp.types import CallToolResult, TextContent
 
 
 class MCPTestClient:
@@ -34,6 +35,8 @@ class MCPTestClient:
 
         Returns the tool result content. If the result contains a single text content
         item, returns just the text string. Otherwise returns the full content list.
+        Calls the server in-process, so a tool that raises (including a guard refusal)
+        re-raises ``ToolError`` here. Use :meth:`call_tool_result` to see ``isError``.
         """
         result = await self._server.call_tool(name, arguments or {})
         # MCP SDK may return (content_list, metadata_dict) tuple
@@ -43,6 +46,17 @@ class MCPTestClient:
         if isinstance(content, list) and len(content) == 1 and isinstance(content[0], TextContent):
             return content[0].text
         return content
+
+    async def call_tool_result(
+        self, name: str, arguments: dict[str, Any] | None = None
+    ) -> CallToolResult:
+        """Call a tool through an in-memory MCP client session and return the raw result.
+
+        Unlike :meth:`call_tool`, this goes over the real protocol, so a refusal or a
+        tool failure comes back as ``CallToolResult`` with ``isError`` true.
+        """
+        async with create_connected_server_and_client_session(self._server) as session:
+            return await session.call_tool(name, arguments or {})
 
     async def list_tools(self) -> list[dict[str, Any]]:
         """List all registered tools on the server.

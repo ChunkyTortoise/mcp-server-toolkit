@@ -1,6 +1,7 @@
 """Tests for authentication module."""
 
 import pytest
+from mcp.server.fastmcp.exceptions import ToolError
 
 from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, OAuthAuth, requires_scope
 
@@ -29,7 +30,8 @@ class TestAPIKeyAuth:
         assert api_key_auth.revoke_key("sk-revoke-me") is True
         result = await api_key_auth.authenticate("sk-revoke-me")
         assert result.authenticated is False
-        assert "revoked" in result.error.lower()
+        # Same message as an unknown key, so a caller cannot tell a key once existed.
+        assert result.error == "Invalid API key"
 
     async def test_revoke_nonexistent_key(self, api_key_auth):
         assert api_key_auth.revoke_key("sk-nonexistent") is False
@@ -201,16 +203,16 @@ class TestRequiresScope:
         async def admin_tool(token: str = "") -> str:
             return "ok"
 
-        result = await admin_tool(token=self._token(["read"]))
-        assert "Forbidden" in result
+        with pytest.raises(ToolError, match="Forbidden:"):
+            await admin_tool(token=self._token(["read"]))
 
     async def test_blocks_invalid_token(self, hs_auth):
         @requires_scope(hs_auth, "read")
         async def secure_tool(token: str = "") -> str:
             return "ok"
 
-        result = await secure_tool(token="bad-token")
-        assert "Unauthorized" in result
+        with pytest.raises(ToolError, match="Unauthorized:"):
+            await secure_tool(token="bad-token")
 
     async def test_no_scope_only_checks_auth(self, hs_auth):
         @requires_scope(hs_auth, "")
@@ -219,3 +221,31 @@ class TestRequiresScope:
 
         result = await any_authed(token=self._token(["read"]))
         assert result == "ok"
+
+
+@pytest.mark.parametrize("client_id", ["reader@example.test", "tenant-user-93"])
+@pytest.mark.parametrize("revoked", [False, True])
+async def test_api_key_audit_hashes_identity_without_changing_auth_result(
+    client_id, revoked, caplog
+):
+    import hashlib
+    import json
+    import logging
+
+    auth = APIKeyAuth()
+    key = "audit-test-key"
+    auth.register_key(key, client_id)
+    if revoked:
+        auth.revoke_key(key)
+    with caplog.at_level(logging.INFO, logger="mcp_toolkit.auth.audit"):
+        result = await auth.authenticate(key)
+
+    assert result.authenticated is not revoked
+    if not revoked:
+        assert result.client_id == client_id
+    entries = [json.loads(r.getMessage()) for r in caplog.records]
+    assert len(entries) == 1
+    assert entries[0]["client_hash"] == hashlib.sha256(client_id.encode()).hexdigest()[:16]
+    assert "client_id" not in entries[0]
+    assert client_id not in caplog.text
+    assert key not in caplog.text

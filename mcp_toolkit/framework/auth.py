@@ -12,6 +12,9 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from mcp_toolkit.framework.errors import Forbidden, Unauthorized
+from mcp_toolkit.framework.telemetry import annotate_call
+
 audit_logger = logging.getLogger("mcp_toolkit.auth.audit")
 logger = logging.getLogger(__name__)
 
@@ -80,6 +83,7 @@ class APIKeyAuth:
     async def authenticate(self, api_key: str) -> AuthResult:
         """Authenticate an API key."""
         if not api_key:
+            _audit("api_key.rejected", error="missing_key")
             return AuthResult(authenticated=False, error="Missing API key")
 
         key_hash = self.hash_key(api_key)
@@ -91,7 +95,8 @@ class APIKeyAuth:
 
         if not record.is_active:
             _audit("api_key.rejected", client_id=record.client_id, error="revoked")
-            return AuthResult(authenticated=False, error="API key revoked")
+            # Same client message as an unknown key; only the audit line says revoked.
+            return AuthResult(authenticated=False, error="Invalid API key")
 
         _audit("api_key.accepted", client_id=record.client_id, scopes=record.scopes)
         return AuthResult(
@@ -111,7 +116,7 @@ class JWTAuth:
 
     Supports two modes:
 
-    * **HS256** (``secret=``): symmetric HMAC — suitable for single-tenant setups
+    * **HS256** (``secret=``): symmetric HMAC, suitable for single-tenant setups
       or internal services where both sides share a secret.
     * **RS256 / JWKS** (``jwks_uri=``): fetches the public-key set from a
       JWKS endpoint (Auth0, Okta, Keycloak, custom IdP). Keys are cached and
@@ -120,10 +125,14 @@ class JWTAuth:
     Args:
         secret:     Shared secret for HS256 mode. Mutually exclusive with jwks_uri.
         jwks_uri:   JWKS URL for RS256 mode (e.g. https://myapp.us.auth0.com/.well-known/jwks.json).
-        audience:   Expected ``aud`` claim. Omit to skip audience verification.
+        audience:   Expected ``aud`` claim. Required in JWKS mode unless
+                    ``allow_any_audience=True``. HS256 mode without it logs a warning.
         issuer:     Expected ``iss`` claim. Omit to skip issuer verification.
         leeway:     Seconds of clock-skew tolerance for ``exp``/``nbf`` (default: 30).
         algorithms: Allowed algorithms. Defaults to [\"HS256\"] or [\"RS256\"] based on mode.
+        allow_any_audience: Opt out of the audience requirement in JWKS mode.
+
+    Every token must carry an ``exp`` claim; tokens without one are rejected.
     """
 
     def __init__(
@@ -135,11 +144,22 @@ class JWTAuth:
         issuer: str | None = None,
         leeway: int = 30,
         algorithms: list[str] | None = None,
+        allow_any_audience: bool = False,
     ) -> None:
         if not secret and not jwks_uri:
             raise ValueError("JWTAuth requires either 'secret' (HS256) or 'jwks_uri' (RS256).")
         if secret and jwks_uri:
             raise ValueError("Provide either 'secret' or 'jwks_uri', not both.")
+        if jwks_uri and not audience and not allow_any_audience:
+            raise ValueError(
+                "JWTAuth in JWKS mode requires 'audience'. Any token the identity "
+                "provider signed for another service would otherwise be accepted. "
+                "Pass allow_any_audience=True to opt out."
+            )
+        if secret and not audience:
+            logger.warning(
+                "JWTAuth(secret=...) has no audience, so the 'aud' claim is not checked."
+            )
 
         self._secret = secret
         self._jwks_uri = jwks_uri
@@ -167,6 +187,7 @@ class JWTAuth:
     async def authenticate(self, token: str) -> AuthResult:
         """Validate a JWT bearer token and return an AuthResult."""
         if not token:
+            _audit("jwt.rejected", error="missing_token")
             return AuthResult(authenticated=False, error="Missing token")
         token = token.removeprefix("Bearer ").strip()
 
@@ -176,6 +197,7 @@ class JWTAuth:
             decode_kwargs: dict[str, Any] = {
                 "algorithms": self._algorithms,
                 "leeway": self._leeway,
+                "options": {"require": ["exp"]},
             }
             if self._audience:
                 decode_kwargs["audience"] = self._audience
@@ -220,8 +242,10 @@ def requires_scope(auth: APIKeyAuth | JWTAuth, scope: str) -> Callable:
     """Decorator that enforces authentication and scope on an MCP tool.
 
     The wrapped tool must accept a ``token`` kwarg (for JWT) or ``api_key``
-    kwarg (for API keys). The decorator validates the credential and returns
-    an error string if authentication or scope check fails.
+    kwarg (for API keys). The decorator validates the credential and raises
+    :class:`~mcp_toolkit.framework.errors.Unauthorized` or
+    :class:`~mcp_toolkit.framework.errors.Forbidden` when authentication or the
+    scope check fails, so MCP clients see ``isError`` and the tool body never runs.
 
     Usage::
 
@@ -241,10 +265,17 @@ def requires_scope(auth: APIKeyAuth | JWTAuth, scope: str) -> Callable:
                 or ""
             )
             result = await auth.authenticate(credential)
+            annotate_call(**{"mcp.subject": _subject(result)})
             if not result.authenticated:
-                return f"Error: Unauthorized — {result.error}"
+                raise Unauthorized(f"Unauthorized: {_refusal_reason(result.error)}")
             if scope and not auth.check_scope(result, scope):
-                return f"Error: Forbidden — scope '{scope}' required, have {result.scopes}"
+                _audit(
+                    "scope.denied",
+                    tool=func.__name__,
+                    client_id=result.client_id,
+                    required_scope=scope,
+                )
+                raise Forbidden(f"Forbidden: scope {scope} required")
             return await func(*args, **kwargs)
 
         return wrapper
@@ -256,7 +287,7 @@ class OAuthAuth:
     """HMAC-based token store for **testing only**.
 
     .. deprecated::
-        ``OAuthAuth`` is a test stub — it stores tokens in a plain dict and uses
+        ``OAuthAuth`` is a test stub: it stores tokens in a plain dict and uses
         HMAC hex as a token format, not real JWTs. Use :class:`JWTAuth` for
         production deployments.
     """
@@ -272,7 +303,7 @@ class OAuthAuth:
         scopes: list[str] | None = None,
         expires_in: int = 3600,
     ) -> str:
-        """Issue a test token. Production should use a real OAuth 2.1 server."""
+        """Issue a test token. Production should use a real authorization server."""
         payload = {
             "client_id": client_id,
             "scopes": scopes or ["read"],
@@ -324,6 +355,28 @@ def _extract_scopes(payload: dict[str, Any]) -> list[str]:
     return []
 
 
+def _hash_id(value: str) -> str:
+    """Pseudonymous id for telemetry and audit fields: a sha256 hex prefix."""
+    return hashlib.sha256(value.encode()).hexdigest()[:16]
+
+
+def _subject(result: AuthResult) -> str:
+    """Span subject: a hash of the verified ``sub`` claim, or "" when the token failed.
+
+    Spans are usually exported off the host, and ``sub`` is often an email address.
+    """
+    if not result.authenticated:
+        return ""
+    payload = result.metadata.get("payload")
+    if isinstance(payload, dict) and payload.get("sub") is not None:
+        return _hash_id(str(payload["sub"]))
+    return _hash_id(result.client_id) if result.client_id else ""
+
+
+def _refusal_reason(error: str | None) -> str:
+    return (error or "authentication failed").lower()
+
+
 def _jwt_error_message(exc: Exception) -> str:
     """Map PyJWT exceptions to user-facing error strings."""
     name = type(exc).__name__
@@ -335,11 +388,16 @@ def _jwt_error_message(exc: Exception) -> str:
         return "Invalid token audience"
     if "InvalidIssuer" in name:
         return "Invalid token issuer"
+    if "MissingRequiredClaim" in name:
+        return "Token missing required claim"
     if "DecodeError" in name or "InvalidToken" in name:
         return "Malformed token"
-    return f"Token validation failed: {exc}"
+    return "Token validation failed"
 
 
 def _audit(event: str, **fields: Any) -> None:
-    """Emit a structured audit log entry."""
+    """Emit a structured audit log entry with pseudonymous client identity."""
+    if "client_id" in fields:
+        client_id = fields.pop("client_id")
+        fields["client_hash"] = _hash_id(str(client_id)) if client_id is not None else ""
     audit_logger.info(json.dumps({"event": event, "ts": time.time(), **fields}))

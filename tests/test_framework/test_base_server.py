@@ -1,6 +1,7 @@
 """Tests for EnhancedMCP base server."""
 
 import pytest
+from mcp.server.fastmcp.exceptions import ToolError
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.framework.testing import MCPTestClient
@@ -88,8 +89,11 @@ class TestRateLimitedTool:
         client = MCPTestClient(server)
         for _ in range(3):
             await client.call_tool("ping", {})
-        result = await client.call_tool("ping", {})
-        assert "Rate limit exceeded" in result
+        result = await client.call_tool_result("ping", {})
+        assert result.isError is True
+        assert "Rate limited:" in result.content[0].text
+        with pytest.raises(ToolError, match="Rate limited:"):
+            await client.call_tool("ping", {})
 
     async def test_rate_limited_tool_tracks_telemetry(self, server_with_rate_limited_tool):
         server = server_with_rate_limited_tool

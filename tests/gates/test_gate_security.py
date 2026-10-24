@@ -1,4 +1,4 @@
-"""Gate 2 — Security: auth module correctness and scope enforcement.
+"""Gate 2, Security: auth module correctness and scope enforcement.
 
 Verifies that JWTAuth rejects forged/expired tokens, APIKeyAuth rejects
 revoked keys, and the requires_scope decorator blocks unauthorised callers
@@ -8,6 +8,7 @@ before the tool function is ever invoked.
 from __future__ import annotations
 
 import pytest
+from mcp.server.fastmcp.exceptions import ToolError
 
 from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, requires_scope
 
@@ -71,9 +72,8 @@ class TestJWTSecurityGate:
             return "executed"
 
         token = _hs_token(self.SECRET, ["read"])
-        result = await privileged_tool(token=token)
-        assert "executed" not in result
-        assert "Forbidden" in result
+        with pytest.raises(ToolError, match="Forbidden:"):
+            await privileged_tool(token=token)
 
     async def test_scope_gate_never_executes_body_on_bad_auth(self, auth):
         """The tool body must not run if auth fails."""
@@ -84,7 +84,8 @@ class TestJWTSecurityGate:
             side_effects.append("ran")
             return "secret_data"
 
-        await leaky_tool(token="garbage")
+        with pytest.raises(ToolError, match="Unauthorized:"):
+            await leaky_tool(token="garbage")
         assert side_effects == [], "Tool body executed despite auth failure"
 
 
