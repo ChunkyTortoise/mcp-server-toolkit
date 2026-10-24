@@ -54,3 +54,40 @@ jobs:
           /tmp/wheel-env/bin/pip install dist/*.whl
       - name: Import from the installed wheel
         run: /tmp/wheel-env/bin/python -c "from mcp_toolkit import EnhancedMCP; print('wheel import ok')"
+
+  integration:
+    name: Postgres read-only role
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-superuser-throwaway
+          POSTGRES_DB: mcp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d mcp_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: ci-superuser-throwaway
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Create seeded tables and the read-only role
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d mcp_test -f tests/test_database_query/integration_setup.sql
+      - name: Integration tests (fail on any skip)
+        env:
+          INTEGRATION: "1"
+          DATABASE_URL: postgresql://mcp_reader:ci-throwaway-password@localhost:5432/mcp_test
+          ADMIN_DATABASE_URL: postgresql://postgres:ci-superuser-throwaway@localhost:5432/mcp_test
+        run: |
+          set -o pipefail
+          pytest tests/test_database_query/test_postgres_client.py -v -s -rs | tee out.txt
+          ! grep -q SKIPPED out.txt

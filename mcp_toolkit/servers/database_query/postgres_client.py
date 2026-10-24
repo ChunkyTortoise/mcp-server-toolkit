@@ -1,15 +1,12 @@
-"""PostgresClient — production asyncpg client with sqlglot read-only enforcement.
+"""PostgresClient - production asyncpg client with sqlglot read-only enforcement.
 
 Requires: pip install mcp-server-toolkit[database]
   asyncpg>=0.30
   sqlglot>=26
 
-Enforces read-only access with a sqlglot AST allowlist: only SELECT, set operations
-(UNION/INTERSECT/EXCEPT), VALUES and a non-executing EXPLAIN are accepted. DML/DDL
-anywhere in the tree, SELECT ... INTO, COPY, statements sqlglot cannot parse, and
-known side-effecting functions (file access, backend control, dblink, set_config)
-are rejected. This is defense in depth, not a security boundary: also connect with
-a read-only Postgres role (for example default_transaction_read_only = on).
+Enforces read-only access with the shared sqlglot AST allowlist in sql_safety.py
+(validate_read_only). This is defense in depth, not a security boundary: also connect
+with a read-only Postgres role (for example default_transaction_read_only = on).
 Supports pgvector similarity search when the vector extension is installed.
 
 Usage:
@@ -25,79 +22,15 @@ Usage:
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass
 from typing import Any
 
+from mcp_toolkit.servers.database_query.sql_safety import validate_identifier, validate_read_only
+
 logger = logging.getLogger(__name__)
 
-# SQL statement types that are never allowed in read-only mode.
-_WRITE_STATEMENT_TYPES = {
-    "Insert", "Update", "Delete", "Drop", "Create", "Alter", "Truncate", "TruncateTable",
-    "Merge", "Replace", "Grant", "Revoke", "Lock", "Call",
-}
-
-# Top-level statement types accepted in read-only mode (allowlist).
-_ALLOWED_STATEMENT_TYPES = {"Select", "Union", "Intersect", "Except", "Values"}
-
-# Node types rejected anywhere in the tree, in addition to the write statements.
-# Into: SELECT ... INTO creates a table. Copy: COPY ... TO PROGRAM runs a shell
-# command. Command: SQL sqlglot could not parse (SET ROLE, VACUUM, ...).
-_DENIED_NODE_TYPES = _WRITE_STATEMENT_TYPES | {"Into", "Copy", "Command", "Set"}
-
-# Functions with side effects or file/network access that a SELECT can call.
-_DENIED_FUNCTIONS = {
-    "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf", "pg_rotate_logfile",
-    "pg_read_file", "pg_read_binary_file", "pg_ls_dir", "pg_stat_file",
-    "lo_import", "lo_export", "lo_unlink", "lo_create", "lo_put",
-    "dblink", "dblink_exec", "dblink_connect", "dblink_send_query",
-    "set_config", "pg_sleep", "pg_advisory_lock", "pg_advisory_xact_lock",
-    "nextval", "setval", "pg_switch_wal", "pg_create_restore_point", "pg_promote",
-    "query_to_xml", "query_to_xmlschema", "query_to_xml_and_xmlschema", "cursor_to_xml",
-}
-
-_EXPLAIN_OPTIONS = re.compile(r"^\s*(?:\([^)]*\)|(?:VERBOSE|COSTS|BUFFERS|FORMAT\s+\w+)\s+)*", re.IGNORECASE)
-_EXPLAIN_ANALYZE = re.compile(r"\bANALY[SZ]E\b", re.IGNORECASE)
-
-
-def _reject(reason: str) -> None:
-    raise ValueError(f"Read-only mode: {reason} is not allowed.")
-
-
-def _validate_explain(rest: str) -> None:
-    """EXPLAIN is allowed only without ANALYZE (which executes the statement)."""
-    if _EXPLAIN_ANALYZE.search(rest):
-        _reject("EXPLAIN ANALYZE")
-    _validate_read_only(_EXPLAIN_OPTIONS.sub("", rest, count=1))
-
-
-def _validate_read_only(sql: str) -> None:
-    """Raise ValueError unless every statement in sql is a plain read."""
-    try:
-        import sqlglot
-        from sqlglot import exp
-    except ImportError as exc:
-        raise ImportError("Install sqlglot: pip install mcp-server-toolkit[database]") from exc
-
-    statements = [s for s in sqlglot.parse(sql, read="postgres") if s is not None]
-    if not statements:
-        _reject("an empty statement")
-    for statement in statements:
-        stmt_type = type(statement).__name__
-        if isinstance(statement, exp.Command) and str(statement.this).upper() == "EXPLAIN":
-            rest = statement.expression
-            _validate_explain(str(getattr(rest, "name", rest) or ""))
-            continue
-        if stmt_type not in _ALLOWED_STATEMENT_TYPES:
-            _reject(f"statement type '{stmt_type}'")
-        for node in statement.walk():
-            node_type = type(node).__name__
-            if node_type in _DENIED_NODE_TYPES:
-                _reject(f"nested '{node_type}'")
-            if isinstance(node, exp.Func):
-                name = node.name if isinstance(node, exp.Anonymous) else node.sql_name()
-                if name and name.lower() in _DENIED_FUNCTIONS:
-                    _reject(f"function '{name.lower()}'")
+# Kept so existing imports of the private name keep working.
+_validate_read_only = validate_read_only
 
 
 @dataclass
@@ -115,7 +48,7 @@ class PostgresClient:
     async def fetch(self, sql: str, *args: Any) -> list[dict[str, Any]]:
         """Execute sql and return rows as list[dict]. Validates read-only if enabled."""
         if self.read_only:
-            _validate_read_only(sql)
+            validate_read_only(sql)
 
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(sql, *args)
@@ -134,17 +67,32 @@ class PostgresClient:
         embedding_column: str,
         query_vector: list[float],
         top_k: int = 5,
-        filter_clause: str = "",
+        filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         """pgvector similarity search using cosine distance (<=>).
 
+        table, embedding_column and the filter keys must be plain identifiers; they are
+        double-quoted in the SQL. Filter values are bound parameters, rendered as
+        ``"col" = $n`` from $3 ($1 is the vector, $2 is top_k). The final SQL goes
+        through validate_read_only before it runs.
+
         Requires the pgvector extension: CREATE EXTENSION IF NOT EXISTS vector;
         """
-        where = f"WHERE {filter_clause}" if filter_clause else ""
+        validate_identifier(table, "table name")
+        validate_identifier(embedding_column, "embedding column")
+        conditions: list[str] = []
+        params: list[Any] = []
+        for key, value in (filters or {}).items():
+            validate_identifier(key, "filter column")
+            params.append(value)
+            conditions.append(f'"{key}" = ${len(params) + 2}')
+        where = f"WHERE {' AND '.join(conditions)} " if conditions else ""
+        # Identifiers are validated and quoted above; values stay bound parameters.
         sql = (
-            f"SELECT *, 1 - ({embedding_column} <=> $1::vector) AS similarity "
-            f"FROM {table} {where} ORDER BY similarity DESC LIMIT $2"
+            f'SELECT *, 1 - ("{embedding_column}" <=> $1::vector) AS similarity '  # noqa: S608
+            f'FROM "{table}" {where}ORDER BY similarity DESC LIMIT $2'
         )
+        validate_read_only(sql)
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(sql, query_vector, top_k)
+            rows = await conn.fetch(sql, query_vector, top_k, *params)
             return [dict(row) for row in rows]

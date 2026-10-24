@@ -1,12 +1,11 @@
-"""LLM-based SQL generation with schema context and sqlglot validation."""
+"""LLM-based SQL generation with schema context and read-only validation."""
 
 from __future__ import annotations
 
 from typing import Protocol
 
-import sqlglot  # type: ignore[import-untyped]
-
 from mcp_toolkit.servers.database_query.schema_inspector import DatabaseSchema
+from mcp_toolkit.servers.database_query.sql_safety import validate_read_only
 
 
 class LLMProvider(Protocol):
@@ -59,20 +58,18 @@ class SQLGenerator:
         return sql
 
     def validate(self, sql: str) -> tuple[bool, str]:
-        """Validate SQL using sqlglot. Returns (is_valid, error_or_transpiled)."""
+        """Validate SQL with the shared read-only validator.
+
+        Returns (is_valid, error_or_sql). On success the second item is the exact string
+        that was checked: no transpile round trip, which would rewrite pgvector ``<=>``.
+        """
         try:
-            parsed = sqlglot.transpile(sql, read=self._dialect, write=self._dialect)
-            if not parsed:
-                return False, "Empty SQL after parsing"
-
-            for stmt in parsed:
-                upper = stmt.strip().upper()
-                if not upper.startswith("SELECT") and not upper.startswith("WITH"):
-                    return False, f"Only SELECT/WITH queries allowed, got: {upper[:20]}"
-
-            return True, parsed[0]
+            validate_read_only(sql, self._dialect)
+        except ValueError as e:
+            return False, str(e)
         except Exception as e:
             return False, f"SQL parsing error: {e}"
+        return True, sql
 
     async def generate_and_validate(
         self, question: str, schema: DatabaseSchema

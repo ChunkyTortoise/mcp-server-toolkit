@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-_IDENTIFIER_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+from mcp_toolkit.servers.database_query.sql_safety import validate_identifier
 
-
-def _validate_identifier(name: str, label: str) -> None:
-    """Reject identifiers that don't match safe SQL identifier pattern."""
-    if not _IDENTIFIER_RE.match(name):
-        raise ValueError(f"Invalid {label}: {name!r}. Must match ^[a-zA-Z_][a-zA-Z0-9_]*$")
+# Kept so existing imports of the private name keep working.
+_validate_identifier = validate_identifier
 
 
 class DatabaseConnection(Protocol):
