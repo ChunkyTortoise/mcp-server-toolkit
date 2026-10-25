@@ -12,8 +12,28 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 
-def _validate_url(url: str) -> None:
-    """Reject file://, non-http schemes, and private/metadata IPs."""
+_MAX_REDIRECTS = 5
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
+
+def _is_forbidden_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """True for anything that is not a globally routable unicast address."""
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.ipv4_mapped is not None:
+            ip = ip.ipv4_mapped
+        elif ip in _NAT64:
+            ip = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+    return not ip.is_global or ip.is_multicast or getattr(ip, "is_site_local", False)
+
+
+def _resolve_public(url: str) -> str:
+    """Validate scheme and host, and return one IP the request must connect to.
+
+    Every resolved address must be public, so a mixed DNS answer is refused
+    rather than raced. Callers connect to the returned IP, so a second lookup
+    (DNS rebinding) cannot swap in a private address after this check.
+    """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"URL scheme {parsed.scheme!r} not allowed. Only http/https permitted.")
@@ -24,12 +44,61 @@ def _validate_url(url: str) -> None:
 
     try:
         results = socket.getaddrinfo(hostname, None)
-        for result in results:
-            ip = ipaddress.ip_address(result[4][0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local:
-                raise ValueError(f"URL resolves to private/restricted IP: {ip}")
     except socket.gaierror as e:
         raise ValueError(f"Could not resolve hostname {hostname!r}: {e}")
+    addresses = [ipaddress.ip_address(result[4][0]) for result in results]
+    if not addresses:
+        raise ValueError(f"Could not resolve hostname {hostname!r}")
+    for ip in addresses:
+        if _is_forbidden_ip(ip):
+            raise ValueError(f"URL resolves to private/restricted IP: {ip}")
+    return str(addresses[0])
+
+
+def _validate_url(url: str) -> None:
+    """Reject file://, non-http schemes, and private/metadata IPs."""
+    _resolve_public(url)
+
+
+def _origin(url: httpx.URL) -> tuple[str, str, int | None]:
+    return url.scheme, url.host, url.port
+
+
+async def _safe_get(
+    client: httpx.AsyncClient,
+    url: str,
+    timeout: float | None = None,
+) -> tuple[httpx.Response, str]:
+    """GET with every redirect hop validated and pinned to its checked IP.
+
+    Redirects are followed here, never by httpx, whatever the client was built
+    with. Like httpx, credentials from the client (Authorization, Cookie) are
+    dropped once a hop leaves the original origin. Returns the response and the
+    hostname-based URL it came from.
+    """
+    current = url
+    origin = _origin(httpx.URL(url))
+    for _ in range(_MAX_REDIRECTS + 1):
+        ip = _resolve_public(current)
+        target = httpx.URL(current)
+        extensions = {"sni_hostname": target.host} if target.scheme == "https" else {}
+        request = client.build_request(
+            "GET",
+            target.copy_with(host=ip),
+            headers={"Host": target.netloc.decode("ascii")},
+            extensions=extensions,
+            timeout=httpx.USE_CLIENT_DEFAULT if timeout is None else timeout,
+        )
+        if _origin(target) != origin:
+            request.headers.pop("authorization", None)
+            request.headers.pop("cookie", None)
+        response = await client.send(request, follow_redirects=False)
+        location = response.headers.get("location")
+        if response.status_code not in _REDIRECT_STATUSES or not location:
+            return response, current
+        await response.aclose()
+        current = urljoin(current, location)
+    raise ValueError(f"Too many redirects (limit {_MAX_REDIRECTS})")
 
 
 @dataclass
@@ -63,7 +132,7 @@ class RobotsChecker:
 
         if base not in self._cache:
             try:
-                resp = await client.get(f"{base}/robots.txt", timeout=5.0)
+                resp, _ = await _safe_get(client, f"{base}/robots.txt", timeout=5.0)
                 disallowed: set[str] = set()
                 if resp.status_code == 200:
                     user_agent_match = False
@@ -129,7 +198,7 @@ class WebScraper:
         if client is None:
             client = httpx.AsyncClient(
                 headers={"User-Agent": self._user_agent},
-                follow_redirects=True,
+                follow_redirects=False,
                 timeout=self._timeout,
             )
 
@@ -146,13 +215,13 @@ class WebScraper:
                     )
 
             await self._rate_limit()
-            response = await client.get(url)
+            response, final_url = await _safe_get(client, url)
 
             html = response.text
             text, title, links, meta = self._parse_html(html, url, css_selector)
 
             return ScrapedPage(
-                url=str(response.url),
+                url=final_url,
                 status_code=response.status_code,
                 html=html,
                 text=text,
