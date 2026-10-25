@@ -44,7 +44,9 @@ def create_server(
             issuer_url=AnyHttpUrl(issuer),
             resource_server_url=AnyHttpUrl(resource),
             required_scopes=["orders:read"],
-            # The verifier checks aud itself; the SDK check is a second gate.
+            # Config guard, not a second token check: the verifier checks aud and reports
+            # resource=audience, so this refuses every token only if audience and
+            # resource_server_url drift apart.
             validate_token_resource=True,
         ),
     )

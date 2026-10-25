@@ -65,12 +65,12 @@ claims:
     scope: Postgres integration tests gated on INTEGRATION=1 and DATABASE_URL.
   - id: test-collected
     statement: Tests collected, including skipped ones.
-    value: "875"
-    match: ["875"]
+    value: "877"
+    match: ["877"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/ --collect-only -q | tail -2"
-    expect: "875 tests collected"
+    expect: "877 tests collected"
     date: "2026-10-24"
     status: verified
     scope: Published in the README Results table, dated 2026-10-24. Includes the 9 Postgres integration tests that skip without INTEGRATION=1.

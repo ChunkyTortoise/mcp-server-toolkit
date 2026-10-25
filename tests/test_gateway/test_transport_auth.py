@@ -347,17 +347,18 @@ async def test_same_subject_refreshed_token_keeps_session():
         assert server["calls"]["probe"] == 1
 
 
-async def test_http_rate_limit_uses_verified_subject_and_spans_hash_it():
-    async with counted_server() as server:
+@pytest.mark.parametrize("json_response", [True, False], ids=["json", "sse"])
+async def test_http_rate_limit_uses_verified_subject_and_spans_hash_it(json_response):
+    async with counted_server(json_response=json_response) as server:
         bearer = mint(server)
         session = await initialize(server, bearer)
         results = [await probe(server, bearer, session, f"forged-{i}") for i in range(3)]
-        assert [r.json()["result"]["isError"] for r in results] == [False, False, True]
+        assert [rpc_result(r, json_response)["isError"] for r in results] == [False, False, True]
         assert server["calls"]["probe"] == 2
         other = mint(server, sub="other@example.test")
         other_session = await initialize(server, other)
         response = await probe(server, other, other_session, "forged-0")
-        assert response.json()["result"]["isError"] is False
+        assert rpc_result(response, json_response)["isError"] is False
         spans = server["server"].telemetry.spans
         assert [s.attributes["mcp.subject"] for s in spans] == [
             *[_hash_id("reader@example.test")] * 3,
@@ -443,9 +444,12 @@ async def call_named_tool(server, bearer, session, name, arguments):
     )
 
 
-def rpc_result(response):
-    """The JSON-RPC result from a JSON or a single-event SSE response."""
-    if response.headers["content-type"].startswith("text/event-stream"):
+def rpc_result(response, json_response):
+    """The JSON-RPC result, after pinning the response mode the server was built for."""
+    content_type = response.headers["content-type"]
+    expected = "application/json" if json_response else "text/event-stream"
+    assert content_type.startswith(expected), content_type
+    if not json_response:
         data = [line[5:] for line in response.text.splitlines() if line.startswith("data:")]
         return json.loads(data[-1])["result"]
     return response.json()["result"]
@@ -469,7 +473,7 @@ async def test_per_tool_scope_uses_current_request_token(
             server, current, session, "cancel_order", {"order_id": "42"}
         )
         assert response.status_code == 200
-        result = rpc_result(response)
+        result = rpc_result(response, json_response)
         assert result["isError"] is refused
         if refused:
             assert "Forbidden:" in result["content"][0]["text"]
@@ -494,8 +498,11 @@ async def test_expired_initial_write_token_does_not_grant_scope_to_new_read_toke
         assert "Forbidden:" in current.json()["result"]["content"][0]["text"]
 
 
-async def test_cached_tool_refuses_authenticated_http_instead_of_sharing_authorized_data():
-    async with counted_server() as server:
+@pytest.mark.parametrize("json_response", [True, False], ids=["json", "sse"])
+async def test_cached_tool_refuses_authenticated_http_instead_of_sharing_authorized_data(
+    json_response,
+):
+    async with counted_server(json_response=json_response) as server:
         writer = mint(server, sub="writer@example.test", scope="orders:read orders:write")
         reader = mint(server, sub="reader@example.test")
         writer_session = await initialize(server, writer)
@@ -505,8 +512,9 @@ async def test_cached_tool_refuses_authenticated_http_instead_of_sharing_authori
                 server, bearer, session, "cached_report", {"report_id": "1"}
             )
             assert response.status_code == 200
-            assert response.json()["result"]["isError"] is True
-            assert "authenticated HTTP" in response.json()["result"]["content"][0]["text"]
+            result = rpc_result(response, json_response)
+            assert result["isError"] is True
+            assert "authenticated HTTP" in result["content"][0]["text"]
         assert server["calls"]["cached"] == 0
 
 
