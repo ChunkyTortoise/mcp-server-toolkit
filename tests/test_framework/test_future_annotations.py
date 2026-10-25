@@ -55,5 +55,5 @@ async def test_string_annotations_resolve_to_user_module_model(tool):
             {"sub": "a", "scope": "rows:read", "exp": time.time() + 60}, SECRET, algorithm="HS256"
         )
     result = await MCPTestClient(server).call_tool_result(tool, args)
-    assert result.isError is False
-    assert result.structuredContent == {"n": 3}
+    assert result.is_error is False
+    assert result.structured_content == {"n": 3}

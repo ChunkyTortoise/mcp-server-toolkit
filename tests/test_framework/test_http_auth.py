@@ -211,7 +211,7 @@ async def test_transport_specific_rejection_has_correlatable_hashed_identity(ver
     ],
 )
 async def test_rate_buckets_separate_issuers_and_subject_client_namespaces(identities):
-    from mcp.server.fastmcp.exceptions import ToolError
+    from mcp.server.mcpserver.exceptions import ToolError
     from mcp_toolkit.framework.base_server import EnhancedMCP
     from mcp_toolkit.framework.testing import MCPTestClient
 

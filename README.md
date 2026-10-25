@@ -8,7 +8,7 @@ Every MCP server that touches real data needs the same guard code around each to
 
 ```python
 import asyncio, jwt
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp_toolkit import EnhancedMCP, JWTAuth, MCPTestClient
 
 SECRET = "replace-with-a-32-byte-or-longer-secret"
@@ -43,7 +43,7 @@ The first call prints `order 42: shipped`. The forged call raises `ToolError`, w
 |---|---|---|---|
 | Measured | In-memory cache latency on `cached_tool`, hit vs miss (in-process mock tool, run dated 2026-04-25) | **P50 0.007 ms** hit vs **0.023 ms** miss (**3.1x**) | [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) · reproduce with [`bench_cache.py`](benchmarks/bench_cache.py) |
 | CI gate | Test coverage floor: the CI test step fails below it | **80%** | [`ci.yml`](.github/workflows/ci.yml) (`--cov-fail-under=80`) |
-| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-24) | **869** | [`tests/`](tests/) |
+| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-24) | **877** | [`tests/`](tests/) |
 | Inventory | Adversarial corpus: prompt injection, token forgery, scope escalation, cache poisoning, data exfiltration | **30 cases** | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
 | Inventory | Pre-built MCP servers | **9** | [`mcp_toolkit/servers/`](mcp_toolkit/servers/) · `[project.scripts]` in [`pyproject.toml`](pyproject.toml) |
 

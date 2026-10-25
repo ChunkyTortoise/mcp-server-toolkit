@@ -4,13 +4,18 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-24
+
 ### Breaking Changes
 
 - Requires `mcp>=2.3,<3`; mcp 1.x is no longer supported. `EnhancedMCP` now extends `mcp.server.mcpserver.MCPServer` (FastMCP's 2.x name), and the toolkit's `Unauthorized`, `Forbidden` and `RateLimited` subclass `mcp.server.mcpserver.exceptions.ToolError`. Transport options such as `host`, `port` and `json_response` are no longer constructor arguments: pass them to `run()` or `streamable_http_app()`. The gateway keeps its JSON responses through `mcp_toolkit.gateway.app.HTTP_OPTIONS`.
 - mcp 2.x reports any tool exception that is not a `ToolError` to the client as `Error executing tool <name>`, without the original message. Raise `ToolError` (or a toolkit subclass) for failures the caller should read.
+- `MCPTestClient` takes an `MCPServer` and drives `call_tool_result` through `mcp.Client` (2.x removed `mcp.shared.memory.create_connected_server_and_client_session`). Results and SDK models use snake_case attributes, for example `result.is_error`, `result.structured_content`, `tool.input_schema` and `annotations.read_only_hint`; `MCPTestClient.list_tools()` still returns the wire key `inputSchema`.
+- Under mcp 2.x every pre-built server negotiates protocol `2026-07-28` and advertises `listChanged: true` for tools, prompts and resources and `resources.subscribe: true` (1.x advertised `false` plus an empty `experimental` block). The servers still expose no prompts, resources or resource templates; `tests/test_capability_snapshot.py` pins both the capability object and the empty lists.
 
 ### Security
 
+- HTTP gateway on mcp 2.x: per-tool scope checks read the bearer token of the request that carried the tool call. 2.x removed `mcp.server.lowlevel.server.request_ctx`, which `get_request_access_token` used under 1.x; 2.x runs each call in its own request's auth context instead. The regression test (a session opened with one token, a later call sent with another) now runs in both JSON and SSE response modes. The gateway sets `AuthSettings.validate_token_resource=True` as a config guard: `JWTTokenVerifier` checks `aud` and reports the configured audience as the token's resource, so the SDK check refuses every token if that audience and `resource_server_url` ever differ; it is not a second check of the token itself. The `cached_tool` refusal and verified-subject rate-limit tests also run in both response modes. A new test pins the loopback DNS-rebinding guard: a foreign `Host` header gets 421 before dispatch.
 - Web scraping: a redirect could reach private and cloud-metadata addresses, because only the first URL was checked and httpx followed redirects. The scraper now follows up to 5 redirects itself, validates every hop (robots.txt included), connects to the IP it validated with the original Host header and TLS SNI, and treats any non-global address as forbidden. This holds for a caller-supplied client built with `follow_redirects=True`, and, as httpx does, the client's Authorization and Cookie headers are dropped once a hop leaves the original origin. Deprecated site-local IPv6 (`fec0::/10`), which Python reports as global, is also refused.
 
 ### Changed

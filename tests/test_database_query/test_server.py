@@ -71,7 +71,7 @@ class TestQueryDatabaseTool:
 
     async def test_query_database_error_shows_sql(self, mock_db):
         """When DB raises an exception, the tool returns an error string with the SQL."""
-        from mcp.server.fastmcp.exceptions import ToolError
+        from mcp.server.mcpserver.exceptions import ToolError
 
         async def fail_fetch(query):
             raise RuntimeError("DB connection lost")

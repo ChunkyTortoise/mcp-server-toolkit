@@ -1,11 +1,11 @@
 """Every pre-built server exposes tools and nothing else.
 
-FastMCP advertises empty ``prompts`` and ``resources`` capability flags for every
-server, so the snapshot pins the exact capability object and then asserts those
-lists are empty over the protocol. Sampling, elicitation and roots are client
+MCPServer (mcp 2.x) advertises ``prompts`` and ``resources`` capability flags, with
+``listChanged`` and resource ``subscribe`` on, for every server, so the snapshot pins
+the exact capability object and then asserts those lists are empty over the protocol. Sampling, elicitation and roots are client
 capabilities a server would request mid-call; the source scan fails if any
 server starts requesting them. A new capability fails this test until the
-snapshot, README and THREAT_MODEL.md are updated together.
+snapshot, README and CHANGELOG are updated together.
 """
 
 import ast
@@ -14,7 +14,7 @@ from pathlib import Path
 
 import anyio
 import pytest
-from mcp.shared.memory import create_connected_server_and_client_session
+from mcp import Client
 
 SERVERS = [
     "analytics",
@@ -29,10 +29,9 @@ SERVERS = [
 ]
 
 EXPECTED_CAPABILITIES = {
-    "experimental": {},
-    "prompts": {"listChanged": False},
-    "resources": {"subscribe": False, "listChanged": False},
-    "tools": {"listChanged": False},
+    "prompts": {"listChanged": True},
+    "resources": {"subscribe": True, "listChanged": True},
+    "tools": {"listChanged": True},
 }
 
 # ServerSession methods that ask the client to sample, elicit or list roots.
@@ -50,13 +49,12 @@ def test_server_list_matches_package():
 async def test_server_exposes_only_tools(name):
     server = importlib.import_module(f"mcp_toolkit.servers.{name}.server").mcp
     with anyio.fail_after(10):
-        async with create_connected_server_and_client_session(server._mcp_server) as session:
-            init = await session.initialize()
-            assert init.capabilities.model_dump(exclude_none=True) == EXPECTED_CAPABILITIES
-            assert (await session.list_prompts()).prompts == []
-            assert (await session.list_resources()).resources == []
-            assert (await session.list_resource_templates()).resourceTemplates == []
-            assert (await session.list_tools()).tools
+        async with Client(server) as client:
+            assert client.server_capabilities.model_dump(exclude_none=True, by_alias=True) == EXPECTED_CAPABILITIES
+            assert (await client.list_prompts()).prompts == []
+            assert (await client.list_resources()).resources == []
+            assert (await client.list_resource_templates()).resource_templates == []
+            assert (await client.list_tools()).tools
 
 
 @pytest.mark.parametrize("name", SERVERS)
