@@ -24,6 +24,7 @@ from mcp.client.streamable_http import streamable_http_client
 from mcp_toolkit.framework.auth import _hash_id
 from mcp_toolkit.framework.http_auth import require_scope
 from mcp_toolkit.gateway import create_server
+from mcp_toolkit.gateway.app import HTTP_OPTIONS
 
 ROOT = Path(__file__).resolve().parents[2]
 GATEWAY = [sys.executable, "-m", "mcp_toolkit.gateway"]
@@ -233,7 +234,7 @@ async def counted_server():
         calls["cached"] += 1
         return f"report {report_id} for writers"
 
-    app = server.streamable_http_app()
+    app = server.streamable_http_app(**HTTP_OPTIONS)
     async with server.session_manager.run():
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1:8000"

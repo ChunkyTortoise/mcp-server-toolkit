@@ -52,3 +52,10 @@ Servers hold a reference to the stack and call into it.
   specific setup methods (`_setup_caching`, `_setup_telemetry`).
 - Type checking: `EnhancedMCP` is a valid `FastMCP` everywhere the SDK accepts one. No
   casting or protocol gymnastics needed.
+
+## Addendum (2026-10, mcp 2.x)
+
+mcp 2.x renamed `FastMCP` to `mcp.server.mcpserver.MCPServer` and moved transport options
+(`host`, `port`, `json_response`) from the constructor to `run()` and `streamable_http_app()`.
+`EnhancedMCP` now extends `MCPServer`; the decision above is unchanged. The constructor
+tradeoff it names is the one that landed.

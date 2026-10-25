@@ -1,4 +1,4 @@
-"""MCP Server Toolkit: FastMCP tool decorators (auth, caching, rate limits, telemetry) and example servers."""
+"""MCP Server Toolkit: MCPServer tool decorators (auth, caching, rate limits, telemetry) and example servers."""
 
 from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, OAuthAuth, requires_scope
 from mcp_toolkit.framework.base_server import EnhancedMCP

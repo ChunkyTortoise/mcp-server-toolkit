@@ -4,6 +4,11 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Requires `mcp>=2.3,<3`; mcp 1.x is no longer supported. `EnhancedMCP` now extends `mcp.server.mcpserver.MCPServer` (FastMCP's 2.x name), and the toolkit's `Unauthorized`, `Forbidden` and `RateLimited` subclass `mcp.server.mcpserver.exceptions.ToolError`. Transport options such as `host`, `port` and `json_response` are no longer constructor arguments: pass them to `run()` or `streamable_http_app()`. The gateway keeps its JSON responses through `mcp_toolkit.gateway.app.HTTP_OPTIONS`.
+- mcp 2.x reports any tool exception that is not a `ToolError` to the client as `Error executing tool <name>`, without the original message. Raise `ToolError` (or a toolkit subclass) for failures the caller should read.
+
 ### Security
 
 - Web scraping: a redirect could reach private and cloud-metadata addresses, because only the first URL was checked and httpx followed redirects. The scraper now follows up to 5 redirects itself, validates every hop (robots.txt included), connects to the IP it validated with the original Host header and TLS SNI, and treats any non-global address as forbidden. This holds for a caller-supplied client built with `follow_redirects=True`, and, as httpx does, the client's Authorization and Cookie headers are dropped once a hop leaves the original origin. Deprecated site-local IPv6 (`fec0::/10`), which Python reports as global, is also refused.

@@ -4,7 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Every MCP server that touches real data needs the same guard code around each tool: verify the caller's token, check its scope, refuse writes to the database, cache repeat calls and trace what ran. This Python library puts that code in decorators on top of FastMCP, with JWT/JWKS auth, a sqlglot read-only SQL allowlist, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function. Each guard is opt-in per tool.
+Every MCP server that touches real data needs the same guard code around each tool: verify the caller's token, check its scope, refuse writes to the database, cache repeat calls and trace what ran. This Python library puts that code in decorators on top of the MCP SDK's `MCPServer` (FastMCP in mcp 1.x), with JWT/JWKS auth, a sqlglot read-only SQL allowlist, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function. Each guard is opt-in per tool.
 
 ```python
 import asyncio, jwt
@@ -114,7 +114,7 @@ More runnable examples, per-server usage and the seeded RAG walkthrough are in [
 
 ```mermaid
 flowchart LR
-  C["MCP client or agent"] -->|"tools/call"| S["EnhancedMCP (FastMCP subclass)"]
+  C["MCP client or agent"] -->|"tools/call"| S["EnhancedMCP (MCPServer subclass)"]
   S -->|"@mcp.auth_tool"| A["JWTAuth or APIKeyAuth: verify credential, check scope"]
   S -->|"@mcp.cached_tool"| K["CacheLayer: TTL, in-memory or Redis"]
   S -->|"@mcp.rate_limited_tool"| R["RateLimiter: per-caller window"]
