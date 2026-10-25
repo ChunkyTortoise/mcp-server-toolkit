@@ -11,15 +11,11 @@ from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
-from mcp.server.lowlevel.server import request_ctx
-from starlette.requests import Request
 
 __all__ = [
     "AccessToken",
     "AuthSettings",
     "AuthenticatedUser",
-    "Request",
     "TokenVerifier",
     "get_access_token",
-    "request_ctx",
 ]

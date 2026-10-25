@@ -43,6 +43,8 @@ def create_server(
             issuer_url=AnyHttpUrl(issuer),
             resource_server_url=AnyHttpUrl(resource),
             required_scopes=["orders:read"],
+            # The verifier checks aud itself; the SDK check is a second gate.
+            validate_token_resource=True,
         ),
     )
 

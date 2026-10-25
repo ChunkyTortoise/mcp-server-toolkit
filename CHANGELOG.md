@@ -11,6 +11,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ### Security
 
+- HTTP gateway on mcp 2.x: per-tool scope checks read the bearer token of the request that carried the tool call. 2.x removed `mcp.server.lowlevel.server.request_ctx`, which `get_request_access_token` used under 1.x; 2.x runs each call in its own request's auth context instead. The regression test (a session opened with one token, a later call sent with another) now runs in both JSON and SSE response modes. The gateway sets `AuthSettings.validate_token_resource=True`, so the SDK also refuses a token whose resource is not this server, on top of the verifier's `aud` check. A new test pins the loopback DNS-rebinding guard: a foreign `Host` header gets 421 before dispatch.
 - Web scraping: a redirect could reach private and cloud-metadata addresses, because only the first URL was checked and httpx followed redirects. The scraper now follows up to 5 redirects itself, validates every hop (robots.txt included), connects to the IP it validated with the original Host header and TLS SNI, and treats any non-global address as forbidden. This holds for a caller-supplied client built with `follow_redirects=True`, and, as httpx does, the client's Authorization and Cookie headers are dropped once a hop leaves the original origin. Deprecated site-local IPv6 (`fec0::/10`), which Python reports as global, is also refused.
 
 ### Changed
