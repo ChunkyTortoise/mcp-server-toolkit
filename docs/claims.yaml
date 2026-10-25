@@ -65,12 +65,12 @@ claims:
     scope: Postgres integration tests gated on INTEGRATION=1 and DATABASE_URL.
   - id: test-collected
     statement: Tests collected, including skipped ones.
-    value: "866"
-    match: ["866"]
+    value: "869"
+    match: ["869"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/ --collect-only -q | tail -2"
-    expect: "866 tests collected"
+    expect: "869 tests collected"
     date: "2026-10-24"
     status: verified
     scope: Published in the README Results table, dated 2026-10-24. Includes the 9 Postgres integration tests that skip without INTEGRATION=1.
@@ -201,12 +201,12 @@ claims:
     match: ["10/10", "10 tasks"]
     artifact: evals/RESULTS.md
     artifact_check: contains
-    executes: false
+    executes: true
     command: "python evals/quality/runner.py"
     date: "2026-10-24"
     status: verified
     scope: >-
-      Deterministic mode only; the LLM-as-judge path needs ANTHROPIC_API_KEY and mocks the judge without it. `executes: false` because the runner rewrites evals/RESULTS.md: see the W5.5 amendment.
+      Deterministic mode only; the LLM-as-judge path needs ANTHROPIC_API_KEY and mocks the judge without it. The runner prints to stdout and writes evals/RESULTS.md only with --write-results (W5.5), so the ledger executes it.
   - id: quality-evals-elapsed
     statement: Elapsed time recorded with the quality eval run.
     value: "556 ms"
