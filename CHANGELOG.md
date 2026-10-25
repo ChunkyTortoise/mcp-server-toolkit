@@ -6,7 +6,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ### Security
 
-- Web scraping: a redirect could reach private and cloud-metadata addresses, because only the first URL was checked and httpx followed redirects. The scraper now follows up to 5 redirects itself, validates every hop (robots.txt included), connects to the IP it validated with the original Host header and TLS SNI, and treats any non-global address as forbidden. This holds for a caller-supplied client built with `follow_redirects=True`.
+- Web scraping: a redirect could reach private and cloud-metadata addresses, because only the first URL was checked and httpx followed redirects. The scraper now follows up to 5 redirects itself, validates every hop (robots.txt included), connects to the IP it validated with the original Host header and TLS SNI, and treats any non-global address as forbidden. This holds for a caller-supplied client built with `follow_redirects=True`, and, as httpx does, the client's Authorization and Cookie headers are dropped once a hop leaves the original origin. Deprecated site-local IPv6 (`fec0::/10`), which Python reports as global, is also refused.
 
 ### Changed
 

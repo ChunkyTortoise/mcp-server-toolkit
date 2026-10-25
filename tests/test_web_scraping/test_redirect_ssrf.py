@@ -19,6 +19,7 @@ from mcp_toolkit.servers.web_scraping.scraper import WebScraper, _is_forbidden_i
 PUBLIC_IP = "93.184.216.34"
 FAKE_DNS = {
     "public.test": [PUBLIC_IP],
+    "other.test": [PUBLIC_IP],
     "metadata.test": ["169.254.169.254"],
     "mixed.test": [PUBLIC_IP, "10.0.0.5"],
 }
@@ -162,6 +163,26 @@ async def test_https_keeps_the_hostname_for_sni():
 
 
 @pytest.mark.asyncio
+async def test_client_credentials_are_dropped_on_a_cross_origin_hop():
+    page, transport = await scrape(
+        {
+            "/start": redirect("/same"),
+            "/same": redirect("http://other.test/final"),
+            "/final": (200, {}, b"<p>done</p>"),
+        },
+        headers={"Authorization": "Bearer secret"},
+        cookies={"session": "secret"},
+    )
+    assert page.is_success, page.error
+    same, _, cross = transport.seen
+    assert same.headers["authorization"] == "Bearer secret"
+    assert "cookie" in same.headers
+    assert cross.headers["host"] == "other.test"
+    assert "authorization" not in cross.headers
+    assert "cookie" not in cross.headers
+
+
+@pytest.mark.asyncio
 async def test_redirect_loop_stops_at_the_hop_limit():
     page, transport = await scrape({"/start": redirect("/start")})
     assert page.error and "Too many redirects" in page.error
@@ -194,6 +215,7 @@ async def test_robots_txt_redirect_cannot_reach_internal_hosts(internal_server):
         "255.255.255.255",
         "fd00::1",
         "fe80::1",
+        "fec0::1",
         "ff02::1",
         "::ffff:10.0.0.1",
         "64:ff9b::7f00:1",

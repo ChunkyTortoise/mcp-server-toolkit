@@ -24,7 +24,7 @@ def _is_forbidden_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
             ip = ip.ipv4_mapped
         elif ip in _NAT64:
             ip = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
-    return not ip.is_global or ip.is_multicast
+    return not ip.is_global or ip.is_multicast or getattr(ip, "is_site_local", False)
 
 
 def _resolve_public(url: str) -> str:
@@ -60,6 +60,10 @@ def _validate_url(url: str) -> None:
     _resolve_public(url)
 
 
+def _origin(url: httpx.URL) -> tuple[str, str, int | None]:
+    return url.scheme, url.host, url.port
+
+
 async def _safe_get(
     client: httpx.AsyncClient,
     url: str,
@@ -68,20 +72,27 @@ async def _safe_get(
     """GET with every redirect hop validated and pinned to its checked IP.
 
     Redirects are followed here, never by httpx, whatever the client was built
-    with. Returns the response and the hostname-based URL it came from.
+    with. Like httpx, credentials from the client (Authorization, Cookie) are
+    dropped once a hop leaves the original origin. Returns the response and the
+    hostname-based URL it came from.
     """
     current = url
+    origin = _origin(httpx.URL(url))
     for _ in range(_MAX_REDIRECTS + 1):
         ip = _resolve_public(current)
         target = httpx.URL(current)
         extensions = {"sni_hostname": target.host} if target.scheme == "https" else {}
-        response = await client.get(
+        request = client.build_request(
+            "GET",
             target.copy_with(host=ip),
             headers={"Host": target.netloc.decode("ascii")},
             extensions=extensions,
-            follow_redirects=False,
             timeout=httpx.USE_CLIENT_DEFAULT if timeout is None else timeout,
         )
+        if _origin(target) != origin:
+            request.headers.pop("authorization", None)
+            request.headers.pop("cookie", None)
+        response = await client.send(request, follow_redirects=False)
         location = response.headers.get("location")
         if response.status_code not in _REDIRECT_STATUSES or not location:
             return response, current
