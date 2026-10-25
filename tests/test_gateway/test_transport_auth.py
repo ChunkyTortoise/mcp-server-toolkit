@@ -15,6 +15,7 @@ from pathlib import Path
 
 import anyio
 import httpx
+import httpx2
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -24,6 +25,7 @@ from mcp.client.streamable_http import streamable_http_client
 from mcp_toolkit.framework.auth import _hash_id
 from mcp_toolkit.framework.http_auth import require_scope
 from mcp_toolkit.gateway import create_server
+from mcp_toolkit.gateway.app import HTTP_OPTIONS
 
 ROOT = Path(__file__).resolve().parents[2]
 GATEWAY = [sys.executable, "-m", "mcp_toolkit.gateway"]
@@ -138,22 +140,30 @@ async def test_invalid_bearer_gets_401(live_server, case):
 
 async def call_example(url, bearer):
     with anyio.fail_after(15):
-        async with httpx.AsyncClient(headers={"Authorization": f"Bearer {bearer}"}) as http:
-            async with streamable_http_client(url, http_client=http) as (read, write, get_id):
+        session_ids = []
+
+        async def record_session_id(response):
+            session_ids.append(response.headers.get("mcp-session-id"))
+
+        async with httpx2.AsyncClient(
+            headers={"Authorization": f"Bearer {bearer}"},
+            event_hooks={"response": [record_session_id]},
+        ) as http:
+            async with streamable_http_client(url, http_client=http) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
-                    assert get_id()
+                    assert session_ids and session_ids[0]
                     tools = {t.name: t for t in (await session.list_tools()).tools}
                     assert set(tools) == {"get_order", "cancel_order"}
                     for tool in tools.values():
-                        assert set(tool.inputSchema.get("properties", {})) == {"order_id"}
-                    assert tools["get_order"].annotations.readOnlyHint is True
-                    assert tools["cancel_order"].annotations.destructiveHint is True
+                        assert set(tool.input_schema.get("properties", {})) == {"order_id"}
+                    assert tools["get_order"].annotations.read_only_hint is True
+                    assert tools["cancel_order"].annotations.destructive_hint is True
                     result = await session.call_tool("get_order", {"order_id": "42"})
-                    assert result.isError is False
+                    assert result.is_error is False
                     assert result.content[0].text == "order 42: shipped"
                     result = await session.call_tool("cancel_order", {"order_id": "42"})
-                    assert result.isError is True
+                    assert result.is_error is True
                     assert "Forbidden:" in result.content[0].text
 
 
@@ -215,7 +225,7 @@ async def test_real_jwks_path_without_hmac_secret(tmp_path, local_jwks):
 
 
 @asynccontextmanager
-async def counted_server():
+async def counted_server(**http_options):
     secret = secrets.token_hex(32)
     url = "http://127.0.0.1:8000/mcp"
     server = create_server(secret=secret, resource_url=url, issuer=ISSUER)
@@ -233,7 +243,7 @@ async def counted_server():
         calls["cached"] += 1
         return f"report {report_id} for writers"
 
-    app = server.streamable_http_app()
+    app = server.streamable_http_app(**{**HTTP_OPTIONS, **http_options})
     async with server.session_manager.run():
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1:8000"
@@ -289,6 +299,17 @@ async def probe(server, bearer, session, caller_id="untrusted"):
     )
 
 
+async def test_loopback_gateway_refuses_a_foreign_host_header_with_421():
+    async with counted_server() as server:
+        response = await server["client"].post(
+            "/mcp",
+            headers={**headers(mint(server)), "Host": "attacker.example"},
+            json={"jsonrpc": "2.0", "id": 1, "method": "ping"},
+        )
+        assert response.status_code == 421
+        assert server["calls"] == {"probe": 0, "cached": 0}
+
+
 async def test_endpoint_scope_is_403_before_handler_dispatch():
     async with counted_server() as server:
         bearer = mint(server, scope="orders:write")
@@ -326,17 +347,18 @@ async def test_same_subject_refreshed_token_keeps_session():
         assert server["calls"]["probe"] == 1
 
 
-async def test_http_rate_limit_uses_verified_subject_and_spans_hash_it():
-    async with counted_server() as server:
+@pytest.mark.parametrize("json_response", [True, False], ids=["json", "sse"])
+async def test_http_rate_limit_uses_verified_subject_and_spans_hash_it(json_response):
+    async with counted_server(json_response=json_response) as server:
         bearer = mint(server)
         session = await initialize(server, bearer)
         results = [await probe(server, bearer, session, f"forged-{i}") for i in range(3)]
-        assert [r.json()["result"]["isError"] for r in results] == [False, False, True]
+        assert [rpc_result(r, json_response)["isError"] for r in results] == [False, False, True]
         assert server["calls"]["probe"] == 2
         other = mint(server, sub="other@example.test")
         other_session = await initialize(server, other)
         response = await probe(server, other, other_session, "forged-0")
-        assert response.json()["result"]["isError"] is False
+        assert rpc_result(response, json_response)["isError"] is False
         spans = server["server"].telemetry.spans
         assert [s.attributes["mcp.subject"] for s in spans] == [
             *[_hash_id("reader@example.test")] * 3,
@@ -422,6 +444,18 @@ async def call_named_tool(server, bearer, session, name, arguments):
     )
 
 
+def rpc_result(response, json_response):
+    """The JSON-RPC result, after pinning the response mode the server was built for."""
+    content_type = response.headers["content-type"]
+    expected = "application/json" if json_response else "text/event-stream"
+    assert content_type.startswith(expected), content_type
+    if not json_response:
+        data = [line[5:] for line in response.text.splitlines() if line.startswith("data:")]
+        return json.loads(data[-1])["result"]
+    return response.json()["result"]
+
+
+@pytest.mark.parametrize("json_response", [True, False], ids=["json", "sse"])
 @pytest.mark.parametrize(
     "initial_scope,current_scope,refused",
     [
@@ -429,17 +463,20 @@ async def call_named_tool(server, bearer, session, name, arguments):
         ("orders:read", "orders:read orders:write", False),
     ],
 )
-async def test_per_tool_scope_uses_current_request_token(initial_scope, current_scope, refused):
-    async with counted_server() as server:
+async def test_per_tool_scope_uses_current_request_token(
+    initial_scope, current_scope, refused, json_response
+):
+    async with counted_server(json_response=json_response) as server:
         session = await initialize(server, mint(server, scope=initial_scope, jti="initial"))
         current = mint(server, scope=current_scope, jti="replacement")
         response = await call_named_tool(
             server, current, session, "cancel_order", {"order_id": "42"}
         )
         assert response.status_code == 200
-        assert response.json()["result"]["isError"] is refused
+        result = rpc_result(response, json_response)
+        assert result["isError"] is refused
         if refused:
-            assert "Forbidden:" in response.json()["result"]["content"][0]["text"]
+            assert "Forbidden:" in result["content"][0]["text"]
         assert server["server"].telemetry.spans[-1].attributes["tool.outcome"] == (
             "forbidden" if refused else "ok"
         )
@@ -461,8 +498,11 @@ async def test_expired_initial_write_token_does_not_grant_scope_to_new_read_toke
         assert "Forbidden:" in current.json()["result"]["content"][0]["text"]
 
 
-async def test_cached_tool_refuses_authenticated_http_instead_of_sharing_authorized_data():
-    async with counted_server() as server:
+@pytest.mark.parametrize("json_response", [True, False], ids=["json", "sse"])
+async def test_cached_tool_refuses_authenticated_http_instead_of_sharing_authorized_data(
+    json_response,
+):
+    async with counted_server(json_response=json_response) as server:
         writer = mint(server, sub="writer@example.test", scope="orders:read orders:write")
         reader = mint(server, sub="reader@example.test")
         writer_session = await initialize(server, writer)
@@ -472,8 +512,9 @@ async def test_cached_tool_refuses_authenticated_http_instead_of_sharing_authori
                 server, bearer, session, "cached_report", {"report_id": "1"}
             )
             assert response.status_code == 200
-            assert response.json()["result"]["isError"] is True
-            assert "authenticated HTTP" in response.json()["result"]["content"][0]["text"]
+            result = rpc_result(response, json_response)
+            assert result["isError"] is True
+            assert "authenticated HTTP" in result["content"][0]["text"]
         assert server["calls"]["cached"] == 0
 
 

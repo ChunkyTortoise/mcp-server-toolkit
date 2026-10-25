@@ -10,11 +10,8 @@ from mcp_toolkit.framework.errors import Forbidden
 from mcp_toolkit.framework.telemetry import annotate_call
 from mcp_toolkit.gateway.sdk_bridge import (
     AccessToken,
-    AuthenticatedUser,
-    Request,
     TokenVerifier,
     get_access_token,
-    request_ctx,
 )
 
 
@@ -82,14 +79,11 @@ class JWTTokenVerifier(TokenVerifier):
 def get_request_access_token() -> AccessToken | None:
     """Return this HTTP request's verified token, not the session creator's.
 
-    SDK stateful handler tasks inherit the initialize request's auth context.
-    The low-level per-message context carries the current HTTP Request instead.
-    Only local calls without an HTTP request use the SDK auth-context fallback.
+    mcp 2.x runs each tool call in the context of the HTTP request that carried
+    it, so the SDK auth context holds the current bearer token in both JSON and
+    SSE response modes. tests/test_gateway/test_transport_auth.py pins that with
+    a session whose later request carries a different token. None off HTTP.
     """
-    context = request_ctx.get(None)
-    if context is not None and isinstance(context.request, Request):
-        user = context.request.scope.get("user")
-        return user.access_token if isinstance(user, AuthenticatedUser) else None
     return get_access_token()
 
 

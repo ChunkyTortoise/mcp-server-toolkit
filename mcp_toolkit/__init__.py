@@ -1,4 +1,4 @@
-"""MCP Server Toolkit: FastMCP tool decorators (auth, caching, rate limits, telemetry) and example servers."""
+"""MCP Server Toolkit: MCPServer tool decorators (auth, caching, rate limits, telemetry) and example servers."""
 
 from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, OAuthAuth, requires_scope
 from mcp_toolkit.framework.base_server import EnhancedMCP
@@ -14,4 +14,4 @@ __all__ = [
     "requires_scope",
     "CostTracker",
 ]
-__version__ = "0.3.0"
+__version__ = "0.4.0"

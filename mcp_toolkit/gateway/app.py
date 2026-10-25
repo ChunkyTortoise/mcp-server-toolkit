@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from typing import Any
 
 from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl
@@ -17,6 +18,9 @@ from pydantic import AnyHttpUrl
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.framework.http_auth import JWTTokenVerifier, require_scope
 from mcp_toolkit.gateway.sdk_bridge import AuthSettings
+
+# mcp 2 takes transport options at run time, not on the constructor.
+HTTP_OPTIONS: dict[str, Any] = {"json_response": True}
 
 
 def create_server(
@@ -33,9 +37,6 @@ def create_server(
     resource = resource_url or f"http://{url_host}:{port}/mcp"
     server = EnhancedMCP(
         "orders-http",
-        host=host,
-        port=port,
-        json_response=True,
         token_verifier=JWTTokenVerifier(
             secret=secret, jwks_uri=jwks_uri, audience=resource, issuer=issuer
         ),
@@ -43,13 +44,17 @@ def create_server(
             issuer_url=AnyHttpUrl(issuer),
             resource_server_url=AnyHttpUrl(resource),
             required_scopes=["orders:read"],
+            # Config guard, not a second token check: the verifier checks aud and reports
+            # resource=audience, so this refuses every token only if audience and
+            # resource_server_url drift apart.
+            validate_token_resource=True,
         ),
     )
 
     @server.rate_limited_tool(
         max_calls=100,
         title="Read an example order",
-        annotations=ToolAnnotations(readOnlyHint=True),
+        annotations=ToolAnnotations(read_only_hint=True),
     )
     async def get_order(order_id: str) -> str:
         """Return a synthetic order status."""
@@ -59,7 +64,7 @@ def create_server(
     @server.rate_limited_tool(
         max_calls=100,
         title="Cancel an example order",
-        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True),
+        annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True),
     )
     async def cancel_order(order_id: str) -> str:
         """Demonstrate an extra per-tool scope on synthetic data."""
@@ -111,7 +116,7 @@ def main() -> None:
         parser.error("set only one of MCP_JWKS_URI and MCP_JWT_SECRET")
     create_server(
         host=host, port=port, secret=secret, jwks_uri=jwks_uri, resource_url=resource, issuer=issuer
-    ).run(transport="streamable-http")
+    ).run(transport="streamable-http", host=host, port=port, **HTTP_OPTIONS)
 
 
 if __name__ == "__main__":

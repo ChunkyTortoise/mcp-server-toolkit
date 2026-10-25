@@ -5,7 +5,6 @@ and nothing else. Every check names the attribute the toolkit actually uses.
 """
 
 import ast
-import contextvars
 import inspect
 import subprocess
 import sys
@@ -50,25 +49,21 @@ def test_authenticated_user_carries_the_access_token():
     assert sdk_bridge.AuthenticatedUser(token).access_token is token
 
 
-def test_request_context_carries_the_http_request_that_http_auth_reads():
-    from mcp.shared.context import RequestContext
+async def test_auth_context_middleware_sets_the_token_http_auth_reads():
+    from mcp.server.auth.middleware.auth_context import AuthContextMiddleware
 
     from mcp_toolkit.framework.http_auth import get_request_access_token
 
-    assert isinstance(sdk_bridge.request_ctx, contextvars.ContextVar)
-    assert sdk_bridge.request_ctx.get(None) is None
+    seen = []
+
+    async def app(scope, receive, send):
+        seen.append(get_request_access_token())
+
     token = sdk_bridge.AccessToken(token="t", client_id="per-request", scopes=["orders:read"])
-    request = sdk_bridge.Request(
-        {"type": "http", "user": sdk_bridge.AuthenticatedUser(token), "headers": []}
-    )
-    context = RequestContext(
-        request_id=1, meta=None, session=None, lifespan_context=None, request=request
-    )
-    reset = sdk_bridge.request_ctx.set(context)
-    try:
-        assert get_request_access_token() is token
-    finally:
-        sdk_bridge.request_ctx.reset(reset)
+    scope = {"type": "http", "user": sdk_bridge.AuthenticatedUser(token)}
+    await AuthContextMiddleware(app)(scope, None, None)
+    assert seen == [token]
+    assert get_request_access_token() is None
 
 
 def test_get_access_token_is_none_outside_a_request():
@@ -80,8 +75,10 @@ def test_auth_settings_accepts_the_gateway_fields():
         issuer_url="http://127.0.0.1:9000",
         resource_server_url="http://127.0.0.1:8000/mcp",
         required_scopes=["orders:read"],
+        validate_token_resource=True,
     )
     assert settings.required_scopes == ["orders:read"]
+    assert settings.validate_token_resource is True
 
 
 def _imported_names(tree):

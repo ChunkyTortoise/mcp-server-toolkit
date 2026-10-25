@@ -1,4 +1,4 @@
-"""EnhancedMCP: extends FastMCP with caching, rate limiting, and telemetry."""
+"""EnhancedMCP: extends MCPServer with caching, rate limiting, and telemetry."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import functools
 import logging
 from typing import Any, Callable
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from mcp_toolkit.framework.auth import _audit, _hash_id
 from mcp_toolkit.framework.caching import CacheLayer, InMemoryCache
@@ -18,12 +18,12 @@ from mcp_toolkit.framework.telemetry import TelemetryProvider, annotate_call
 logger = logging.getLogger(__name__)
 
 
-class EnhancedMCP(FastMCP):
-    """Enhanced FastMCP with caching, rate limiting, and telemetry.
+class EnhancedMCP(MCPServer):
+    """Enhanced MCPServer with caching, rate limiting, and telemetry.
 
     All MCP servers in the toolkit inherit from this class. The decorators
     forward extra keyword arguments (name, title, description, annotations, icons,
-    meta, structured_output) to ``FastMCP.tool``. Each decorated call records one
+    meta, structured_output) to ``MCPServer.tool``. Each decorated call records one
     span. Refusals raise ``ToolError`` subclasses, so clients receive ``isError``.
     """
 
@@ -54,10 +54,10 @@ class EnhancedMCP(FastMCP):
         return self._telemetry
 
     def _register_tool(self, func: Callable, wrapper: Callable, tool_kwargs: dict[str, Any]) -> Callable:
-        """Register ``wrapper`` with FastMCP, refusing a name that is already taken.
+        """Register ``wrapper`` with MCPServer, refusing a name that is already taken.
 
-        FastMCP keeps the first registration and drops later ones silently, so
-        stacking two toolkit decorators would lose the outer guard without a sound.
+        MCPServer keeps the first registration and drops later ones with only a log
+        warning, so stacking two toolkit decorators would lose the outer guard.
         """
         name = tool_kwargs.get("name") or func.__name__
         if self._tool_manager.get_tool(name) is not None:
@@ -79,7 +79,7 @@ class EnhancedMCP(FastMCP):
                 ...
 
         Extra keyword arguments (``name``, ``annotations``, ``structured_output``...)
-        go to ``FastMCP.tool``.
+        go to ``MCPServer.tool``.
         """
 
         def decorator(func: Callable) -> Callable:
@@ -179,7 +179,7 @@ class EnhancedMCP(FastMCP):
         Combines ``@mcp.tool()`` with ``@requires_scope(auth, scope)``. The
         tool function must accept a ``token`` or ``api_key`` kwarg. A refusal
         raises ``Unauthorized`` or ``Forbidden`` and the tool body never runs.
-        Extra keyword arguments go to ``FastMCP.tool``.
+        Extra keyword arguments go to ``MCPServer.tool``.
 
         Usage::
 

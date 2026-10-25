@@ -1,6 +1,6 @@
 """Refusal errors raised by the toolkit guards.
 
-Each subclasses the SDK's ``ToolError``, so FastMCP reports it to the client as
+Each subclasses the SDK's ``ToolError``, so MCPServer reports it to the client as
 a tool result with ``isError`` true instead of a successful result whose text
 happens to start with "Error". Messages are short and colon separated, and they
 never echo the caller's scopes, token, arguments or raw exception text.
@@ -8,7 +8,7 @@ never echo the caller's scopes, token, arguments or raw exception text.
 
 from __future__ import annotations
 
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 
 
 class Unauthorized(ToolError):

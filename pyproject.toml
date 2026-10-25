@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-server-toolkit"
-version = "0.3.0"
-description = "Opt-in MCP tool decorators for FastMCP: JWT/JWKS auth, read-only SQL allowlist, TTL caching, rate limits, OpenTelemetry spans, plus 9 example servers"
+version = "0.4.0"
+description = "Opt-in MCP tool decorators for the MCP SDK MCPServer (mcp 2.x): JWT/JWKS auth, read-only SQL allowlist, TTL caching, rate limits, OpenTelemetry spans, plus 9 example servers"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "mcp>=1.28.1,<2",
+    "mcp>=2.3.0,<3",
     "pydantic>=2.10",
     "httpx>=0.28",
 ]
