@@ -5,7 +5,10 @@ Usage:
     python evals/quality/runner.py                 # deterministic tasks only
     python evals/quality/runner.py --judge         # + LLM-as-judge scoring (needs ANTHROPIC_API_KEY)
     python evals/quality/runner.py --category auth # filter by category
-    python evals/quality/runner.py --output evals/RESULTS.md  # write results
+    python evals/quality/runner.py --write-results # also write evals/RESULTS.md
+    python evals/quality/runner.py --write-results out.md  # write to another path
+
+Without --write-results the results markdown goes to stdout and no file changes.
 
 Exit code 1 if any deterministic task fails.
 """
@@ -23,6 +26,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from evals.quality.judge import JudgeScore, judge
 from evals.quality.tasks import TASKS, EvalTask
+
+DEFAULT_RESULTS_PATH = "evals/RESULTS.md"
 
 
 @dataclass
@@ -60,7 +65,7 @@ def _format_score(score: JudgeScore | None) -> str:
     return f"  judge: {score.mean:.1f}/5 (C={score.correctness} F={score.faithfulness} H={score.helpfulness} Cn={score.conciseness})"
 
 
-def _write_results(results: list[TaskResult], output_path: Path, use_judge: bool) -> None:
+def _render_results(results: list[TaskResult], use_judge: bool) -> str:
     passed = sum(1 for r in results if r.passed)
     total = len(results)
     total_ms = sum(r.elapsed_ms for r in results)
@@ -143,16 +148,28 @@ def _write_results(results: list[TaskResult], output_path: Path, use_judge: bool
         "| cache    | 2     | Hit/miss semantics, key determinism |",
     ]
 
-    output_path.write_text("\n".join(lines) + "\n")
+    return "\n".join(lines) + "\n"
 
 
-async def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="mcp-server-toolkit quality evals")
     parser.add_argument("--judge", action="store_true", help="Enable LLM-as-judge scoring")
     parser.add_argument("--category", help="Filter tasks by category")
-    parser.add_argument("--output", default="evals/RESULTS.md", help="Output path for results markdown")
+    parser.add_argument(
+        "--write-results",
+        "--output",
+        dest="write_results",
+        nargs="?",
+        const=DEFAULT_RESULTS_PATH,
+        metavar="PATH",
+        help=f"Write results markdown to PATH (default {DEFAULT_RESULTS_PATH}); stdout otherwise",
+    )
     parser.add_argument("--verbose", "-v", action="store_true")
-    args = parser.parse_args(argv)
+    return parser
+
+
+async def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
 
     tasks = TASKS
     if args.category:
@@ -188,9 +205,14 @@ async def main(argv: list[str] | None = None) -> int:
     total = len(results)
     print(f"\n{passed}/{total} passed")
 
-    output_path = Path(args.output)
-    _write_results(results, output_path, use_judge=use_judge)
-    print(f"Results written to {output_path}")
+    report = _render_results(results, use_judge=use_judge)
+    if args.write_results:
+        output_path = Path(args.write_results)
+        output_path.write_text(report)
+        print(f"Results written to {output_path}")
+    else:
+        print()
+        print(report, end="")
 
     return 0 if passed == total else 1
 

@@ -25,13 +25,13 @@ jobs:
       - name: Run deterministic quality evals (pytest)
         run: pytest tests/test_evals/test_quality_evals.py -v --tb=short
       - name: Run quality eval runner (generates RESULTS.md)
-        run: python evals/quality/runner.py --verbose
+        run: python evals/quality/runner.py --verbose --write-results
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - name: Run with LLM-as-judge (if enabled)
         # secrets.* is not allowed in job `if:`; runner.py skips the judge when the key is absent
         if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.judge == 'true' }}
-        run: python evals/quality/runner.py --judge --output evals/RESULTS.md
+        run: python evals/quality/runner.py --judge --write-results
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       - name: Upload results as artifact
