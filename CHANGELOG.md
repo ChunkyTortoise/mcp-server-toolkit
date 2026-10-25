@@ -4,6 +4,8 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-24
+
 ### Breaking Changes
 
 - Requires `mcp>=2.3,<3`; mcp 1.x is no longer supported. `EnhancedMCP` now extends `mcp.server.mcpserver.MCPServer` (FastMCP's 2.x name), and the toolkit's `Unauthorized`, `Forbidden` and `RateLimited` subclass `mcp.server.mcpserver.exceptions.ToolError`. Transport options such as `host`, `port` and `json_response` are no longer constructor arguments: pass them to `run()` or `streamable_http_app()`. The gateway keeps its JSON responses through `mcp_toolkit.gateway.app.HTTP_OPTIONS`.
