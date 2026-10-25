@@ -81,6 +81,10 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.9,<0.17",
+    # scripts/check_claims.py parses docs/claims.yaml; nothing in the current
+    # dependency set reads YAML, and a hand-rolled parser would break on
+    # legitimate ledger entries. Dev-only: the runtime package does not need it.
+    "pyyaml>=6.0",
 ]
 
 [tool.pytest.ini_options]
