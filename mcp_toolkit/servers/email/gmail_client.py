@@ -1,4 +1,4 @@
-"""GmailEmailClient — production Gmail client via Google API (OAuth 2.0).
+"""GmailEmailClient: production Gmail client via Google API (OAuth 2.0).
 
 Requires: pip install mcp-server-toolkit[gmail]
   google-api-python-client>=2.100
@@ -33,9 +33,8 @@ from typing import Any
 class GmailEmailClient:
     """Production Gmail client using the Gmail REST API.
 
-    Pass a ``google.oauth2.credentials.Credentials`` object obtained via
-    the standard Google OAuth 2.0 flow. See examples/oauth_resource_server/
-    for a wiring example with Auth0 / Google Identity.
+    Pass a ``google.oauth2.credentials.Credentials`` object from the Google
+    OAuth 2.0 installed-app or web flow. This process does not run that flow.
     """
 
     credentials: Any

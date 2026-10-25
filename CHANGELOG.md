@@ -4,6 +4,9 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ## [Unreleased]
 
+### Security
+- HTTP gateway: a non-loopback bind now requires `MCP_BIND_PUBLIC=1`, `MCP_ISSUER`, `MCP_RESOURCE_URL` and an exact `MCP_ALLOWED_HOSTS` list. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` feed SDK Host/Origin checks on every bind, forwarded identity headers are ignored, and `docs/DEPLOYMENT.md` documents the rules.
+
 ## [0.4.0] - 2026-10-24
 
 ### Breaking Changes

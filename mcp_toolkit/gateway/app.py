@@ -2,7 +2,8 @@
 
 Use MCP_JWKS_URI for externally issued tokens. MCP_JWT_SECRET and
 --print-demo-token are local demo conveniences, not an authorization server.
-Use on loopback; public Host/Origin deployment configuration is not supplied here.
+A non-loopback bind is deploy mode: it needs MCP_BIND_PUBLIC=1, MCP_ISSUER,
+MCP_RESOURCE_URL and an exact MCP_ALLOWED_HOSTS list (see docs/DEPLOYMENT.md).
 """
 
 from __future__ import annotations
@@ -16,11 +17,26 @@ from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
-from mcp_toolkit.framework.http_auth import JWTTokenVerifier, require_scope
+from mcp_toolkit.framework.http_auth import (
+    HttpConfigError,
+    HttpServerSettings,
+    JWTTokenVerifier,
+    require_scope,
+    resolve_http_server_settings,
+)
 from mcp_toolkit.gateway.sdk_bridge import AuthSettings
 
 # mcp 2 takes transport options at run time, not on the constructor.
 HTTP_OPTIONS: dict[str, Any] = {"json_response": True}
+
+
+def http_options(settings: HttpServerSettings) -> dict[str, Any]:
+    """Run-time options for ``run`` or ``streamable_http_app``, including Host/Origin checks.
+
+    Explicit ``transport_security`` replaces the SDK's own loopback-only defaults,
+    so every bind gets the allow lists the settings were validated with.
+    """
+    return {**HTTP_OPTIONS, "transport_security": settings.transport_security}
 
 
 def create_server(
@@ -30,18 +46,41 @@ def create_server(
     secret: str | None = None,
     jwks_uri: str | None = None,
     resource_url: str | None = None,
-    issuer: str = "http://127.0.0.1:9000",
+    issuer: str | None = None,
+    allowed_hosts: list[str] | None = None,
+    allowed_origins: list[str] | None = None,
+    bind_public: bool = False,
+    settings: HttpServerSettings | None = None,
 ) -> EnhancedMCP:
-    """Build the two-tool example with an endpoint-wide orders:read scope."""
-    url_host = f"[{host}]" if ":" in host else host
-    resource = resource_url or f"http://{url_host}:{port}/mcp"
+    """Build the two-tool example with an endpoint-wide orders:read scope.
+
+    Pass ``settings`` from ``resolve_http_server_settings`` to reuse one
+    environment parse. Otherwise the keyword arguments are resolved alone and
+    process environment variables are not read. Host/Origin protection is a run
+    time option in mcp 2.x: pass ``http_options(settings)`` to ``run`` or
+    ``streamable_http_app``.
+    """
+    if settings is None:
+        settings = resolve_http_server_settings(
+            host=host,
+            port=port,
+            resource_url=resource_url,
+            issuer=issuer,
+            allowed_hosts=allowed_hosts,
+            allowed_origins=allowed_origins,
+            bind_public=bind_public,
+            hosts_configured=allowed_hosts is not None,
+            origins_configured=allowed_origins is not None,
+        )
+    settings.validate()
+    resource = settings.resource_url
     server = EnhancedMCP(
         "orders-http",
         token_verifier=JWTTokenVerifier(
-            secret=secret, jwks_uri=jwks_uri, audience=resource, issuer=issuer
+            secret=secret, jwks_uri=jwks_uri, audience=resource, issuer=settings.issuer
         ),
         auth=AuthSettings(
-            issuer_url=AnyHttpUrl(issuer),
+            issuer_url=AnyHttpUrl(settings.issuer),
             resource_server_url=AnyHttpUrl(resource),
             required_scopes=["orders:read"],
             # Config guard, not a second token check: the verifier checks aud and reports
@@ -86,11 +125,10 @@ def main() -> None:
         import jwt
     except ImportError:
         parser.error("PyJWT is missing; install with: pip install 'mcp-server-toolkit[auth]'")
-    host = os.environ.get("MCP_HOST", "127.0.0.1")
-    port = int(os.environ.get("MCP_PORT", "8000"))
-    url_host = f"[{host}]" if ":" in host else host
-    resource = os.environ.get("MCP_RESOURCE_URL") or f"http://{url_host}:{port}/mcp"
-    issuer = os.environ.get("MCP_ISSUER", "http://127.0.0.1:9000")
+    try:
+        settings = resolve_http_server_settings(os.environ)
+    except HttpConfigError as exc:
+        parser.error(str(exc))
     secret = os.environ.get("MCP_JWT_SECRET") or None
     jwks_uri = os.environ.get("MCP_JWKS_URI") or None
     if args.print_demo_token is not None:
@@ -101,8 +139,8 @@ def main() -> None:
                 {
                     "sub": "demo-user",
                     "scope": args.print_demo_token,
-                    "aud": resource,
-                    "iss": issuer,
+                    "aud": settings.resource_url,
+                    "iss": settings.issuer,
                     "exp": int(time.time()) + 300,
                 },
                 secret,
@@ -114,9 +152,12 @@ def main() -> None:
         parser.error("set MCP_JWKS_URI, or MCP_JWT_SECRET for a local demo")
     if secret and jwks_uri:
         parser.error("set only one of MCP_JWKS_URI and MCP_JWT_SECRET")
-    create_server(
-        host=host, port=port, secret=secret, jwks_uri=jwks_uri, resource_url=resource, issuer=issuer
-    ).run(transport="streamable-http", host=host, port=port, **HTTP_OPTIONS)
+    create_server(settings=settings, secret=secret, jwks_uri=jwks_uri).run(
+        transport="streamable-http",
+        host=settings.host,
+        port=settings.port,
+        **http_options(settings),
+    )
 
 
 if __name__ == "__main__":
