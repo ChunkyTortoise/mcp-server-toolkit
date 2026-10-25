@@ -69,3 +69,31 @@ class TestMCPTestClient:
         client = MCPTestClient(server)
         result = await client.call_tool("status", None)
         assert result == "ok"
+
+    async def test_list_tools_includes_input_schema(self, server_and_client):
+        _, client = server_and_client
+        tools = await client.list_tools()
+        add_tool = next(t for t in tools if t["name"] == "add_numbers")
+        assert set(add_tool["inputSchema"]["properties"]) == {"a", "b"}
+
+    async def test_call_tool_multiple_items_returns_content_list(self):
+        server = EnhancedMCP("multi")
+
+        @server.tool()
+        async def pair() -> list[str]:
+            return ["a", "b"]
+
+        client = MCPTestClient(server)
+        result = await client.call_tool("pair")
+        assert [item.text for item in result] == ["a", "b"]
+
+    async def test_read_and_list_resources(self):
+        server = EnhancedMCP("resources")
+
+        @server.resource("note://greeting")
+        def greeting() -> str:
+            return "hello"
+
+        client = MCPTestClient(server)
+        assert await client.read_resource("note://greeting") == "hello"
+        assert await client.list_resources() == [{"uri": "note://greeting", "name": "greeting"}]

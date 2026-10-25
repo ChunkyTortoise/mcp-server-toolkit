@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 
 from mcp_toolkit.framework.auth import JWTAuth, requires_scope
 from mcp_toolkit.framework.caching import CacheLayer, InMemoryCache

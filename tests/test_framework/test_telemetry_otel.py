@@ -199,7 +199,7 @@ async def test_stdio_stays_clean_with_use_otel_and_no_otlp_endpoint(tmp_path):
                 await session.initialize()
                 for _ in range(2):
                     result = await session.call_tool("echo", {"text": "hi"})
-                    assert not result.isError
+                    assert not result.is_error
                     assert result.content[0].text == "hi"
                 await anyio.sleep(0.5)
     # A corrupted stdout would have failed the round trip above (JSON-RPC parse errors).

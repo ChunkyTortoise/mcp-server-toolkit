@@ -27,7 +27,7 @@ async def test_basic_server_stdio_round_trip():
                 names = {tool.name for tool in (await session.list_tools()).tools}
                 assert {"add", "greet"} <= names
                 result = await session.call_tool("add", {"a": 2, "b": 3})
-                assert not result.isError
+                assert not result.is_error
                 assert result.content
                 assert result.content[0].type == "text"
                 assert float(result.content[0].text) == 5
