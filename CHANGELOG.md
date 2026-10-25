@@ -8,6 +8,8 @@ All notable changes to mcp-server-toolkit are documented here.
 
 - Requires `mcp>=2.3,<3`; mcp 1.x is no longer supported. `EnhancedMCP` now extends `mcp.server.mcpserver.MCPServer` (FastMCP's 2.x name), and the toolkit's `Unauthorized`, `Forbidden` and `RateLimited` subclass `mcp.server.mcpserver.exceptions.ToolError`. Transport options such as `host`, `port` and `json_response` are no longer constructor arguments: pass them to `run()` or `streamable_http_app()`. The gateway keeps its JSON responses through `mcp_toolkit.gateway.app.HTTP_OPTIONS`.
 - mcp 2.x reports any tool exception that is not a `ToolError` to the client as `Error executing tool <name>`, without the original message. Raise `ToolError` (or a toolkit subclass) for failures the caller should read.
+- `MCPTestClient` takes an `MCPServer` and drives `call_tool_result` through `mcp.Client` (2.x removed `mcp.shared.memory.create_connected_server_and_client_session`). Results and SDK models use snake_case attributes, for example `result.is_error`, `result.structured_content`, `tool.input_schema` and `annotations.read_only_hint`; `MCPTestClient.list_tools()` still returns the wire key `inputSchema`.
+- Under mcp 2.x every pre-built server negotiates protocol `2026-07-28` and advertises `listChanged: true` for tools, prompts and resources and `resources.subscribe: true` (1.x advertised `false` plus an empty `experimental` block). The servers still expose no prompts, resources or resource templates; `tests/test_capability_snapshot.py` pins both the capability object and the empty lists.
 
 ### Security
 

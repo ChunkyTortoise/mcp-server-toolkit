@@ -1,7 +1,7 @@
 """Tests for EnhancedMCP base server."""
 
 import pytest
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.framework.testing import MCPTestClient
@@ -90,7 +90,7 @@ class TestRateLimitedTool:
         for _ in range(3):
             await client.call_tool("ping", {})
         result = await client.call_tool_result("ping", {})
-        assert result.isError is True
+        assert result.is_error is True
         assert "Rate limited:" in result.content[0].text
         with pytest.raises(ToolError, match="Rate limited:"):
             await client.call_tool("ping", {})

@@ -8,7 +8,7 @@ Every MCP server that touches real data needs the same guard code around each to
 
 ```python
 import asyncio, jwt
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp_toolkit import EnhancedMCP, JWTAuth, MCPTestClient
 
 SECRET = "replace-with-a-32-byte-or-longer-secret"

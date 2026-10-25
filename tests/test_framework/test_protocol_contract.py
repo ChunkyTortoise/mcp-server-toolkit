@@ -1,15 +1,15 @@
 """Guard decorators over the real MCP protocol (in-memory client session).
 
 A refusal must reach the client as ``isError`` and the handler must not run.
-These tests go through ``ClientSession`` rather than calling the function directly.
+These tests go through ``mcp.Client`` rather than calling the function directly.
 """
 
 import time
 
 import jwt
 import pytest
-from mcp.server.fastmcp.exceptions import ToolError
-from mcp.shared.memory import create_connected_server_and_client_session
+from mcp import Client
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import BaseModel
 
@@ -56,7 +56,7 @@ async def test_auth_refusals_are_iserror_and_handler_never_runs(guarded, token, 
     result = await MCPTestClient(server).call_tool_result(
         "get_order", {"order_id": "42", "token": token}
     )
-    assert result.isError is True
+    assert result.is_error is True
     assert expected in result.content[0].text
     assert calls["n"] == 0
 
@@ -66,7 +66,7 @@ async def test_valid_token_is_not_an_error(guarded):
     result = await MCPTestClient(server).call_tool_result(
         "get_order", {"order_id": "42", "token": _token()}
     )
-    assert result.isError is False
+    assert result.is_error is False
     assert result.content[0].text == "order 42"
     assert calls["n"] == 1
 
@@ -91,16 +91,16 @@ async def test_rate_limit_overflow_is_iserror_and_handler_runs_only_up_to_limit(
 
     client = MCPTestClient(server)
     first = [await client.call_tool_result("ping", {}) for _ in range(2)]
-    assert [r.isError for r in first] == [False, False]
+    assert [r.is_error for r in first] == [False, False]
     over = await client.call_tool_result("ping", {})
-    assert over.isError is True
+    assert over.is_error is True
     assert "Rate limited: retry after 60s" in over.content[0].text
     assert calls["n"] == 2
 
 
 async def _list(server):
-    async with create_connected_server_and_client_session(server) as session:
-        return {t.name: t for t in (await session.list_tools()).tools}
+    async with Client(server) as client:
+        return {t.name: t for t in (await client.list_tools()).tools}
 
 
 async def test_annotations_and_metadata_pass_through_every_decorator():
@@ -130,7 +130,7 @@ async def test_annotations_and_metadata_pass_through_every_decorator():
     assert tools["c"].description == "auth d"
     for tool in tools.values():
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.read_only_hint is True
 
 
 async def test_double_registration_raises_value_error():
@@ -185,17 +185,17 @@ async def test_structured_output_through_a_toolkit_decorator():
         return Order(id=order_id, total=9.5)
 
     tools = await _list(server)
-    schema = tools["get_order"].outputSchema
+    schema = tools["get_order"].output_schema
     assert schema is not None
     assert set(schema["properties"]) == {"id", "total"}
 
     client = MCPTestClient(server)
     ok = await client.call_tool_result("get_order", {"order_id": "7", "token": _token()})
-    assert ok.isError is False
-    assert ok.structuredContent == {"id": "7", "total": 9.5}
+    assert ok.is_error is False
+    assert ok.structured_content == {"id": "7", "total": 9.5}
 
     bad = await client.call_tool_result("get_order", {"order_id": "bad", "token": _token()})
-    assert bad.isError is True
+    assert bad.is_error is True
 
 
 async def test_in_process_call_tool_still_raises_tool_error(guarded):
