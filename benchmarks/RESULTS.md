@@ -30,4 +30,3 @@ measure cache overhead only, not tool computation time.
 - HIT latency is dict lookup + coroutine scheduling overhead (~0.007ms P50)
 - MISS latency includes cache key computation + async set (~0.023ms P50)
 - The 3.1x speedup is the measured result. On 2026-04-25, `benchmarks/bench_cache.py` timed an in-memory `cached_tool` for 500 iterations after 20 warmup calls. The tool was an in-process mock that awaited `asyncio.sleep(0)`. There was no network and no live provider call. The run measures cache overhead.
-- A range of 70,000 to 300,000 times versus a real LLM call is an illustrative extrapolation, not a measured result. It was not measured against any live provider. The range comes from dividing assumed LLM latencies of about 500 to 2000 ms by the measured hit latency. Those LLM latencies, and assumed database latencies of about 10 to 100 ms, were not part of this run.

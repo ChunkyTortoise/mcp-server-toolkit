@@ -14,12 +14,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -88,8 +86,8 @@ def _write_results(results: list[TaskResult], output_path: Path, use_judge: bool
             lines += [
                 "### LLM-as-Judge Scores (1-5)",
                 "",
-                f"| Metric | Value |",
-                f"|--------|-------|",
+                "| Metric | Value |",
+                "|--------|-------|",
                 f"| P50 quality | {p50:.2f} |",
                 f"| P95 quality | {p95:.2f} |",
                 f"| Mean quality | {sum(means)/len(means):.2f} |",

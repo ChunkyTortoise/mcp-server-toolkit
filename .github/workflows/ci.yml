@@ -35,6 +35,11 @@ jobs:
           fail_ci_if_error: false
       - name: Evals
         run: python evals/run_evals.py
+      - name: Claims ledger
+        # Every public number needs an artifact and a reproduction command.
+        # --published executes the command of each claim a scanned doc prints.
+        # --strict (stale/retracted/illustrative numbers fail) is for release and deploy.
+        run: python scripts/check_claims.py --check --run --published
 
   package:
     name: Wheel installs and imports

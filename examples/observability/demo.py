@@ -13,7 +13,6 @@ import os
 os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "http://localhost:4318"
 os.environ["OTEL_SERVICE_NAME"] = "mcp-toolkit-demo"
 
-from mcp_toolkit import EnhancedMCP  # noqa: E402
 from mcp_toolkit.framework.telemetry import TelemetryProvider  # noqa: E402
 
 

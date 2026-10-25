@@ -19,12 +19,12 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 # Add repo root to path when running directly
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from mcp_toolkit.servers.multi_llm.models import CircuitBreaker, LLMResponse, ProviderName
+from mcp_toolkit.servers.multi_llm.models import CircuitBreaker, ProviderName
 from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY, CHEAP_PRIORITY
 
 

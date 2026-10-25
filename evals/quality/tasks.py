@@ -14,7 +14,6 @@ Tasks that require live API calls are gated behind EVAL_LIVE_API=1.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Any, Callable, Coroutine
 

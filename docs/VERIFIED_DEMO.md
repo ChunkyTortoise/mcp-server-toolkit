@@ -31,7 +31,7 @@ These paths were exercised in Chrome: initial render, query submission, changing
 
 An existing Python environment was reused without installing packages. `PYTHONPATH` pointed at this checkout and the resolved `mcp_toolkit.__file__` was verified before execution. A fresh installation was not performed.
 
-- `python -m pytest tests/ -q`: **603 passed, 2 skipped**, 28 warnings.
+- `python -m pytest tests/ -q`: **603 passed, 2 skipped**, 28 warnings, at the base commit above. This is the 2026-09-26 capture, not the current suite; the README Results table carries the current collected count.
 - `python -m ruff check examples/verified_cache.py examples/agentic_rag/app.py tests/test_demo_walkthrough.py`: passed.
 - `python -m ruff format --check` on those same files: passed.
 - `git diff --check`: passed.
