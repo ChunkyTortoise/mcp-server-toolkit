@@ -5,15 +5,17 @@ from __future__ import annotations
 import math
 import time
 
-from mcp.server.auth.middleware.auth_context import get_access_token
-from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser
-from mcp.server.auth.provider import AccessToken, TokenVerifier
-from mcp.server.lowlevel.server import request_ctx
-from starlette.requests import Request
-
 from mcp_toolkit.framework.auth import JWTAuth, _audit, _hash_id
 from mcp_toolkit.framework.errors import Forbidden
 from mcp_toolkit.framework.telemetry import annotate_call
+from mcp_toolkit.gateway.sdk_bridge import (
+    AccessToken,
+    AuthenticatedUser,
+    Request,
+    TokenVerifier,
+    get_access_token,
+    request_ctx,
+)
 
 
 class JWTTokenVerifier(TokenVerifier):

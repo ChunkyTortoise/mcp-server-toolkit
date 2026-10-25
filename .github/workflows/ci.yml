@@ -57,8 +57,22 @@ jobs:
         run: |
           python -m venv /tmp/wheel-env
           /tmp/wheel-env/bin/pip install dist/*.whl
+      # Steps run from /tmp so the checkout cannot shadow the installed package.
       - name: Import from the installed wheel
+        working-directory: /tmp
         run: /tmp/wheel-env/bin/python -c "from mcp_toolkit import EnhancedMCP; print('wheel import ok')"
+      - name: Run the gateway entry point from the installed wheel
+        working-directory: /tmp
+        run: |
+          /tmp/wheel-env/bin/python -c "from mcp_toolkit.gateway import create_server, sdk_bridge; print('gateway import ok')"
+          /tmp/wheel-env/bin/mcp-toolkit-gateway --help
+          MCP_JWT_SECRET=ci /tmp/wheel-env/bin/python -m mcp_toolkit.gateway --print-demo-token orders:read | grep -q '\.'
+          # Boot the installed gateway and confirm the transport refuses an unauthenticated call.
+          MCP_JWT_SECRET=ci /tmp/wheel-env/bin/mcp-toolkit-gateway & pid=$!
+          for _ in $(seq 50); do curl -s -o /dev/null http://127.0.0.1:8000/mcp && break; sleep 0.2; done
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8000/mcp)
+          kill $pid
+          test "$code" = 401
 
   integration:
     name: Postgres read-only role
