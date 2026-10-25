@@ -4,6 +4,15 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- The streamable HTTP app moved from `examples/http_server.py` into `mcp_toolkit/gateway/` and ships in the wheel as the `mcp-toolkit-gateway` command (also `python -m mcp_toolkit.gateway`). `examples/http_server.py` is now a thin launcher.
+- MCP SDK internals used by the gateway and `framework.http_auth` are imported only from `mcp_toolkit/gateway/sdk_bridge.py`; `tests/test_gateway/test_sdk_bridge.py` pins that surface and fails if another module imports it directly.
+
+### Added
+
+- `[console]` extra (`jinja2`) for the upcoming server-rendered console.
+
 ## [0.3.0] - 2026-04-26
 
 ### Breaking Changes

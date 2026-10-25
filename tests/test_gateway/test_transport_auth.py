@@ -1,4 +1,4 @@
-"""Live HTTP example plus SDK middleware, session and verified-identity contracts."""
+"""Live HTTP gateway plus SDK middleware, session and verified-identity contracts."""
 
 import json
 import os
@@ -21,11 +21,12 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-from examples.http_server import create_server
 from mcp_toolkit.framework.auth import _hash_id
 from mcp_toolkit.framework.http_auth import require_scope
+from mcp_toolkit.gateway import create_server
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
+GATEWAY = [sys.executable, "-m", "mcp_toolkit.gateway"]
 ISSUER = "http://127.0.0.1:9000"
 ACCEPT = {"Accept": "application/json, text/event-stream"}
 PROTOCOL = "2025-11-25"
@@ -74,7 +75,7 @@ async def running_example(tmp_path, *, secret=None, jwks_uri=None):
     log_path = tmp_path / "http-example.log"
     with log_path.open("w") as output:
         process = subprocess.Popen(
-            [sys.executable, str(ROOT / "examples/http_server.py")],
+            GATEWAY,
             cwd=ROOT,
             env=env,
             stdout=output,
@@ -351,7 +352,7 @@ async def test_http_rate_limit_uses_verified_subject_and_spans_hash_it():
 def test_cli_missing_key_source_exits_clearly():
     env = {k: v for k, v in os.environ.items() if not k.startswith("MCP_")}
     result = subprocess.run(
-        [sys.executable, str(ROOT / "examples/http_server.py")],
+        GATEWAY,
         cwd=ROOT,
         env=env,
         capture_output=True,
@@ -370,8 +371,7 @@ def test_cli_demo_token_is_five_minutes_and_resource_bound():
     before = int(time.time())
     result = subprocess.run(
         [
-            sys.executable,
-            str(ROOT / "examples/http_server.py"),
+            *GATEWAY,
             "--print-demo-token",
             "orders:read orders:write",
         ],
@@ -394,8 +394,7 @@ def test_cli_demo_minting_is_unavailable_with_only_jwks():
     env["MCP_JWKS_URI"] = "http://127.0.0.1:9000/jwks"
     result = subprocess.run(
         [
-            sys.executable,
-            str(ROOT / "examples/http_server.py"),
+            *GATEWAY,
             "--print-demo-token",
             "orders:read",
         ],
@@ -476,3 +475,15 @@ async def test_cached_tool_refuses_authenticated_http_instead_of_sharing_authori
             assert response.json()["result"]["isError"] is True
             assert "authenticated HTTP" in response.json()["result"]["content"][0]["text"]
         assert server["calls"]["cached"] == 0
+
+
+def test_example_launcher_runs_the_packaged_gateway():
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "examples/http_server.py"), "--help"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith("usage: mcp-toolkit-gateway")

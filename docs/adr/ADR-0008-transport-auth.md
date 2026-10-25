@@ -23,7 +23,8 @@ The accepted event describes JWTAuth validation, not final transport admission.
 Issuer verification is optional for library callers and enforced when configured;
 the executable example always supplies an issuer.
 
-[http_server.py](../../examples/http_server.py) runs streamable HTTP on
+[mcp_toolkit/gateway/app.py](../../mcp_toolkit/gateway/app.py) (`mcp-toolkit-gateway`,
+or `examples/http_server.py` from a checkout) runs streamable HTTP on
 127.0.0.1:8000 by default. MCP_HOST and MCP_PORT control the bind address.
 MCP_RESOURCE_URL is the audience and protected-resource identifier, defaulting to
 the local /mcp URL. MCP_ISSUER identifies the expected issuer, with a loopback demo
@@ -77,8 +78,8 @@ transport described by the 2026-07-28 protocol revision.
 
 ## Evidence and limits
 
-[test_http_transport.py](../../tests/test_http_transport.py) boots the executable
-example on a local port and uses the non-deprecated streamable_http_client with
+[test_transport_auth.py](../../tests/test_gateway/test_transport_auth.py) boots the packaged
+gateway on a local port and uses the non-deprecated streamable_http_client with
 an httpx.AsyncClient carrying Authorization. It tests missing, forged,
 wrong-audience, missing-expiry and expired tokens, protected-resource metadata,
 authorized reads, per-tool refusals, annotations and credential-free schemas.
