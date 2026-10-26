@@ -6,6 +6,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ### Security
 
+- Dependency bumps for advisories tracked by Dependabot: the `files` extra floor moves to `pypdf>=6.21.2` (GHSA-6c7f-9265-g8fw, GHSA-jr96-gvgh-j3r4, GHSA-gmh7-3g9r-mjh5: repeated/malformed xref and missing-object references could blow up runtimes; the bump also picks up the 6.20.x–6.21.1 fixes), and the lock resolves `certifi` to 2026.10.23 (GHSA-6q48-6c7w-9gw2: emSign root CAs with compromised intermediate keys). `certifi` is transitive (via `httpx`); the floor applies to this repo's lockfile and environments, and a fresh downstream resolve takes the patched release by default.
 - HTTP gateway: a non-loopback bind now requires `MCP_BIND_PUBLIC=1`, `MCP_ISSUER`, `MCP_RESOURCE_URL` and an exact `MCP_ALLOWED_HOSTS` list. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` feed SDK Host/Origin checks on every bind, forwarded identity headers are ignored, and `docs/DEPLOYMENT.md` documents the rules.
 
 ### Changed
