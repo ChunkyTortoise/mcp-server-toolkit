@@ -329,7 +329,7 @@ claims:
     expect: "0.4.0"
     date: "2026-10-24"
     status: verified
-    scope: Not yet tagged; the latest GitHub tag, v0.3.0, is an earlier source snapshot.
+    scope: The GitHub tag v0.4.0 is a source snapshot of this version.
   - id: pypi-version
     statement: Version currently published on PyPI.
     value: "0.1.0"

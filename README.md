@@ -188,7 +188,7 @@ INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_
 
 **Scope of the library**
 - This is a Python library. There is no hosted service or dashboard.
-- [GitHub release v0.3.0](https://github.com/ChunkyTortoise/mcp-server-toolkit/releases/tag/v0.3.0) is an earlier source snapshot. The supported Quickstart installs a checkout of `main`; the PyPI preview does not include the current code.
+- [GitHub tag v0.4.0](https://github.com/ChunkyTortoise/mcp-server-toolkit/releases/tag/v0.4.0) is a source snapshot of this version. The supported Quickstart installs a checkout of `main`; the PyPI preview does not include the current code.
 - The architecture image is illustrative, not a captured trace.
 - Spans are recorded automatically only by `cached_tool` and `rate_limited_tool`. A plain `@mcp.tool()` or `@mcp.auth_tool` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend. The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
 - `rate_limited_tool` falls back to one shared `"default"` bucket, with a warning log, when the call carries no `caller_id`, `client_id` or `user_id`. The limiter is in-process, so separate server processes keep separate counters. [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md) describes an opt-in Redis backend for the limiter; it is not implemented in [`rate_limiter.py`](mcp_toolkit/framework/rate_limiter.py) yet.
