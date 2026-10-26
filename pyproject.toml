@@ -52,7 +52,7 @@ database = ["sqlglot>=26", "sqlalchemy[asyncio]>=2.0", "asyncpg>=0.30"]
 web = ["beautifulsoup4>=4.12", "lxml>=5.0"]
 files = ["pypdf>=6.21.2", "openpyxl>=3.1"]
 redis = ["redis>=5.2"]
-auth = ["PyJWT[cryptography]>=2.13.0"]
+auth = ["PyJWT[cryptography]>=2.15.1"]
 console = ["jinja2>=3.1"]
 telemetry = [
     "opentelemetry-api>=1.44.0",
