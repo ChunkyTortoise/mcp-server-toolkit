@@ -228,13 +228,19 @@ class TestGeminiProvider:
                 await p.query("test")
         assert p.circuit_breaker._failures == 1
 
-    async def test_uses_key_as_query_param(self):
+    async def test_sends_key_in_header_not_query(self):
         p = GeminiProvider(api_key="my-secret-key")
         mock_resp = self._mock_response("OK")
         with patch("httpx.AsyncClient.post", new_callable=AsyncMock, return_value=mock_resp) as mock_post:
             await p.query("test")
-        params = mock_post.call_args.kwargs["params"]
-        assert params["key"] == "my-secret-key"
+        kwargs = mock_post.call_args.kwargs
+        headers = kwargs.get("headers") or {}
+        params = kwargs.get("params") or {}
+        url = mock_post.call_args.args[0] if mock_post.call_args.args else kwargs.get("url", "")
+        assert headers.get("x-goog-api-key") == "my-secret-key"
+        assert "key" not in params
+        assert "key=" not in str(url)
+        assert "my-secret-key" not in str(url)
 
 
 # ---------------------------------------------------------------------------

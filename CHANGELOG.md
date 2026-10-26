@@ -6,6 +6,8 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ### Security
 
+- Outbound calls share one address classifier (`mcp_toolkit.framework.net_safety`) covering IPv4 embedded in IPv6 (mapped, NAT64, 6to4); the A2A webhook is checked and never follows redirects, and DNS lookups run off the event loop. The scraper drops client auth, not just headers, when a redirect leaves the original origin, and scrape tools return a generic `ToolError` on refusal.
+- Gemini API keys are sent in the `x-goog-api-key` header, not URL query strings; the A2A example binds `127.0.0.1`.
 - Dependency bumps for advisories tracked by Dependabot: the `files` extra floor moves to `pypdf>=6.21.2` (GHSA-6c7f-9265-g8fw, GHSA-jr96-gvgh-j3r4, GHSA-gmh7-3g9r-mjh5: repeated/malformed xref and missing-object references could blow up runtimes; the bump also picks up the 6.20.x–6.21.1 fixes), and the lock resolves `certifi` to 2026.10.23 (GHSA-6q48-6c7w-9gw2: emSign root CAs with compromised intermediate keys). `certifi` is transitive (via `httpx`); the floor applies to this repo's lockfile and environments, and a fresh downstream resolve takes the patched release by default.
 - HTTP gateway: a non-loopback bind now requires `MCP_BIND_PUBLIC=1`, `MCP_ISSUER`, `MCP_RESOURCE_URL` and an exact `MCP_ALLOWED_HOSTS` list. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` feed SDK Host/Origin checks on every bind, forwarded identity headers are ignored, and `docs/DEPLOYMENT.md` documents the rules.
 
@@ -13,7 +15,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 - Publishing moves to PyPI Trusted Publishing (OIDC) via `.github/workflows/publish.yml`: no API token, gated by the `release` environment, with a manual trigger because the `v0.4.0` tag predates the workflow.
 - `pyproject.toml` description now names the streamable-HTTP gateway command and calls the bundled servers "pre-built", matching what 0.4.0 ships.
-- Test count: 928 → 942 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
+- Test count: 928 → 992 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
 
 ### Added
 

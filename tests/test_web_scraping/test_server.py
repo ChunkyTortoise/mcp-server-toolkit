@@ -61,8 +61,11 @@ class TestScrapeUrlTool:
         )
         ws_server._scraper = mock_scraper
         client = MCPTestClient(ws_server.mcp)
-        result = await client.call_tool("scrape_url", {"url": "https://bad.com"})
-        assert "Error" in result
+        result = await client.call_tool_result("scrape_url", {"url": "https://bad.com"})
+        assert result.is_error
+        assert "Unable to scrape page" in result.content[0].text
+        assert "Server Error" not in result.content[0].text
+        assert "bad.com" not in result.content[0].text
 
     async def test_scrape_includes_title(self, configured_server):
         result = await configured_server.call_tool("scrape_url", {"url": "https://example.com"})
@@ -118,9 +121,11 @@ class TestScrapeUrlTool:
         )
         ws_server._scraper = mock_scraper
         client = MCPTestClient(ws_server.mcp)
-        result = await client.call_tool("scrape_url", {"url": "https://timeout.com"})
-        assert "Error" in result
-        assert "timeout" in result.lower()
+        result = await client.call_tool_result("scrape_url", {"url": "https://timeout.com"})
+        assert result.is_error
+        assert "Unable to scrape page" in result.content[0].text
+        assert "Connection timeout" not in result.content[0].text
+        assert "timeout.com" not in result.content[0].text
 
     async def test_scrape_no_meta_description(self, mock_scraper):
         mock_scraper.scrape.return_value = ScrapedPage(
@@ -173,11 +178,14 @@ class TestExtractDataTool:
         )
         ws_server._scraper = mock_scraper
         client = MCPTestClient(ws_server.mcp)
-        result = await client.call_tool(
+        result = await client.call_tool_result(
             "extract_data",
             {"url": "https://bad.com", "description": "anything"},
         )
-        assert "Error" in result
+        assert result.is_error
+        assert "Unable to scrape page" in result.content[0].text
+        assert "Not Found" not in result.content[0].text
+        assert "bad.com" not in result.content[0].text
 
     async def test_extract_json_parse_failure_returns_error(self, mock_scraper):
         """LLM returning invalid JSON should produce an extraction error."""
