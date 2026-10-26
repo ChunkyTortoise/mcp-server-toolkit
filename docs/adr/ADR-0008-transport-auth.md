@@ -6,8 +6,8 @@ This extends [ADR-0006](ADR-0006-oauth-2.1-resource-server.md). Tool-argument
 credentials remain a local and test pattern. The HTTP example validates a bearer
 in the Authorization header through the MCP SDK TokenVerifier interface; neither
 of its tools has a token or credential input property. This process is a resource
-server, not an authorization server or OAuth proxy. It implements neither login
-nor dynamic client registration.
+server. It is not an authorization server and not an OAuth proxy. It implements
+neither login nor dynamic client registration.
 
 ## Decision
 
@@ -26,12 +26,46 @@ the executable example always supplies an issuer.
 [mcp_toolkit/gateway/app.py](../../mcp_toolkit/gateway/app.py) (`mcp-toolkit-gateway`,
 or `examples/http_server.py` from a checkout) runs streamable HTTP on
 127.0.0.1:8000 by default. MCP_HOST and MCP_PORT control the bind address.
-MCP_RESOURCE_URL is the audience and protected-resource identifier, defaulting to
-the local /mcp URL. MCP_ISSUER identifies the expected issuer, with a loopback demo
-default. MCP_JWKS_URI selects RS256 verification using keys supplied by an issuer.
+MCP_RESOURCE_URL is the canonical audience and protected-resource identifier.
+On a loopback bind it defaults to the local /mcp URL. It is not derived from a
+non-loopback bind. MCP_ISSUER identifies the expected issuer. On a loopback bind
+it defaults to the loopback demo issuer. A non-loopback address is deploy mode.
+Deploy mode does not start unless MCP_BIND_PUBLIC=1, and it requires MCP_ISSUER
+and MCP_RESOURCE_URL. MCP_ALLOWED_HOSTS and MCP_ALLOWED_ORIGINS are passed to
+the SDK transport_security settings. A public bind requires an exact host list,
+with no wildcard entries. An empty origin list rejects every supplied Origin
+and accepts a request that omits Origin. Every recognized loopback bind receives
+explicit SDK Host/Origin protection, including the 127/8 range, uppercase
+localhost and expanded IPv6 loopback spellings. Unset lists keep the SDK's
+loopback aliases and add the actual bind address. Setting one list preserves
+those defaults for the unset side.
+Deploy mode has no network-trust or mTLS mode. A gateway that will not forward
+the user access token cannot be the client of this process. Only Authorization
+is identity. X-Forwarded-User and X-Forwarded-Access-Token are not.
+
+The resolved settings have frozen fields and validate their invariants at
+construction. The example revalidates before using a settings object, including
+nested SDK protection and allow-list consistency. Published issuer/resource
+URLs must be valid HTTP(S) URLs without userinfo or fragments. Invalid URL/port
+configuration produces a generic configuration error without echoing the value.
+These checks do not add TLS termination or change the SDK's Origin-pattern rules.
+
+MCP_JWKS_URI selects RS256 verification using keys supplied by an issuer.
 Alternatively, MCP_JWT_SECRET selects HS256 for a local demo. Exactly one key
 source is required. The --print-demo-token SCOPES flag works only in HS256 mode
 and prints a five-minute demo token with the configured audience and issuer.
+
+## Credential flow
+
+| Hop | Credential | What this example does |
+| --- | --- | --- |
+| Inbound | Authorization bearer | Verified by the SDK TokenVerifier and retained in SDK request/session context. Neither tool has a token input argument. |
+| Downstream | Service credentials such as DATABASE_URL | Not used by this synthetic orders example; backend credentials belong in the process environment of an integrating server. No bearer is forwarded. |
+
+The SDK retains an AccessToken for authentication context; this is not a claim
+that the bearer is erased from process memory. The example does not exchange it,
+persist it in an application token store or forward it downstream. The server
+is not an OAuth proxy.
 
 The endpoint requires orders:read through AuthSettings.required_scopes. The SDK
 RequireAuthMiddleware returns HTTP 401 for missing or invalid bearer credentials,
@@ -97,9 +131,10 @@ per-tool scope checks, hashed subjects, separate issuer/client rate buckets,
 correlated transport rejection events and one audit event for successful auth.
 
 The tests use local keys, not a live identity provider. They do not demonstrate
-TLS termination, login, revocation at a remote issuer, deploy-mode configuration
-validation or per-process host/origin allowlist configuration. The SDK receives
-its loopback transport-security defaults; this item adds no environment
-allowlist parser. Public binding requires explicit deployment Host/Origin
-protections and is outside this loopback example's deployment proof. Rate-limit counters and sessions live in one process. Shared
-limits and sessions across replicas require a separate deployment design.
+TLS termination, login, or revocation at a remote issuer.
+[test_gateway/test_http_config_security.py](../../tests/test_gateway/test_http_config_security.py) covers
+deploy-mode refusal, the separation of MCP_RESOURCE_URL from the bind address,
+wrong issuer, allowed and rejected Host and Origin values, an omitted Origin,
+and forwarded identity headers with no bearer.
+Rate-limit counters and sessions live in one process. Shared limits and sessions
+across replicas require a separate deployment design.

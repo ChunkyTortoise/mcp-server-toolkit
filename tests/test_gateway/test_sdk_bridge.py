@@ -18,6 +18,7 @@ INTERNAL_PREFIXES = (
     "mcp.server.auth.provider",
     "mcp.server.auth.settings",
     "mcp.server.lowlevel",
+    "mcp.server.transport_security",
 )
 
 
@@ -131,3 +132,14 @@ def test_framework_imports_cleanly_before_the_gateway():
             timeout=30,
         )
         assert result.returncode == 0, result.stderr
+
+
+def test_transport_security_settings_accepts_the_gateway_fields():
+    settings = sdk_bridge.TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=["app.example:8000"],
+        allowed_origins=["https://app.example"],
+    )
+    assert settings.enable_dns_rebinding_protection is True
+    assert settings.allowed_hosts == ["app.example:8000"]
+    assert settings.allowed_origins == ["https://app.example"]
