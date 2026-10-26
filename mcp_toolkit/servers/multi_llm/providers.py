@@ -50,7 +50,7 @@ async def _post_with_retry(
 
 
 class MockProvider:
-    """Deterministic provider for testing — never makes real HTTP calls."""
+    """Deterministic provider for testing. Never makes real HTTP calls."""
 
     def __init__(
         self,
@@ -234,7 +234,7 @@ class GeminiProvider:
             resp = await _post_with_retry(
                 self._client,
                 f"{self.BASE_URL}/models/{m}:generateContent",
-                params={"key": self._api_key},
+                headers={"x-goog-api-key": self._api_key},
                 json=payload,
             )
             data = resp.json()

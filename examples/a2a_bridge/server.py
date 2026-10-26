@@ -1,17 +1,18 @@
-"""A2A bridge server — exposes an MCP server as an A2A-compatible agent.
+"""A2A bridge server. Exposes an MCP server as an A2A-compatible agent.
 
 Run:
     python examples/a2a_bridge/server.py
 
 Endpoints:
-    GET  /.well-known/agent.json  — agent card
-    POST /tasks/send              — submit task (returns final status)
-    POST /tasks/sendSubscribe     — submit task (streams SSE updates)
-    GET  /tasks/{task_id}         — poll task status
+    GET  /.well-known/agent.json  : agent card
+    POST /tasks/send              : submit task (returns final status)
+    POST /tasks/sendSubscribe     : submit task (streams SSE updates)
+    GET  /tasks/{task_id}         : poll task status
 """
 
 from __future__ import annotations
 
+import logging
 import uuid
 
 from starlette.applications import Starlette
@@ -26,6 +27,7 @@ from mcp_toolkit.framework.a2a_adapter import A2AAdapter
 # Build MCP server with a couple of demo tools
 # ---------------------------------------------------------------------------
 mcp = EnhancedMCP("demo-bridge-server")
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 @mcp.tool()
@@ -112,4 +114,4 @@ app = Starlette(routes=routes)
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app, host="127.0.0.1", port=8080)

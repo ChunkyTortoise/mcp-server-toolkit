@@ -1,4 +1,4 @@
-"""Multi-LLM Router Server — basic usage example.
+"""Multi-LLM Router Server, basic usage example.
 
 This example shows how to configure the multi_llm server with multiple providers
 and use the routing tools: query_cheap, query_best, get_second_opinion.
@@ -8,6 +8,7 @@ Set at least one of these environment variables before running:
 """
 
 import asyncio
+import logging
 import os
 
 from mcp_toolkit.framework.testing import MCPTestClient
@@ -51,9 +52,10 @@ def build_providers() -> dict:
 
 
 async def main() -> None:
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     providers = build_providers()
     if not providers:
-        print("No API keys found. Set GEMINI_API_KEY, OPENAI_API_KEY, or XAI_API_KEY.")
+        print("No providers are configured.")
         return
 
     configure(providers=providers)
