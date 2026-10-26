@@ -1,8 +1,11 @@
-"""Web Scraping MCP Server — Agent-driven web scraping with structured extraction."""
+"""Web Scraping MCP Server, agent-driven scraping with structured extraction."""
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+from mcp.server.mcpserver.exceptions import ToolError
 
 from mcp_toolkit.framework.base_server import EnhancedMCP
 from mcp_toolkit.servers.web_scraping.extractor import (
@@ -10,7 +13,9 @@ from mcp_toolkit.servers.web_scraping.extractor import (
     DefaultLLMProvider,
     LLMProvider,
 )
-from mcp_toolkit.servers.web_scraping.scraper import WebScraper
+from mcp_toolkit.servers.web_scraping.scraper import ScrapedPage, WebScraper
+
+logger = logging.getLogger(__name__)
 
 mcp = EnhancedMCP("web-scraping")
 
@@ -32,6 +37,18 @@ def configure(
     _extractor = DataExtractor(llm=llm or DefaultLLMProvider())
 
 
+async def _scrape_page(url: str, css_selector: str | None = None) -> ScrapedPage:
+    try:
+        page = await _scraper.scrape(url, css_selector=css_selector)
+    except Exception as exc:
+        logger.warning("Scrape failed: %s", type(exc).__name__)
+        raise ToolError("Unable to scrape page") from None
+    if not page.is_success:
+        logger.warning("Scrape refused or page unavailable")
+        raise ToolError("Unable to scrape page")
+    return page
+
+
 @mcp.tool()
 async def scrape_url(
     url: str,
@@ -46,11 +63,7 @@ async def scrape_url(
     Returns:
         The page text content, title, and metadata.
     """
-    result = await _scraper.scrape(url, css_selector=css_selector)
-
-    if not result.is_success:
-        error_msg = result.error or f"HTTP {result.status_code}"
-        return f"Error scraping {url}: {error_msg}"
+    result = await _scrape_page(url, css_selector=css_selector)
 
     parts = [f"**Title:** {result.title}\n"] if result.title else []
     parts.append(f"**URL:** {result.url}\n")
@@ -87,11 +100,7 @@ async def extract_data(
     Returns:
         Extracted data as formatted JSON.
     """
-    page = await _scraper.scrape(url)
-
-    if not page.is_success:
-        error_msg = page.error or f"HTTP {page.status_code}"
-        return f"Error scraping {url}: {error_msg}"
+    page = await _scrape_page(url)
 
     if schema:
         result = await _extractor.extract_with_schema(page.text, schema, source_url=url)

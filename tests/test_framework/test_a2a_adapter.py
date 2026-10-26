@@ -1,10 +1,12 @@
-"""Unit tests for A2AAdapter — agent card, task handling, streaming, webhooks."""
+"""Unit tests for A2AAdapter: agent card, task handling, streaming, webhooks."""
 
 from __future__ import annotations
 
 import json
+import socket
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from mcp_toolkit.framework.a2a_adapter import (
@@ -213,6 +215,15 @@ class TestA2AAdapterStreaming:
         assert final.status == "completed"
 
 
+def _stub_public_dns(monkeypatch) -> None:
+    """Resolve every name to one global address. No network."""
+
+    def fake(host, port, *args, **kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake)
+
+
 class TestA2AAdapterWebhook:
     @pytest.fixture
     def mock_server(self):
@@ -227,10 +238,11 @@ class TestA2AAdapterWebhook:
         return A2AAdapter(mock_server)
 
     @pytest.mark.asyncio
-    async def test_webhook_posted_on_each_state(self, adapter):
+    async def test_webhook_posted_on_each_state(self, adapter, monkeypatch):
+        _stub_public_dns(monkeypatch)
         posted = []
 
-        async def fake_post(url, *, json, headers):
+        async def fake_post(url, *, json, headers, **kwargs):
             posted.append(json["status"]["state"])
             resp = MagicMock()
             resp.raise_for_status = MagicMock()
@@ -249,7 +261,8 @@ class TestA2AAdapterWebhook:
         assert "completed" in posted
 
     @pytest.mark.asyncio
-    async def test_webhook_failure_does_not_raise(self, adapter):
+    async def test_webhook_failure_does_not_raise(self, adapter, monkeypatch):
+        _stub_public_dns(monkeypatch)
         mock_client = MagicMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -264,3 +277,70 @@ class TestA2AAdapterWebhook:
         with patch("httpx.AsyncClient") as mock_cls:
             await adapter.handle_task("t1", "tool", {})
         mock_cls.assert_not_called()
+
+    async def _rejected_webhook_issues_no_request(self, adapter, webhook_url: str):
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(200)
+
+        transport = httpx.MockTransport(handler)
+        real = httpx.AsyncClient
+
+        def factory(*args, **kwargs):
+            kwargs["transport"] = transport
+            return real(*args, **kwargs)
+
+        with patch("httpx.AsyncClient", side_effect=factory):
+            status = await adapter.handle_task("t-meta", "tool", {}, webhook_url=webhook_url)
+        assert status.status == "completed"
+        assert seen == []
+
+    @pytest.mark.asyncio
+    async def test_refused_webhook_does_not_log_url_credentials(self, adapter, caplog):
+        import logging
+
+        url = "http://user:sentinel-hook-password@169.254.169.254/hook?key=sentinel-hook-key"
+        with caplog.at_level(logging.WARNING):
+            await self._rejected_webhook_issues_no_request(adapter, url)
+        assert "A2A" in caplog.text
+        assert "sentinel-hook-password" not in caplog.text
+        assert "sentinel-hook-key" not in caplog.text
+        assert url not in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_metadata_webhook_issues_no_request(self, adapter):
+        await self._rejected_webhook_issues_no_request(adapter, "http://169.254.169.254/")
+
+    @pytest.mark.asyncio
+    async def test_ipv6_loopback_webhook_issues_no_request(self, adapter):
+        await self._rejected_webhook_issues_no_request(adapter, "http://[::1]/")
+
+    @pytest.mark.asyncio
+    async def test_ipv4_mapped_cgnat_webhook_issues_no_request(self, adapter):
+        await self._rejected_webhook_issues_no_request(adapter, "http://[::ffff:100.64.0.1]/")
+
+    @pytest.mark.asyncio
+    async def test_public_webhook_is_posted(self, adapter, monkeypatch):
+        _stub_public_dns(monkeypatch)
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(200)
+
+        transport = httpx.MockTransport(handler)
+        real = httpx.AsyncClient
+
+        def factory(*args, **kwargs):
+            kwargs["transport"] = transport
+            return real(*args, **kwargs)
+
+        with patch("httpx.AsyncClient", side_effect=factory):
+            status = await adapter.handle_task(
+                "t-ok", "tool", {}, webhook_url="https://cb.example/hook"
+            )
+        assert status.status == "completed"
+        assert [request.url.host for request in seen] == ["cb.example"] * 3
+        assert all(request.method == "POST" for request in seen)
