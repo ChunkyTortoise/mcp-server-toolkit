@@ -56,7 +56,7 @@ def fake_dns(monkeypatch):
             return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 0)) for ip in FAKE_DNS[host]]
         return real(host, *args, **kwargs)
 
-    monkeypatch.setattr(scraper_module.socket, "getaddrinfo", getaddrinfo)
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 
 class Routes(httpx.AsyncBaseTransport):

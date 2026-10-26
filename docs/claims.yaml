@@ -44,15 +44,15 @@ allow:
 claims:
   - id: test-suite-passed
     statement: Tests passing in this tree with the development extras installed.
-    value: "931 passed"
-    match: ["931 passed"]
+    value: "981 passed"
+    match: ["981 passed"]
     artifact: tests/
     command: "python -m pytest tests/ -q"
-    expect: "931 passed"
-    date: "2026-10-25"
+    expect: "981 passed"
+    date: "2026-10-26"
     status: verified
     scope: >-
-      Local run on Python 3.13.11 on 2026-10-25. The eleven skipped tests are integration cases: nine Postgres (INTEGRATION=1 and DATABASE_URL) and two Redis (INTEGRATION=1 and REDIS_URL).
+      Local run on Python 3.13.11 on 2026-10-26. The eleven skipped tests are integration cases: nine Postgres (INTEGRATION=1 and DATABASE_URL) and two Redis (INTEGRATION=1 and REDIS_URL).
   - id: test-suite-skipped
     statement: Tests skipped in the same run.
     value: "11 skipped"
@@ -60,28 +60,28 @@ claims:
     artifact: tests/
     command: "python -m pytest tests/ -q"
     expect: "11 skipped"
-    date: "2026-10-25"
+    date: "2026-10-26"
     status: verified
     scope: Postgres integration tests gated on INTEGRATION=1 and DATABASE_URL, and Redis integration tests gated on INTEGRATION=1 and REDIS_URL.
   - id: test-collected
     statement: Tests collected, including skipped ones.
-    value: "942"
-    match: ["942"]
+    value: "992"
+    match: ["992"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/ --collect-only -q | tail -2"
-    expect: "942 tests collected"
-    date: "2026-10-25"
+    expect: "992 tests collected"
+    date: "2026-10-26"
     status: verified
-    scope: Published in the README Results table, dated 2026-10-25. Includes the eleven integration tests that skip without INTEGRATION=1.
+    scope: Published in the README Results table, dated 2026-10-26. Includes the eleven integration tests that skip without INTEGRATION=1.
   - id: coverage-measured
     statement: Line coverage of mcp_toolkit in this tree.
-    value: "86.63%"
-    match: ["86.63%"]
+    value: "86.95%"
+    match: ["86.95%"]
     artifact: .github/workflows/ci.yml
     command: "python -m pytest tests/ -q --cov=mcp_toolkit --cov-fail-under=80"
-    expect: "86.63%"
-    date: "2026-10-25"
+    expect: "86.95%"
+    date: "2026-10-26"
     status: verified
     scope: Local run, Python 3.13. CI prints its own value per matrix entry; the floor is separate.
   - id: coverage-ci-floor
@@ -301,22 +301,22 @@ claims:
     scope: Includes package __init__.py files.
   - id: test-loc
     statement: Lines of Python under tests/.
-    value: "8202"
-    match: ["8202"]
+    value: "8851"
+    match: ["8851"]
     artifact: tests/
     command: "find tests -name '*.py' | xargs cat | wc -l"
-    expect: "8202"
-    date: "2026-10-25"
+    expect: "8851"
+    date: "2026-10-26"
     status: inventory
     scope: Includes helpers, not only test_*.py files.
   - id: test-files
     statement: test_*.py files under tests/.
-    value: "51"
-    match: ["51"]
+    value: "57"
+    match: ["57"]
     artifact: tests/
     command: "find tests -name 'test_*.py' | wc -l"
-    expect: "51"
-    date: "2026-10-25"
+    expect: "57"
+    date: "2026-10-26"
     status: inventory
     scope: Excludes conftest.py and fixture helpers.
   - id: project-version

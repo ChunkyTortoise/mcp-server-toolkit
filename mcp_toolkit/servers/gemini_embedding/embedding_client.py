@@ -22,7 +22,8 @@ class GeminiEmbeddingClient:
         dimensions: int = 768,
     ) -> list[float]:
         """Embed a single text string."""
-        url = f"{_BASE_URL}/{_MODEL}:embedContent?key={self._api_key}"
+        url = f"{_BASE_URL}/{_MODEL}:embedContent"
+        headers = {"x-goog-api-key": self._api_key}
         payload = {
             "model": f"models/{_MODEL}",
             "content": {"parts": [{"text": text}]},
@@ -30,7 +31,7 @@ class GeminiEmbeddingClient:
             "outputDimensionality": dimensions,
         }
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(url, json=payload)
+            response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()
         return data["embedding"]["values"]
@@ -42,7 +43,8 @@ class GeminiEmbeddingClient:
         dimensions: int = 768,
     ) -> list[list[float]]:
         """Embed multiple texts in a single request."""
-        url = f"{_BASE_URL}/{_MODEL}:batchEmbedContents?key={self._api_key}"
+        url = f"{_BASE_URL}/{_MODEL}:batchEmbedContents"
+        headers = {"x-goog-api-key": self._api_key}
         requests = [
             {
                 "model": f"models/{_MODEL}",
@@ -54,7 +56,7 @@ class GeminiEmbeddingClient:
         ]
         payload = {"requests": requests}
         async with httpx.AsyncClient(timeout=self._timeout) as client:
-            response = await client.post(url, json=payload)
+            response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()
         return [item["values"] for item in data["embeddings"]]

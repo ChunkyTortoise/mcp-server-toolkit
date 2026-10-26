@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING, Any
 
 from mcp.types import TextContent
 
+from mcp_toolkit.framework.net_safety import validate_global_url
+
 if TYPE_CHECKING:
     from mcp_toolkit.framework.base_server import EnhancedMCP
 
@@ -261,6 +263,11 @@ class A2AAdapter:
         if not webhook_url:
             return
         try:
+            await asyncio.to_thread(validate_global_url, webhook_url)
+        except ValueError:
+            logger.warning("A2A webhook URL refused by address policy")
+            return
+        try:
             import httpx
 
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -268,7 +275,8 @@ class A2AAdapter:
                     webhook_url,
                     json=status.to_dict(),
                     headers={"Content-Type": "application/json"},
+                    follow_redirects=False,
                 )
                 resp.raise_for_status()
         except Exception as exc:
-            logger.warning("A2A push notification to %s failed: %s", webhook_url, exc)
+            logger.warning("A2A push notification failed: %s", type(exc).__name__)
