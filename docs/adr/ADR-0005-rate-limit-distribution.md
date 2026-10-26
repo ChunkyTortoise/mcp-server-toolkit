@@ -28,3 +28,14 @@
 
 - **Token bucket**: more burst-friendly but harder to reason about for LLM API quota management; sliding window maps directly to upstream rate limit windows.
 - **Sticky routing / client affinity**: delegates enforcement to the load balancer, which is outside this library's scope.
+
+## Decision notes (2026-10-25)
+
+The implemented `RedisSlidingWindow` follows the design above, with four details the original decision did not pin down:
+
+- **Clock.** Members are scored with `time.time()`, not `time.monotonic()`: the counter is shared across processes and hosts, whose monotonic clocks are not comparable. Clock skew between instances therefore shifts window edges by the skew amount. The in-process store keeps the monotonic clock.
+- **Refusals do not extend the window.** The atomic pipeline runs `ZREMRANGEBYSCORE`/`ZADD`/`ZCARD` (prune, record, count); when the count lands over the limit the call's marker is removed again. The in-memory store never records refusals, and a rejected call must not stretch the window either.
+- **Key hygiene.** The pipeline also sets `EXPIRE` to one window, refreshed on each record, so idle buckets clean themselves up instead of accumulating in Redis.
+- **`get_remaining()` stays synchronous** for the in-process default; reading the count from Redis needs I/O, so `get_remaining_async()` was added and the sync method raises a `RuntimeError` pointing at it when a Redis backend is configured.
+
+Failure semantics follow `RedisCache`: transient errors raise unless `fallback_to_memory=True`, which returns to per-process limits — acceptable for local development, misleading for a multi-instance deployment.
