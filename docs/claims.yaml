@@ -318,11 +318,11 @@ claims:
     scope: Includes package __init__.py files.
   - id: test-loc
     statement: Lines of Python under tests/.
-    value: "9018"
-    match: ["9018"]
+    value: "9042"
+    match: ["9042"]
     artifact: tests/
     command: "find tests -name '*.py' | xargs cat | wc -l"
-    expect: "9018"
+    expect: "9042"
     date: "2026-10-26"
     status: inventory
     scope: Includes helpers, not only test_*.py files.

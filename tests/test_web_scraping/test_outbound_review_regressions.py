@@ -1,3 +1,4 @@
+import ipaddress
 import socket
 
 import httpx
@@ -96,19 +97,32 @@ async def test_redirect_does_not_forward_client_credentials_to_another_origin(
     assert "cookie" not in seen[1].headers
 
 
+def _is_ip_literal(host) -> bool:
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        return False
+
+
 def test_idna_check_resolves_the_http_client_hostname(monkeypatch):
     checked = []
 
     def dns(host, *args, **kwargs):
-        encoded = host.encode("idna") if isinstance(host, str) else host
-        checked.append(encoded)
-        ip = "169.254.169.254" if encoded == b"xn--strae-oqa.example" else "8.8.8.8"
+        checked.append(host)
+        ip = "169.254.169.254" if host == "xn--strae-oqa.example" else "8.8.8.8"
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 80))]
 
     monkeypatch.setattr(socket, "getaddrinfo", dns)
     with pytest.raises(ValueError, match="restricted"):
         validate_global_url("http://straße.example/latest")
-    assert checked == [b"xn--strae-oqa.example"]
+    # Record the host exactly as passed: the point is that the code resolves the
+    # ASCII/IDNA hostname httpx connects to, exactly once — not the raw unicode
+    # form. Background lookups on shared threads (loopback connects from other
+    # tests) also pass through this global socket entry point and resolve IP
+    # literals, so only hostname lookups are the code under test. Without that
+    # filter this assertion flakes on loaded CI runners.
+    assert [h for h in checked if not _is_ip_literal(h)] == ["xn--strae-oqa.example"]
 
 
 @pytest.mark.parametrize("consumer", ["scraper", "webhook"])
