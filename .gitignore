@@ -30,3 +30,4 @@ htmlcov/
 .maintenance/
 AGENTS.md.bak-*
 claude-progress.txt
+.claude/CLAUDE.local.md
