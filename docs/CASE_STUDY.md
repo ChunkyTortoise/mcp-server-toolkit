@@ -64,7 +64,9 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 python seed_traces.py
 The [trace screenshot](../assets/jaeger-trace-demo.png) and
 [HTML illustration](../assets/jaeger-trace-preview.html) are static artifacts.
 A [Render blueprint](../examples/observability/render.yaml) is committed;
-this walkthrough does not establish a deployed dashboard.
+this walkthrough does not establish a deployed dashboard — the
+[`verify_otlp.py`](../examples/observability/verify_otlp.py) check is the
+pending proof against a hosted backend.
 
 ## Evidence boundaries
 
