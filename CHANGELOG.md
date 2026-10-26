@@ -5,7 +5,17 @@ All notable changes to mcp-server-toolkit are documented here.
 ## [Unreleased]
 
 ### Security
+
 - HTTP gateway: a non-loopback bind now requires `MCP_BIND_PUBLIC=1`, `MCP_ISSUER`, `MCP_RESOURCE_URL` and an exact `MCP_ALLOWED_HOSTS` list. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` feed SDK Host/Origin checks on every bind, forwarded identity headers are ignored, and `docs/DEPLOYMENT.md` documents the rules.
+
+### Changed
+
+- Publishing moves to PyPI Trusted Publishing (OIDC) via `.github/workflows/publish.yml`: no API token, gated by the `release` environment, with a manual trigger because the `v0.4.0` tag predates the workflow.
+- `pyproject.toml` description now names the streamable-HTTP gateway command and calls the bundled servers "pre-built", matching what 0.4.0 ships.
+
+### Added
+
+- `docs/RELEASING.md`: the release checklist — Trusted Publishing setup, pre-publish gates, the `v0.4.0` tag-timing caveat, and the documentation truth flip that must land the day a version publishes.
 
 ## [0.4.0] - 2026-10-24
 

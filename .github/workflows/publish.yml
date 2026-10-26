@@ -3,6 +3,10 @@ name: Publish to PyPI
 on:
   push:
     tags: ["v*"]
+  # The v0.4.0 tag was pushed before this workflow existed, so its push event
+  # can never trigger it. Manual runs on the tag ref are the supported path for
+  # that release (see docs/RELEASING.md). The `release` environment gates it.
+  workflow_dispatch:
 
 jobs:
   publish:
