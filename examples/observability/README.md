@@ -2,7 +2,10 @@
 
 OTel spans from the toolkit's telemetry APIs, exported to a local Jaeger.
 `render.yaml` also defines a Render blueprint with a 15-minute seeder cron.
-That deployment has not been verified, and no public URL is maintained.
+That deployment has not been verified, and no public URL is maintained —
+[`verify_otlp.py`](verify_otlp.py) is the ready-made check (see
+[Verify an OTLP deployment](#verify-an-otlp-deployment) below), and the claims
+carry `otlp-hosted-verification` as historical until a hosted run is captured.
 
 ## What you see
 
@@ -56,6 +59,46 @@ After deploy:
 - Jaeger UI: the URL Render assigns to `mcp-toolkit-jaeger`
 - Cron logs: Render dashboard → mcp-toolkit-trace-seeder → Logs
 - Internal OTLP ingest: `http://mcp-toolkit-jaeger:4318` (cron only)
+
+## Verify an OTLP deployment
+
+[`verify_otlp.py`](verify_otlp.py) closes the loop the docs claim but do not
+prove: spans leave `TelemetryProvider` over OTLP HTTP and are retrievable from
+the backend's query API. It writes a dated JSON artifact (`otlp-proof.json`,
+`--out` to change) either way; exit status 0 means the path is proven. The
+artifact records whether OTLP headers are configured but never their values.
+
+Install with `pip install -e '../..[telemetry]'` (plus `[auth]` etc. as needed;
+source install because the PyPI release is stale).
+
+**Full loop, local Jaeger** (strongest: both halves from one machine):
+
+```bash
+docker compose up -d
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+    python verify_otlp.py --emit --check --query-url http://localhost:16686
+```
+
+**Hosted stack (Render blueprint).** The blueprint's OTLP ingest listens on
+Render's private network, so a laptop cannot POST spans at it directly. The
+cron already exports from inside every 15 minutes; verifying from outside
+against the public query URL is the end-to-end proof:
+
+```bash
+# After the blueprint is live and at least one cron tick has run:
+python verify_otlp.py --check --query-url https://<your-service>.onrender.com
+```
+
+`--check` without `--emit` accepts any recent trace from `mcp-toolkit-demo`
+(the cron's service name), so the proof spans two processes on two networks.
+For a full emit+check on the hosted stack, run the same command as a Render
+one-off job with `OTEL_EXPORTER_OTLP_ENDPOINT=http://mcp-toolkit-jaeger:4318`.
+
+**When the hosted run lands:** commit the artifact as
+`examples/observability/otlp-proof.json`, then flip the claims entry
+`otlp-hosted-verification` from `historical` to `verified` with the artifact's
+date, and replace the "not verified against a hosted backend" notes in the
+README and the case study with the measured result.
 
 ## Scope
 

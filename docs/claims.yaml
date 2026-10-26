@@ -1,5 +1,5 @@
 version: 1
-updated: "2026-10-25"
+updated: "2026-10-26"
 baseline: "origin/main @ cb932cf (PR #66 merged)"
 # Claims ledger: the single source of truth for every public number.
 #
@@ -44,11 +44,11 @@ allow:
 claims:
   - id: test-suite-passed
     statement: Tests passing in this tree with the development extras installed.
-    value: "981 passed"
-    match: ["981 passed"]
+    value: "989 passed"
+    match: ["989 passed"]
     artifact: tests/
     command: "python -m pytest tests/ -q"
-    expect: "981 passed"
+    expect: "989 passed"
     date: "2026-10-26"
     status: verified
     scope: >-
@@ -65,22 +65,22 @@ claims:
     scope: Postgres integration tests gated on INTEGRATION=1 and DATABASE_URL, and Redis integration tests gated on INTEGRATION=1 and REDIS_URL.
   - id: test-collected
     statement: Tests collected, including skipped ones.
-    value: "992"
-    match: ["992"]
+    value: "1000"
+    match: ["1000"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/ --collect-only -q | tail -2"
-    expect: "992 tests collected"
+    expect: "1000 tests collected"
     date: "2026-10-26"
     status: verified
     scope: Published in the README Results table, dated 2026-10-26. Includes the eleven integration tests that skip without INTEGRATION=1.
   - id: coverage-measured
     statement: Line coverage of mcp_toolkit in this tree.
-    value: "86.95%"
-    match: ["86.95%"]
+    value: "87.57%"
+    match: ["87.57%"]
     artifact: .github/workflows/ci.yml
     command: "python -m pytest tests/ -q --cov=mcp_toolkit --cov-fail-under=80"
-    expect: "86.95%"
+    expect: "87.57%"
     date: "2026-10-26"
     status: verified
     scope: Local run, Python 3.13. CI prints its own value per matrix entry; the floor is separate.
@@ -94,6 +94,23 @@ claims:
     date: "2026-10-24"
     status: ci_gate
     scope: A gate, not a measured value. `make test` uses the same floor.
+  - id: otlp-hosted-verification
+    statement: External OTLP export verified against a hosted backend.
+    value: "not been verified against a hosted backend"
+    match: ["not been verified against a hosted backend"]
+    artifact: README.md
+    artifact_check: contains
+    command: "python examples/observability/verify_otlp.py --check --query-url <deployed-jaeger-url>"
+    executes: false
+    network: true
+    date: "2026-10-26"
+    status: historical
+    scope: >-
+      Historical until an owner deploy is captured. The verification script and hosted
+      steps are in examples/observability/ (README.md + verify_otlp.py); the emit path
+      runs against a loopback collector in tests/test_verify_otlp.py. When a hosted run
+      lands, commit its dated artifact as examples/observability/otlp-proof.json and
+      flip this entry to verified with the artifact's date.
   - id: cache-hit-p50
     statement: In-memory cache hit P50 on cached_tool (mock tool, in-process).
     value: "0.007 ms"
@@ -301,21 +318,21 @@ claims:
     scope: Includes package __init__.py files.
   - id: test-loc
     statement: Lines of Python under tests/.
-    value: "8851"
-    match: ["8851"]
+    value: "9018"
+    match: ["9018"]
     artifact: tests/
     command: "find tests -name '*.py' | xargs cat | wc -l"
-    expect: "8851"
+    expect: "9018"
     date: "2026-10-26"
     status: inventory
     scope: Includes helpers, not only test_*.py files.
   - id: test-files
     statement: test_*.py files under tests/.
-    value: "57"
-    match: ["57"]
+    value: "58"
+    match: ["58"]
     artifact: tests/
     command: "find tests -name 'test_*.py' | wc -l"
-    expect: "57"
+    expect: "58"
     date: "2026-10-26"
     status: inventory
     scope: Excludes conftest.py and fixture helpers.

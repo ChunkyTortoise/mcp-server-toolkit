@@ -43,7 +43,7 @@ The first call prints `order 42: shipped`. The forged call raises `ToolError`, w
 |---|---|---|---|
 | Measured | In-memory cache latency on `cached_tool`, hit vs miss (in-process mock tool, run dated 2026-04-25) | **P50 0.007 ms** hit vs **0.023 ms** miss (**3.1x**) | [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) · reproduce with [`bench_cache.py`](benchmarks/bench_cache.py) |
 | CI gate | Test coverage floor: the CI test step fails below it | **80%** | [`ci.yml`](.github/workflows/ci.yml) (`--cov-fail-under=80`) |
-| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-26) | **992** | [`tests/`](tests/) |
+| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-26) | **1000** | [`tests/`](tests/) |
 | Inventory | Adversarial corpus: prompt injection, token forgery, scope escalation, cache poisoning, data exfiltration | **30 cases** | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
 | Inventory | Pre-built MCP servers | **9** | [`mcp_toolkit/servers/`](mcp_toolkit/servers/) · `[project.scripts]` in [`pyproject.toml`](pyproject.toml) |
 
@@ -193,7 +193,7 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 - This is a Python library. There is no hosted service or dashboard.
 - [GitHub tag v0.4.0](https://github.com/ChunkyTortoise/mcp-server-toolkit/releases/tag/v0.4.0) is a source snapshot of this version. The supported Quickstart installs a checkout of `main`; the PyPI preview does not include the current code.
 - The architecture image is illustrative, not a captured trace.
-- Spans are recorded automatically only by `cached_tool` and `rate_limited_tool`. A plain `@mcp.tool()` or `@mcp.auth_tool` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend. The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
+- Spans are recorded automatically only by `cached_tool` and `rate_limited_tool`. A plain `@mcp.tool()` or `@mcp.auth_tool` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend ([verification script and hosted steps ready](examples/observability/README.md#verify-an-otlp-deployment); the claims ledger carries the claim as `historical`). The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
 - `rate_limited_tool` falls back to one shared `"default"` bucket, with a warning log, when the call carries no `caller_id`, `client_id` or `user_id`. The default limiter is in-process, so separate server processes keep separate counters. [`RedisSlidingWindow`](mcp_toolkit/framework/rate_limiter.py) ([ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md)) is the opt-in Redis backend behind the `redis` extra: it raises on connectivity errors unless you pass `fallback_to_memory=True`, which silently returns to per-process limits. Its windows are scored by wall clock, so clock skew between instances shifts window edges.
 - Redis cache fallback is opt-in, not silent: `fallback_to_memory=False` is the default and a typed `_REDIS_TRANSIENT` exception signals a recoverable failure.
 - The full sqlglot allowlist runs in `PostgresClient` (`read_only=True` by default). The database server itself only checks that each generated statement starts with `SELECT` or `WITH` after sqlglot parsing ([`sql_generator.py`](mcp_toolkit/servers/database_query/sql_generator.py)), so a `db_connection` you supply yourself gets only that prefix check. Neither is a framework-wide guard for other tools.
@@ -205,7 +205,7 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 **Evals and demos**
 - The nightly LLM-as-judge run needs an `ANTHROPIC_API_KEY` repository secret; without it the judge is skipped.
 - The seeded RAG walkthrough ([examples/README.md](examples/README.md#seeded-rag-walkthrough)) uses deterministic demo vectors, fixed ranked sources and a template answer. It is a standalone pipeline example, not MCP tool dispatch, and not a verified semantic-search integration. Its HTML preview is an illustration that does not run Python, retrieve documents or call a model.
-- The Jaeger trace screenshot comes from real `TelemetryProvider` spans emitted by a seeding script; the Jaeger-style HTML preview is a static local artifact, not a hosted dashboard. The observability Render blueprint is committed but not deployed.
+- The Jaeger trace screenshot comes from real `TelemetryProvider` spans emitted by a seeding script; the Jaeger-style HTML preview is a static local artifact, not a hosted dashboard. The observability Render blueprint is committed but not deployed; [`verify_otlp.py`](examples/observability/verify_otlp.py) is the scripted end-to-end check awaiting that deploy.
 - [`docs/CASE_STUDY.md`](docs/CASE_STUDY.md) is a synthetic trace walkthrough with explicit evidence boundaries. Its earlier production latency, cost, cache-hit and scale figures had no committed load-test artifact and were removed.
 
 </details>
@@ -215,7 +215,7 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 There are no open issues; these are the next steps documented in the repository.
 
 - Ship the opt-in Redis backend for the rate limiter described in [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md).
-- Deploy the observability stack from its committed [Render blueprint](examples/observability/render.yaml) and verify OTLP export end to end.
+- Deploy the observability stack from its committed [Render blueprint](examples/observability/render.yaml) and verify OTLP export end to end with [`verify_otlp.py`](examples/observability/verify_otlp.py) ([steps](examples/observability/README.md#verify-an-otlp-deployment)).
 - Measure a real RAG workload end to end and publish a dated run artifact alongside the [case study](docs/CASE_STUDY.md).
 
 ## Contributing
