@@ -65,12 +65,12 @@ claims:
     scope: Postgres integration tests gated on INTEGRATION=1 and DATABASE_URL.
   - id: test-collected
     statement: Tests collected, including skipped ones.
-    value: "927"
-    match: ["927"]
+    value: "978"
+    match: ["978"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/ --collect-only -q | tail -2"
-    expect: "927 tests collected"
+    expect: "978 tests collected"
     date: "2026-10-24"
     status: verified
     scope: Published in the README Results table, dated 2026-10-24. Includes the 9 Postgres integration tests that skip without INTEGRATION=1.
@@ -329,7 +329,7 @@ claims:
     expect: "0.4.0"
     date: "2026-10-24"
     status: verified
-    scope: Not yet tagged; the latest GitHub tag, v0.3.0, is an earlier source snapshot.
+    scope: The GitHub tag v0.4.0 is a source snapshot of this version.
   - id: pypi-version
     statement: Version currently published on PyPI.
     value: "0.1.0"

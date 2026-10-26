@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v7
@@ -18,13 +19,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install build tools
-        run: pip install hatch twine
+        run: pip install hatch
 
       - name: Build
         run: hatch build
 
+      # Trusted publishing (OIDC): PyPI must list this repo, publish.yml,
+      # and the release environment as a trusted publisher. No token secret.
       - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+        uses: pypa/gh-action-pypi-publish@release/v1

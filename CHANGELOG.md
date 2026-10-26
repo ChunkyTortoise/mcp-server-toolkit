@@ -6,6 +6,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ### Security
 
+- HTTP gateway: a non-loopback bind now requires `MCP_BIND_PUBLIC=1`, `MCP_ISSUER`, `MCP_RESOURCE_URL` and an exact `MCP_ALLOWED_HOSTS` list. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` feed SDK Host/Origin checks on every bind, forwarded identity headers are ignored, and `docs/DEPLOYMENT.md` documents the rules.
 - Outbound calls share one address classifier (`mcp_toolkit.framework.net_safety`) covering IPv4 embedded in IPv6 (mapped, NAT64, 6to4); the A2A webhook is checked and never follows redirects, and DNS lookups run off the event loop. The scraper drops client auth, not just headers, when a redirect leaves the original origin, and scrape tools return a generic `ToolError` on refusal.
 - Gemini API keys are sent in the `x-goog-api-key` header, not URL query strings; the A2A example binds `127.0.0.1`.
 
