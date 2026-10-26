@@ -84,4 +84,4 @@ class TestRateLimiterScaleGate:
         for i in range(500):
             await rl.check(f"burst-{i}", max_calls=100, window=60)
         # 500 unique keys each with 1 timestamp stored — well within memory budget
-        assert len(rl._buckets) == 500
+        assert rl._memory.size == 500

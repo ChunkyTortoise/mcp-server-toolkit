@@ -12,10 +12,12 @@ All notable changes to mcp-server-toolkit are documented here.
 
 - Publishing moves to PyPI Trusted Publishing (OIDC) via `.github/workflows/publish.yml`: no API token, gated by the `release` environment, with a manual trigger because the `v0.4.0` tag predates the workflow.
 - `pyproject.toml` description now names the streamable-HTTP gateway command and calls the bundled servers "pre-built", matching what 0.4.0 ships.
+- Test count: 928 → 942 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
 
 ### Added
 
 - `docs/RELEASING.md`: the release checklist — Trusted Publishing setup, pre-publish gates, the `v0.4.0` tag-timing caveat, and the documentation truth flip that must land the day a version publishes.
+- Opt-in Redis backend for `RateLimiter`: `RedisSlidingWindow` (ADR-0005) shares the sliding window across processes behind the `redis` extra. Failure semantics follow `RedisCache`: transient errors raise unless `fallback_to_memory=True`, which returns to per-process limits. `RateLimiter.get_remaining_async()` reads the count from either store; the synchronous `get_remaining()` remains per-process and points at the async twin when a Redis backend is configured.
 
 ## [0.4.0] - 2026-10-24
 
