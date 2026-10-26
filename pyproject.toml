@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "mcp-server-toolkit"
 version = "0.4.0"
-description = "Opt-in MCP tool decorators for the MCP SDK MCPServer (mcp 2.x): JWT/JWKS auth, read-only SQL allowlist, TTL caching, rate limits, OpenTelemetry spans, plus 9 example servers"
+description = "Opt-in MCP tool decorators for the MCP SDK MCPServer (mcp 2.x): JWT/JWKS auth, read-only SQL allowlist, TTL caching, rate limits, OpenTelemetry spans, a streamable-HTTP gateway command, and 9 pre-built servers"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

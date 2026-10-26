@@ -338,10 +338,10 @@ claims:
     network: true
     command: "curl -s --max-time 20 https://pypi.org/pypi/mcp-server-toolkit/json | python -c \"import json,sys;print(json.load(sys.stdin)['info']['version'])\""
     expect: "0.1.0"
-    date: "2026-10-24"
+    date: "2026-10-25"
     status: verified
     scope: >-
-      The 0.1.0 preview is a different, older package body whose summary advertises git, monitoring, tasks and Slack servers that this repository does not contain. It is not evidence about the code on main.
+      Re-ran against live PyPI on 2026-10-25. The 0.1.0 preview is a different, older package body whose summary advertises git, monitoring, tasks and Slack servers that this repository does not contain. It is not evidence about the code on main. Until 0.4.0 is published, no document may state or imply that PyPI serves the code on main; docs/RELEASING.md holds the post-publish flip.
   - id: ci-matrix-python
     statement: Highest Python version in the CI test matrix.
     value: "3.14"
