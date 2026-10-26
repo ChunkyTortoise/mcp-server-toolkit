@@ -18,4 +18,4 @@ Install from source: `pip install -e ".[dev]"`. The PyPI package is stale (0.1.0
 ```pytest tests/```
 
 ## Key Env
-PYPI_API_TOKEN (for publishing only)
+None for publishing: PyPI trusted publishing (OIDC) via publish.yml, release environment
