@@ -72,14 +72,19 @@ class MockDatabaseConnection:
         if "information_schema.tables" in query:
             return [{"table_name": name, "table_schema": "public"} for name in self._tables]
         if "information_schema.columns" in query:
-            for name, info in self._tables.items():
-                if name in query:
-                    return info["columns"]
-            return []
+            return [
+                {"table_schema": "public", "table_name": name, **column}
+                for name, info in self._tables.items()
+                for column in info["columns"]
+            ]
         for name, info in self._tables.items():
             if name.lower() in query.lower():
                 return info["rows"]
         return []
+
+    async def fetch_bounded(self, sql: str, max_rows: int) -> tuple[list[dict], bool]:
+        rows = await self.fetch(sql)
+        return rows[:max_rows], len(rows) > max_rows
 
     @property
     def queries(self) -> list[str]:

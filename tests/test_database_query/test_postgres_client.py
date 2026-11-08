@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 
 import pytest
 import pytest_asyncio
@@ -112,6 +113,264 @@ async def test_execute_blocked_in_read_only_mode():
 
 
 # ---------------------------------------------------------------------------
+# Unit tests: fetch_bounded uses a cursor in a READ ONLY transaction
+# ---------------------------------------------------------------------------
+
+
+class _FakeCursor:
+    def __init__(self, rows):
+        self.rows = rows
+        self.read = 0
+
+    async def fetchrow(self):
+        if self.read == len(self.rows):
+            return None
+        self.read += 1
+        return self.rows[self.read - 1]
+
+
+class _FakeTransaction:
+    def __init__(self, conn, readonly):
+        self.conn = conn
+        conn.transactions.append(readonly)
+
+    async def __aenter__(self):
+        self.conn.events.append("begin")
+
+    async def __aexit__(self, *exc):
+        self.conn.events.append("end")
+
+
+class _FakeConn:
+    def __init__(self, rows):
+        self.cursor_obj = _FakeCursor(rows)
+        self.transactions = []
+        self.events = []
+        self.cursor_sql = []
+        self.executed = []
+
+    def transaction(self, readonly=False):
+        return _FakeTransaction(self, readonly)
+
+    async def execute(self, sql):
+        assert self.events == ["begin"], "SET LOCAL outside the transaction"
+        assert self.cursor_sql == [], "SET LOCAL after the cursor opened"
+        self.executed.append(sql)
+
+    async def cursor(self, sql):
+        assert self.events == ["begin"], "cursor opened outside the transaction"
+        self.cursor_sql.append(sql)
+        return self.cursor_obj
+
+    async def fetch(self, *args):
+        raise AssertionError("fetch_bounded must not fetch the whole result")
+
+
+class _FakePool:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def acquire(self):
+        pool = self
+
+        class _Acquire:
+            async def __aenter__(self):
+                return pool.conn
+
+            async def __aexit__(self, *exc):
+                return None
+
+        return _Acquire()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("available, expect_truncated", [(3, False), (5, True), (500, True)])
+async def test_fetch_bounded_reads_at_most_max_rows_plus_one(available, expect_truncated):
+    conn = _FakeConn([{"id": i} for i in range(available)])
+    rows, truncated = await PostgresClient(pool=_FakePool(conn)).fetch_bounded(
+        "SELECT id FROM items", max_rows=4
+    )
+    assert conn.cursor_obj.read == min(available, 5)
+    assert conn.transactions == [True]
+    assert conn.events == ["begin", "end"]
+    assert conn.executed == ["SET LOCAL statement_timeout = 5000"]
+    assert len(rows) == min(available, 4)
+    assert truncated is expect_truncated
+
+
+@pytest.mark.asyncio
+async def test_fetch_bounded_sets_the_configured_statement_timeout():
+    conn = _FakeConn([{"id": 1}])
+    client = PostgresClient(pool=_FakePool(conn), statement_timeout_ms=250)
+    await client.fetch_bounded("SELECT 1", max_rows=10)
+    assert conn.executed == ["SET LOCAL statement_timeout = 250"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_bounded_stops_reading_at_the_byte_budget():
+    """Each row is 400 bytes; a 1000-byte budget stops after the third row."""
+    conn = _FakeConn([{"cell": "x" * 400} for _ in range(50)])
+    client = PostgresClient(pool=_FakePool(conn), max_result_bytes=1000)
+    rows, truncated = await client.fetch_bounded("SELECT cell FROM big", max_rows=100)
+    assert len(rows) == 3
+    assert conn.cursor_obj.read == 3
+    assert truncated is True
+
+
+@pytest.mark.asyncio
+async def test_fetch_bounded_counts_bytes_values_and_skips_null():
+    conn = _FakeConn([{"b": b"y" * 600, "n": None, "i": 12345}] * 3)
+    client = PostgresClient(pool=_FakePool(conn), max_result_bytes=1000)
+    rows, truncated = await client.fetch_bounded("SELECT 1", max_rows=100)
+    assert len(rows) == 2 and truncated is True
+
+
+@pytest.mark.parametrize("name", ["statement_timeout_ms", "max_result_bytes"])
+@pytest.mark.parametrize("value", [0, -1, True, 1.5])
+def test_client_limits_must_be_positive_integers(name, value):
+    with pytest.raises(ValueError, match=name):
+        PostgresClient(**{name: value})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT 1; SELECT 2",
+        "WITH d AS (DELETE FROM items RETURNING *) SELECT * FROM d",
+        "DROP TABLE x",
+    ],
+)
+async def test_fetch_bounded_validates_before_the_database(sql):
+    conn = _FakeConn([])
+    client = PostgresClient(pool=_FakePool(conn), read_only=False)
+    with pytest.raises(ValueError, match="Read-only mode"):
+        await client.fetch_bounded(sql, max_rows=10)
+    assert conn.cursor_sql == [] and conn.transactions == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_bounded_rejects_non_positive_limit():
+    with pytest.raises(ValueError, match="max_rows"):
+        await PostgresClient(pool=_FakePool(_FakeConn([]))).fetch_bounded("SELECT 1", 0)
+
+
+@pytest.mark.asyncio
+async def test_owned_pool_closes_after_last_user(monkeypatch):
+    import asyncpg
+
+    closed = []
+
+    class _Pool:
+        async def close(self):
+            closed.append(True)
+
+    async def create_pool(**kwargs):
+        assert kwargs["dsn"] == "postgresql://reader@db.invalid/x"
+        assert kwargs["server_settings"] == {"statement_timeout": "5000"}
+        assert kwargs["command_timeout"] == 10
+        return _Pool()
+
+    monkeypatch.setattr(asyncpg, "create_pool", create_pool)
+    client = PostgresClient(dsn="postgresql://reader@db.invalid/x")
+    await client.open()
+    await client.open()
+    first_pool = client.pool
+    await client.close()
+    assert closed == [] and client.pool is first_pool
+    await client.close()
+    assert closed == [True] and client.pool is None
+
+
+@pytest.mark.asyncio
+async def test_failed_open_does_not_count_a_user(monkeypatch):
+    import asyncpg
+
+    attempts = []
+
+    class _Pool:
+        async def close(self):
+            attempts.append("closed")
+
+    async def create_pool(**kwargs):
+        attempts.append("create")
+        if len(attempts) == 1:
+            raise OSError("db down")
+        return _Pool()
+
+    monkeypatch.setattr(asyncpg, "create_pool", create_pool)
+    client = PostgresClient(dsn="postgresql://reader@db.invalid/x")
+    with pytest.raises(OSError):
+        await client.open()
+    assert client.pool is None
+    await client.open()
+    await client.close()
+    assert attempts == ["create", "create", "closed"] and client.pool is None
+
+
+@pytest.mark.asyncio
+async def test_concurrent_open_creates_one_pool(monkeypatch):
+    import asyncio
+
+    import asyncpg
+
+    created = []
+
+    class _Pool:
+        async def close(self):
+            pass
+
+    async def create_pool(**kwargs):
+        await asyncio.sleep(0.01)
+        created.append(_Pool())
+        return created[-1]
+
+    monkeypatch.setattr(asyncpg, "create_pool", create_pool)
+    client = PostgresClient(dsn="postgresql://reader@db.invalid/x")
+    await asyncio.gather(client.open(), client.open(), client.open())
+    assert len(created) == 1 and client.pool is created[0]
+
+
+class _DupRecord:
+    """asyncpg.Record keeps duplicate column names; dict(record) would drop one."""
+
+    def __init__(self, items):
+        self._items = items
+
+    def items(self):
+        return iter(self._items)
+
+    def values(self):
+        return iter(v for _, v in self._items)
+
+
+@pytest.mark.asyncio
+async def test_fetch_bounded_keeps_duplicate_column_names():
+    conn = _FakeConn([_DupRecord([("id", 1), ("id", 2), ("id_2", 3)])])
+    rows, _ = await PostgresClient(pool=_FakePool(conn)).fetch_bounded(
+        "SELECT a.id, b.id, 3 AS id_2 FROM a, b", max_rows=5
+    )
+    assert rows == [{"id": 1, "id_2": 2, "id_2_2": 3}]
+
+
+@pytest.mark.asyncio
+async def test_caller_pool_is_never_closed():
+    class _Pool:
+        async def close(self):
+            raise AssertionError("caller-owned pool closed")
+
+    pool = _Pool()
+    client = PostgresClient(pool=pool)
+    await client.open()
+    await client.close()
+    assert client.pool is pool
+
+
+def test_dsn_is_not_in_repr():
+    assert "pw-sentinel" not in repr(PostgresClient(dsn="postgresql://u:pw-sentinel@h/x"))
+
+
+# ---------------------------------------------------------------------------
 # Integration tests (skipped unless INTEGRATION=1)
 # ---------------------------------------------------------------------------
 
@@ -124,6 +383,12 @@ ADMIN_DATABASE_URL = os.environ.get("ADMIN_DATABASE_URL", "")
 pytestmark_integration = pytest.mark.skipif(
     not INTEGRATION or not DATABASE_URL or not ADMIN_DATABASE_URL,
     reason="Set INTEGRATION=1, DATABASE_URL (mcp_reader) and ADMIN_DATABASE_URL (superuser)",
+)
+
+
+EXPENSIVE_SQL = (
+    "SELECT count(*) FROM generate_series(1, 4000) a, "
+    "generate_series(1, 4000) b, generate_series(1, 4000) c"
 )
 
 
@@ -194,10 +459,54 @@ async def test_integration_forbidden_table_needs_a_grant(reader_pool):
 async def test_integration_statement_timeout_cancels_expensive_select(reader_pool):
     import asyncpg
 
-    sql = "SELECT count(*) FROM generate_series(1, 4000) a, generate_series(1, 4000) b, generate_series(1, 4000) c"
+    sql = EXPENSIVE_SQL
     _validate_read_only(sql)
     with pytest.raises(asyncpg.QueryCanceledError):
         await PostgresClient(pool=reader_pool).fetch(sql)
+
+
+@pytestmark_integration
+async def test_integration_client_statement_timeout_without_a_role_timeout(admin_pool):
+    """The superuser has no role timeout, so only the client's SET LOCAL can cancel."""
+    import asyncpg
+
+    async with admin_pool.acquire() as conn:
+        assert await conn.fetchval("SHOW statement_timeout") == "0"
+    client = PostgresClient(pool=admin_pool, statement_timeout_ms=200)
+    started = time.monotonic()
+    with pytest.raises(asyncpg.QueryCanceledError):
+        await client.fetch_bounded(EXPENSIVE_SQL, max_rows=1)
+    assert time.monotonic() - started < 5
+    async with admin_pool.acquire() as conn:
+        assert await conn.fetchval("SHOW statement_timeout") == "0"  # SET LOCAL only
+
+
+@pytestmark_integration
+async def test_integration_owned_pool_sets_statement_timeout():
+    client = PostgresClient(dsn=ADMIN_DATABASE_URL, statement_timeout_ms=750)
+    await client.open()
+    try:
+        assert await client.fetch("SELECT current_setting('statement_timeout') AS t") == [
+            {"t": "750ms"}
+        ]
+    finally:
+        await client.close()
+
+
+@pytestmark_integration
+async def test_integration_byte_budget_stops_reading_huge_cells(reader_pool):
+    client = PostgresClient(pool=reader_pool, max_result_bytes=3_000_000)
+    rows, truncated = await client.fetch_bounded(
+        "SELECT repeat('x', 1000000) AS cell FROM generate_series(1, 60)", max_rows=100
+    )
+    assert len(rows) == 3 and truncated is True
+
+
+@pytestmark_integration
+async def test_integration_ts_stat_is_refused_before_the_database(reader_pool):
+    client = PostgresClient(pool=reader_pool)
+    with pytest.raises(ValueError, match="ts_stat"):
+        await client.fetch_bounded("SELECT * FROM ts_stat('SELECT pg_sleep(5)')", max_rows=1)
 
 
 @pytestmark_integration
@@ -228,3 +537,57 @@ async def test_integration_not_blocked_no_row_predicate(reader_pool):
     rows = await PostgresClient(pool=reader_pool).fetch("SELECT * FROM tenant_rows")
     print("not blocked: no row predicate")
     assert {r["tenant"] for r in rows} == {"tenant_a", "tenant_b"}
+
+
+@pytestmark_integration
+@pytest.mark.parametrize(
+    "sql, table",
+    [
+        ("WITH x AS (INSERT INTO write_probe VALUES (1) RETURNING id) SELECT * FROM x", "write_probe"),
+        ("WITH gone AS (DELETE FROM items RETURNING id) SELECT count(*) FROM gone", "items"),
+    ],
+)
+async def test_integration_read_only_transaction_refuses_with_validator_bypassed(
+    monkeypatch, admin_pool, sql, table
+):
+    """Third layer on its own: no validator, a superuser, only READ ONLY refuses."""
+    import asyncpg
+
+    from mcp_toolkit.servers.database_query import postgres_client
+
+    monkeypatch.setattr(postgres_client, "validate_single_read", lambda sql: None)
+    count_sql = f"SELECT count(*) FROM {table}"  # noqa: S608 (fixed test table name)
+    before = await admin_pool.fetchval(count_sql)
+    with pytest.raises(asyncpg.ReadOnlySQLTransactionError):
+        await PostgresClient(pool=admin_pool).fetch_bounded(sql, max_rows=5)
+    assert await admin_pool.fetchval(count_sql) == before
+
+
+@pytestmark_integration
+async def test_integration_explain_returns_the_plan(reader_pool):
+    rows, truncated = await PostgresClient(pool=reader_pool).fetch_bounded(
+        "EXPLAIN SELECT id FROM items WHERE id = 1", max_rows=50
+    )
+    assert not truncated
+    assert rows and set(rows[0]) == {"QUERY PLAN"}
+    assert "items" in "\n".join(r["QUERY PLAN"] for r in rows)
+
+
+@pytestmark_integration
+async def test_integration_not_blocked_same_role_sees_other_sessions_sql(reader_pool):
+    """not blocked: pg_stat_activity shows SQL from other sessions of the same role."""
+    import asyncio
+
+    async with reader_pool.acquire() as other:
+        running = asyncio.create_task(
+            other.fetchval("SELECT 'pgsa-sentinel-55e1' FROM pg_sleep(1)")
+        )
+        await asyncio.sleep(0.3)
+        rows, _ = await PostgresClient(pool=reader_pool).fetch_bounded(
+            "SELECT query FROM pg_stat_activity "
+            "WHERE pid <> pg_backend_pid() AND state = 'active'",
+            max_rows=50,
+        )
+        await running
+    print("not blocked: revoke pg_stat_activity or use one role per caller")
+    assert any("pgsa-sentinel-55e1" in r["query"] for r in rows)

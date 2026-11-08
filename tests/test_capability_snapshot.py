@@ -45,9 +45,19 @@ def test_server_list_matches_package():
     assert on_disk == sorted(SERVERS)
 
 
+def _build(name):
+    module = importlib.import_module(f"mcp_toolkit.servers.{name}.server")
+    if name == "database_query":
+        # No module-level server: build one with the NL tools so all four are covered.
+        from mcp_toolkit.servers.database_query.sql_generator import MockLLMProvider
+
+        return module.create_server(module.DatabaseServerSettings(), None, llm=MockLLMProvider())
+    return module.mcp
+
+
 @pytest.mark.parametrize("name", SERVERS)
 async def test_server_exposes_only_tools(name):
-    server = importlib.import_module(f"mcp_toolkit.servers.{name}.server").mcp
+    server = _build(name)
     with anyio.fail_after(10):
         async with Client(server) as client:
             assert client.server_capabilities.model_dump(exclude_none=True, by_alias=True) == EXPECTED_CAPABILITIES

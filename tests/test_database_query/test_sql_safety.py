@@ -10,7 +10,7 @@ pytest.importorskip("sqlglot")
 
 from mcp_toolkit.servers.database_query import postgres_client, schema_inspector, sql_safety
 from mcp_toolkit.servers.database_query.postgres_client import PostgresClient
-from mcp_toolkit.servers.database_query.sql_generator import SQLGenerator
+from mcp_toolkit.servers.database_query.sql_generator import MockLLMProvider, SQLGenerator
 from mcp_toolkit.servers.database_query.sql_safety import (
     _DENIED_FUNCTIONS,
     validate_identifier,
@@ -57,30 +57,30 @@ async def _fetch_verdict(sql: str) -> bool:
 
 @pytest.mark.parametrize("sql", HOSTILE_SQL + ALLOWED_SQL)
 async def test_fetch_and_sql_generator_agree(sql):
-    generator_verdict, _ = SQLGenerator().validate(sql)
+    generator_verdict, _ = SQLGenerator(llm=MockLLMProvider()).validate(sql)
     assert generator_verdict == await _fetch_verdict(sql)
 
 
 @pytest.mark.parametrize("sql", HOSTILE_SQL)
 def test_hostile_rejected_by_sql_generator(sql):
-    is_valid, error = SQLGenerator().validate(sql)
+    is_valid, error = SQLGenerator(llm=MockLLMProvider()).validate(sql)
     assert not is_valid
     assert error
 
 
 @pytest.mark.parametrize("sql", ALLOWED_SQL)
 def test_allowed_returns_checked_string_unchanged(sql):
-    assert SQLGenerator().validate(sql) == (True, sql)
+    assert SQLGenerator(llm=MockLLMProvider()).validate(sql) == (True, sql)
 
 
 def test_pgvector_operator_survives_validation():
     sql = "SELECT id FROM docs ORDER BY embedding <=> '[1,2,3]'::vector LIMIT 5"
-    assert SQLGenerator().validate(sql) == (True, sql)
+    assert SQLGenerator(llm=MockLLMProvider()).validate(sql) == (True, sql)
 
 
 def test_sql_generator_accepts_explain_without_analyze():
-    assert SQLGenerator().validate("EXPLAIN SELECT 1")[0] is True
-    assert SQLGenerator().validate("EXPLAIN ANALYZE SELECT 1")[0] is False
+    assert SQLGenerator(llm=MockLLMProvider()).validate("EXPLAIN SELECT 1")[0] is True
+    assert SQLGenerator(llm=MockLLMProvider()).validate("EXPLAIN ANALYZE SELECT 1")[0] is False
 
 
 def test_legacy_aliases_point_at_shared_functions():
@@ -107,13 +107,16 @@ def test_legacy_aliases_point_at_shared_functions():
         "dblink_connect_u('host=x')",
         "pg_notify('c', 'p')",
         "database_to_xml(true, true, '')",
+        "ts_stat('SELECT pg_sleep(10)')",
+        "ts_stat('SELECT v FROM t', 'ab')",
+        "ts_rewrite('a'::tsquery, 'SELECT pg_sleep(10)')",
     ],
 )
 def test_denied_function_rejected_by_both_validators(call):
     for sql in (f"SELECT {call}", f"SELECT pg_catalog.{call}"):
         with pytest.raises(ValueError, match="Read-only mode"):
             validate_read_only(sql)
-        assert SQLGenerator().validate(sql)[0] is False
+        assert SQLGenerator(llm=MockLLMProvider()).validate(sql)[0] is False
 
 
 def test_every_denied_function_is_rejected_and_lowercase():
@@ -121,7 +124,37 @@ def test_every_denied_function_is_rejected_and_lowercase():
         assert name == name.lower()
         with pytest.raises(ValueError, match="Read-only mode"):
             validate_read_only(f"SELECT {name}()")
-        assert SQLGenerator().validate(f"SELECT {name}()")[0] is False
+        assert SQLGenerator(llm=MockLLMProvider()).validate(f"SELECT {name}()")[0] is False
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "EXPLAIN SELECT 'LOG-SENTINEL-7f3a' AS secret",
+        'VACUUM "LOG-SENTINEL-7f3a"',
+        "SELEC 'LOG-SENTINEL-7f3a' FRM ((",
+    ],
+)
+def test_validation_never_logs_caller_sql(sql, caplog):
+    """sqlglot logs the whole statement when it falls back to a Command; drop it."""
+    import logging
+
+    caplog.set_level(logging.DEBUG)
+    for validate in (validate_read_only, sql_safety.validate_single_read):
+        try:
+            validate(sql)
+        except Exception as exc:
+            assert type(exc).__name__ in {"ValueError", "ParseError"}
+    assert "LOG-SENTINEL-7f3a" not in caplog.text
+
+
+def test_sqlglot_logs_outside_validation_still_reach_handlers(caplog):
+    """The filter is scoped to validation, not a global mute of sqlglot."""
+    import logging
+
+    caplog.set_level(logging.WARNING)
+    logging.getLogger("sqlglot").warning("outside-validation")
+    assert "outside-validation" in caplog.text
 
 
 def test_function_not_on_denylist_passes_the_validator():
