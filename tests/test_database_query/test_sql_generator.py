@@ -59,27 +59,27 @@ class TestSQLGenerator:
         assert mock_llm.call_count == 1
 
     async def test_validate_select(self):
-        gen = SQLGenerator()
+        gen = SQLGenerator(llm=MockLLMProvider())
         is_valid, result = gen.validate("SELECT * FROM users")
         assert is_valid is True
 
     async def test_validate_rejects_insert(self):
-        gen = SQLGenerator()
+        gen = SQLGenerator(llm=MockLLMProvider())
         is_valid, _ = gen.validate("INSERT INTO users VALUES (1, 'a', 'b')")
         assert is_valid is False
 
     async def test_validate_rejects_delete(self):
-        gen = SQLGenerator()
+        gen = SQLGenerator(llm=MockLLMProvider())
         is_valid, _ = gen.validate("DELETE FROM users")
         assert is_valid is False
 
     async def test_validate_rejects_drop(self):
-        gen = SQLGenerator()
+        gen = SQLGenerator(llm=MockLLMProvider())
         is_valid, _ = gen.validate("DROP TABLE users")
         assert is_valid is False
 
     async def test_validate_allows_with_cte(self):
-        gen = SQLGenerator()
+        gen = SQLGenerator(llm=MockLLMProvider())
         is_valid, _ = gen.validate("WITH cte AS (SELECT 1) SELECT * FROM cte")
         assert is_valid is True
 
@@ -98,7 +98,7 @@ class TestSQLGenerator:
         assert SQLGenerator.clean_sql("SELECT 1;") == "SELECT 1"
 
     def test_build_prompt_includes_schema(self, sample_schema):
-        gen = SQLGenerator()
+        gen = SQLGenerator(llm=MockLLMProvider())
         prompt = gen.build_prompt("How many users?", sample_schema)
         assert "users" in prompt
         assert "orders" in prompt
@@ -171,3 +171,11 @@ class TestMockLLMProvider:
         await llm.generate("q1")
         await llm.generate("q2")
         assert llm.call_count == 2
+
+
+def test_generator_requires_an_explicit_provider():
+    from mcp_toolkit.servers.database_query import sql_generator
+
+    assert not hasattr(sql_generator, "DefaultLLMProvider")
+    with pytest.raises(TypeError):
+        SQLGenerator()  # type: ignore[call-arg]

@@ -67,15 +67,20 @@ Nine servers, import and run, no boilerplate.
 <summary><strong>database_query</strong>: Natural language to SQL with sqlglot validation and schema introspection</summary>
 
 ```python
-from mcp_toolkit.servers.database_query.server import mcp, configure
+import os
 
-# Connect to your database
-configure(db_connection=my_async_db, dialect="postgres")
+from mcp_toolkit.servers.database_query import DatabaseServerSettings, create_server
+from mcp_toolkit.servers.database_query.postgres_client import PostgresClient
+
+# Read-only role DSN; the server lifespan opens and closes the pool.
+client = PostgresClient(dsn=os.environ["DATABASE_URL"], read_only=True)
+server = create_server(DatabaseServerSettings(max_rows=100), client, llm=my_llm_provider)
 
 # Tools available to agents:
-# - query_database("How many users signed up last week?")
-# - explain_query("Show me top customers by revenue")
-# - list_tables()
+# - run_sql("SELECT id, name FROM items")   (always)
+# - list_tables()                            (always)
+# - query_database("How many users signed up last week?")  (only with llm=)
+# - explain_query("Show me top customers by revenue")      (only with llm=)
 ```
 
 </details>

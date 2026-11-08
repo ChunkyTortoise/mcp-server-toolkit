@@ -2,19 +2,32 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from mcp_toolkit.servers.database_query.sql_safety import validate_identifier
 
+logger = logging.getLogger(__name__)
+
 # Kept so existing imports of the private name keep working.
 _validate_identifier = validate_identifier
+
+_SYSTEM_SCHEMAS = "('pg_catalog', 'information_schema')"
+
+
+def _is_identifier(name: Any) -> bool:
+    try:
+        validate_identifier(name, "name")
+    except ValueError:
+        return False
+    return True
 
 
 class DatabaseConnection(Protocol):
     """Protocol for database connections."""
 
-    async def fetch(self, query: str) -> list[dict[str, Any]]: ...
+    async def fetch(self, query: str, /) -> list[dict[str, Any]]: ...
 
 
 @dataclass
@@ -71,54 +84,52 @@ class SchemaInspector:
         self._cached_schema: DatabaseSchema | None = None
 
     async def inspect(self, db: DatabaseConnection | None = None) -> DatabaseSchema:
-        """Inspect the database and return schema information."""
+        """Inspect the database and return schema information.
+
+        Two fixed queries, no interpolated names. Tables or schemas whose names are
+        not plain identifiers are skipped: their names would reach the LLM prompt
+        unquoted, and one odd name must not make the whole schema unavailable.
+        """
         conn = db or self._db
         if conn is None:
             raise ValueError("No database connection provided")
 
         tables_rows = await conn.fetch(
             "SELECT table_name, table_schema FROM information_schema.tables "
-            "WHERE table_schema NOT IN ('pg_catalog', 'information_schema') "
+            f"WHERE table_schema NOT IN {_SYSTEM_SCHEMAS} "
             "ORDER BY table_name"
         )
+        columns_rows = await conn.fetch(
+            "SELECT table_schema, table_name, column_name, data_type, is_nullable, "
+            "column_default FROM information_schema.columns "
+            f"WHERE table_schema NOT IN {_SYSTEM_SCHEMAS} "
+            "ORDER BY table_schema, table_name, ordinal_position"
+        )
 
-        tables = []
+        tables: dict[tuple[str, str], TableInfo] = {}
+        skipped = 0
         for row in tables_rows:
-            table_name = row["table_name"]
-            table_schema = row.get("table_schema", "public")
-
-            _validate_identifier(table_name, "table_name")
-            _validate_identifier(table_schema, "table_schema")
-
-            # Identifiers are validated above via _validate_identifier (regex whitelist).
-            # The DatabaseConnection protocol takes only a query string, so we compose
-            # the query with the pre-validated, whitelisted identifiers.
-            columns_rows = await conn.fetch(
-                "SELECT column_name, data_type, is_nullable, column_default "
-                "FROM information_schema.columns "
-                f"WHERE table_name = '{table_name}' AND table_schema = '{table_schema}' "
-                "ORDER BY ordinal_position"
-            )
-
-            columns = [
+            name, schema = row["table_name"], row.get("table_schema", "public")
+            if not (_is_identifier(name) and _is_identifier(schema)):
+                skipped += 1
+                continue
+            tables[(schema, name)] = TableInfo(name=name, schema=schema)
+        for c in columns_rows:
+            table = tables.get((c.get("table_schema", "public"), c["table_name"]))
+            if table is None:
+                continue
+            table.columns.append(
                 ColumnInfo(
                     name=c["column_name"],
                     data_type=c["data_type"],
                     is_nullable=c.get("is_nullable", "YES") == "YES",
                     default_value=c.get("column_default"),
                 )
-                for c in columns_rows
-            ]
-
-            tables.append(
-                TableInfo(
-                    name=table_name,
-                    schema=table_schema,
-                    columns=columns,
-                )
             )
+        if skipped:
+            logger.info("schema inspection skipped %d non-identifier table names", skipped)
 
-        schema = DatabaseSchema(tables=tables)
+        schema = DatabaseSchema(tables=list(tables.values()))
         self._cached_schema = schema
         return schema
 

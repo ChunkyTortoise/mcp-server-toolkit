@@ -14,18 +14,11 @@ class LLMProvider(Protocol):
     async def generate(self, prompt: str) -> str: ...
 
 
-class DefaultLLMProvider:
-    """Default LLM provider that returns a placeholder. Override in production."""
-
-    async def generate(self, prompt: str) -> str:
-        return "SELECT 1"
-
-
 class SQLGenerator:
     """Generates SQL from natural language questions using an LLM and schema context."""
 
-    def __init__(self, llm: LLMProvider | None = None, dialect: str = "postgres") -> None:
-        self._llm = llm or DefaultLLMProvider()
+    def __init__(self, llm: LLMProvider, dialect: str = "postgres") -> None:
+        self._llm = llm
         self._dialect = dialect
 
     def build_prompt(self, question: str, schema: DatabaseSchema) -> str:

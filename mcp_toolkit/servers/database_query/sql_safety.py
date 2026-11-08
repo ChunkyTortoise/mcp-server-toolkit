@@ -21,7 +21,11 @@ Requires: pip install mcp-server-toolkit[database]
 
 from __future__ import annotations
 
+import contextvars
+import logging
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 # SQL statement types that are never allowed in read-only mode.
 _WRITE_STATEMENT_TYPES = {
@@ -179,7 +183,38 @@ _DENIED_FUNCTIONS = {
     "database_to_xml",
     "database_to_xmlschema",
     "database_to_xml_and_xmlschema",
+    "ts_stat",
+    "ts_rewrite",
 }
+
+# sqlglot logs the full statement, literals included, at WARNING when it falls back
+# to parsing it as a Command (EXPLAIN, VACUUM, ...). Caller SQL must not reach the
+# logs, so records from the "sqlglot" logger are dropped while this module parses.
+_parsing = contextvars.ContextVar("sql_safety_parsing", default=False)
+
+
+def _drop_while_parsing(_: logging.LogRecord) -> bool:
+    return not _parsing.get()
+
+
+logging.getLogger("sqlglot").addFilter(_drop_while_parsing)
+
+
+@contextmanager
+def _quiet_sqlglot() -> Iterator[None]:
+    token = _parsing.set(True)
+    try:
+        yield
+    finally:
+        _parsing.reset(token)
+
+
+def _parse(sql: str, dialect: str) -> list:
+    import sqlglot
+
+    with _quiet_sqlglot():
+        return [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
+
 
 _EXPLAIN_OPTIONS = re.compile(
     r"^\s*(?:\([^)]*\)|(?:VERBOSE|COSTS|BUFFERS|FORMAT\s+\w+)\s+)*", re.IGNORECASE
@@ -209,12 +244,11 @@ def _validate_explain(rest: str, dialect: str) -> None:
 def validate_read_only(sql: str, dialect: str = "postgres") -> None:
     """Raise ValueError unless every statement in sql is a plain read."""
     try:
-        import sqlglot
         from sqlglot import exp
     except ImportError as exc:
         raise ImportError("Install sqlglot: pip install mcp-server-toolkit[database]") from exc
 
-    statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
+    statements = _parse(sql, dialect)
     if not statements:
         _reject("an empty statement")
     for statement in statements:
@@ -233,3 +267,11 @@ def validate_read_only(sql: str, dialect: str = "postgres") -> None:
                 name = node.name if isinstance(node, exp.Anonymous) else node.sql_name()
                 if name and name.lower() in _DENIED_FUNCTIONS:
                     _reject(f"function '{name.lower()}'")
+
+
+def validate_single_read(sql: str, dialect: str = "postgres") -> None:
+    """Raise ValueError unless sql is exactly one plain read statement."""
+    statements = _parse(sql, dialect)
+    if len(statements) > 1:
+        _reject("more than one statement")
+    validate_read_only(sql, dialect)
