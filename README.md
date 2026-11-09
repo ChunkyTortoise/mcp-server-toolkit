@@ -218,7 +218,6 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 
 There are no open issues; these are the next steps documented in the repository.
 
-- Ship the opt-in Redis backend for the rate limiter described in [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md).
 - Deploy the observability stack from its committed [Render blueprint](examples/observability/render.yaml) and verify OTLP export end to end with [`verify_otlp.py`](examples/observability/verify_otlp.py) ([steps](examples/observability/README.md#verify-an-otlp-deployment)).
 - Measure a real RAG workload end to end and publish a dated run artifact alongside the [case study](docs/CASE_STUDY.md).
 
