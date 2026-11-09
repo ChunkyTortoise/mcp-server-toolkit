@@ -4,7 +4,11 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Every MCP server that touches real data needs the same guard code around each tool: verify the caller's token, check its scope, refuse writes to the database, cache repeat calls and trace what ran. This Python library puts that code in decorators on top of the MCP SDK's `MCPServer` (FastMCP in mcp 1.x), with JWT/JWKS auth, a sqlglot read-only SQL allowlist, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function. Each guard is opt-in per tool.
+In plain terms: a Python library for adding token and scope checks, caching, rate limits and tracing to MCP tools used by AI assistants.
+
+**Built by [Cayman Roden](https://github.com/ChunkyTortoise)**, AI engineer in Los Angeles. Available now for contract, part-time or full-time work, US remote. [Portfolio](https://chunkytortoise.github.io) · [LinkedIn](https://linkedin.com/in/caymanroden)
+
+MCP tools that touch real data often need the same guard code: verify the caller's token, check its scope, cache repeat calls, limit request rates and trace what ran. The included database server also refuses writes with read-only SQL checks. This Python library puts that code in decorators on top of the MCP SDK's `MCPServer` (FastMCP in mcp 1.x), with JWT/JWKS auth, a sqlglot read-only SQL allowlist, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function. Each guard is opt-in per tool.
 
 ```python
 import asyncio, jwt
@@ -214,7 +218,6 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 
 There are no open issues; these are the next steps documented in the repository.
 
-- Ship the opt-in Redis backend for the rate limiter described in [ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md).
 - Deploy the observability stack from its committed [Render blueprint](examples/observability/render.yaml) and verify OTLP export end to end with [`verify_otlp.py`](examples/observability/verify_otlp.py) ([steps](examples/observability/README.md#verify-an-otlp-deployment)).
 - Measure a real RAG workload end to end and publish a dated run artifact alongside the [case study](docs/CASE_STUDY.md).
 
