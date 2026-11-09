@@ -80,9 +80,9 @@ all = [
 dev = [
     "mcp-server-toolkit[all]",
     "pytest>=9.2.0",
-    "pytest-asyncio>=1.4.1",
+    "pytest-asyncio>=1.4.1.post1",
     "pytest-cov>=7.1.0",
-    "ruff>=0.17.3,<0.18",
+    "ruff>=0.17.4,<0.18",
     # scripts/check_claims.py parses docs/claims.yaml; nothing in the current
     # dependency set reads YAML, and a hand-rolled parser would break on
     # legitimate ledger entries. Dev-only: the runtime package does not need it.
