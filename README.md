@@ -4,11 +4,11 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-In plain terms: a Python library that adds login checks, caching and logging to the tools AI assistants call.
+In plain terms: a Python library for adding token and scope checks, caching, rate limits and tracing to MCP tools used by AI assistants.
 
 **Built by [Cayman Roden](https://github.com/ChunkyTortoise)**, AI engineer in Los Angeles. Available now for contract, part-time or full-time work, US remote. [Portfolio](https://chunkytortoise.github.io) · [LinkedIn](https://linkedin.com/in/caymanroden)
 
-Every MCP server that touches real data needs the same guard code around each tool: verify the caller's token, check its scope, refuse writes to the database, cache repeat calls and trace what ran. This Python library puts that code in decorators on top of the MCP SDK's `MCPServer` (FastMCP in mcp 1.x), with JWT/JWKS auth, a sqlglot read-only SQL allowlist, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function. Each guard is opt-in per tool.
+MCP tools that touch real data often need the same guard code: verify the caller's token, check its scope, cache repeat calls, limit request rates and trace what ran. The included database server also refuses writes with read-only SQL checks. This Python library puts that code in decorators on top of the MCP SDK's `MCPServer` (FastMCP in mcp 1.x), with JWT/JWKS auth, a sqlglot read-only SQL allowlist, a TTL cache and OpenTelemetry spans, so a tool stays a plain async function. Each guard is opt-in per tool.
 
 ```python
 import asyncio, jwt
