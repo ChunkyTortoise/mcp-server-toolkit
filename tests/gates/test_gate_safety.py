@@ -139,6 +139,14 @@ KNOWN_GAPS: dict[str, str] = {
         "but PyJWT 2.x checks iat against now + leeway and raises ImmatureSignatureError, so "
         "the gate blocks a real signed token with a future iat"
     ),
+    "inj-41": (
+        "_extract_scopes chains claims with `or`, so an explicitly empty scope falls through "
+        "to scp/permissions and a token with scope='' and permissions=['admin'] passes"
+    ),
+    "inj-43": (
+        "_extract_scopes uses str.split(), which splits on U+00A0 and other Unicode whitespace, "
+        "so one scope value 'doc:42\u00a0admin' is read as two scopes including admin"
+    ),
 }
 
 
@@ -239,8 +247,8 @@ class TestAdversarialCorpus:
     SECRET = "corpus-test-secret-long-enough-for-hs256-min"
 
     @pytest.mark.skipif(not CORPUS_PATH.exists(), reason="injection_corpus.jsonl not yet generated")
-    def test_corpus_has_30_cases(self):
-        assert len(_CORPUS) == 30
+    def test_corpus_has_45_cases(self):
+        assert len(_CORPUS) == 45
         for i, case in enumerate(_CORPUS):
             for key in ("id", "description", "expected_blocked"):
                 assert key in case, f"Case {i} missing '{key}'"

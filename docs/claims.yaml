@@ -44,11 +44,11 @@ allow:
 claims:
   - id: test-suite-passed
     statement: Tests passing in this tree with the development extras installed.
-    value: "1015 passed"
-    match: ["1015 passed"]
+    value: "1065 passed"
+    match: ["1065 passed"]
     artifact: tests/
     command: "python -m pytest tests/ -q"
-    expect: "1015 passed"
+    expect: "1065 passed"
     date: "2026-11-17"
     status: verified
     scope: >-
@@ -65,22 +65,22 @@ claims:
     scope: Postgres integration tests gated on INTEGRATION=1 and DATABASE_URL, and Redis integration tests gated on INTEGRATION=1 and REDIS_URL.
   - id: test-collected
     statement: Tests collected, including skipped ones.
-    value: "1031"
-    match: ["1031"]
+    value: "1083"
+    match: ["1083"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/ --collect-only -q | tail -2"
-    expect: "1031 tests collected"
+    expect: "1083 tests collected"
     date: "2026-11-17"
     status: verified
     scope: Published in the README Results table, dated 2026-11-17. Includes the eleven integration tests that skip without INTEGRATION=1.
   - id: coverage-measured
     statement: Line coverage of mcp_toolkit in this tree.
-    value: "87.57%"
-    match: ["87.57%"]
+    value: "87.59%"
+    match: ["87.59%"]
     artifact: .github/workflows/ci.yml
     command: "python -m pytest tests/ -q --cov=mcp_toolkit --cov-fail-under=80"
-    expect: "87.57%"
+    expect: "87.59%"
     date: "2026-11-17"
     status: verified
     scope: Local run, Python 3.13. CI prints its own value per matrix entry; the floor is separate.
@@ -280,27 +280,27 @@ claims:
     scope: Deterministic, no API key. The 10-case quality suite is separate (nightly).
   - id: corpus-cases
     statement: Adversarial corpus size.
-    value: "30 cases"
-    match: ["30 cases", "30"]
+    value: "45 cases"
+    match: ["45 cases", "45", "45-case"]
     artifact: tests/adversarial/injection_corpus.jsonl
     command: "grep -c . tests/adversarial/injection_corpus.jsonl"
-    expect: "30"
-    date: "2026-10-24"
+    expect: "45"
+    date: "2026-11-17"
     status: verified
     scope: >-
       test_corpus.py checks structure; tests/gates/test_gate_safety.py dispatches every case through the real gate. Not every case is blocked at the toolkit layer.
   - id: corpus-gate-outcomes
     statement: Corpus cases whose outcome through the real gate matches expected_blocked, and known gaps.
-    value: "25 of 30 cases"
-    match: ["25 of 30 cases", "5 known gaps"]
+    value: "38 of 45 cases"
+    match: ["38 of 45 cases", "7 known gaps"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/gates/test_gate_safety.py -k test_case_through_gate -q | tail -1"
-    expect: "25 passed"
+    expect: "38 passed"
     date: "2026-11-17"
     status: verified
     scope: >-
-      Auth and scope gate only (JWTAuth + requires_scope via MCPTestClient). The 5 known gaps are strict xfails: inj-01, inj-02, inj-03, inj-05 (no content filter) and inj-26 (corpus expects a future-iat token to pass; PyJWT rejects it). Placeholder token names (inj-08, inj-11, inj-21, inj-26) are replaced by real tokens minted in the test. Cases marked not blocked only show the gate does not block them.
+      Auth and scope gate only (JWTAuth + requires_scope via MCPTestClient). The 7 known gaps are strict xfails: inj-01, inj-02, inj-03, inj-05 (no content filter), inj-26 (corpus expects a future-iat token to pass; PyJWT rejects it), inj-41 (empty scope falls through to permissions) and inj-43 (scope value split on U+00A0). Placeholder token names (inj-08, inj-11, inj-21, inj-26) are replaced by real tokens minted in the test. Cases marked not blocked only show the gate does not block them.
   - id: server-count
     statement: Pre-built MCP servers shipped in the package.
     value: "9"

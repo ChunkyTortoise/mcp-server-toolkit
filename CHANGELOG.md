@@ -6,6 +6,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 ### Security
 
+- `JWTAuth.authenticate` and `APIKeyAuth.authenticate` refuse a non-string credential (int, list, dict, bytes) with a `jwt.rejected` or `api_key.rejected` audit line. Before, a direct Python caller got a raw `AttributeError` or `TypeError` and no audit event. The `JWTAuth(secret=...)` no-audience warning now states the real behavior: tokens that carry an `aud` claim are refused.
 - Outbound calls share one address classifier (`mcp_toolkit.framework.net_safety`) covering IPv4 embedded in IPv6 (mapped, NAT64, 6to4); the A2A webhook is checked and never follows redirects, and DNS lookups run off the event loop. The scraper drops client auth, not just headers, when a redirect leaves the original origin, and scrape tools return a generic `ToolError` on refusal.
 - Gemini API keys are sent in the `x-goog-api-key` header, not URL query strings; the A2A example binds `127.0.0.1`.
 - Dependency bumps for advisories tracked by Dependabot: the `files` extra floor moves to `pypdf>=6.21.4` (GHSA-6c7f-9265-g8fw, GHSA-jr96-gvgh-j3r4, GHSA-gmh7-3g9r-mjh5: repeated/malformed xref and missing-object references could blow up runtimes; the bump also picks up the 6.20.x to 6.21.1 fixes), and the lock resolves `certifi` to 2026.10.23 (GHSA-6q48-6c7w-9gw2: emSign root CAs with compromised intermediate keys). `certifi` is transitive (via `httpx`); the floor applies to this repo's lockfile and environments, and a fresh downstream resolve takes the patched release by default.
@@ -15,8 +16,8 @@ All notable changes to mcp-server-toolkit are documented here.
 
 - Publishing moves to PyPI Trusted Publishing (OIDC) via `.github/workflows/publish.yml`: no API token, gated by the `release` environment, with a manual trigger because the `v0.4.0` tag predates the workflow.
 - `pyproject.toml` description now names the streamable-HTTP gateway command and calls the bundled servers "pre-built", matching what 0.4.0 ships.
-- `tests/gates/test_gate_safety.py` now dispatches all 30 adversarial corpus cases through the real auth and scope gate and compares the outcome with `expected_blocked`: 25 match, 5 are strict xfails (inj-01, inj-02, inj-03, inj-05: no content filter; inj-26: the corpus expects a future-`iat` token to pass, but PyJWT rejects it). Placeholder token names in the corpus are replaced by real tokens minted in the test. README and claims ledger state the real figures.
-- Test count: 928 → 1031 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
+- `tests/gates/test_gate_safety.py` now dispatches every adversarial corpus case through the real auth and scope gate and compares the outcome with `expected_blocked`. The corpus grows from 30 to 45 cases (inj-31 to inj-45, from an outside review): 38 match, 7 are strict xfails (inj-01, inj-02, inj-03, inj-05: no content filter; inj-26: the corpus expects a future-`iat` token to pass, but PyJWT rejects it; inj-41: an empty `scope` falls through to `permissions`; inj-43: a scope value is split on U+00A0). Placeholder token names in the corpus are replaced by real tokens minted in the test. README and claims ledger state the real figures.
+- Test count: from 928 to 1083 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
 
 ### Added
 

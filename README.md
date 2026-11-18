@@ -8,13 +8,13 @@ A Python library of decorators that add token auth with scopes, a read-only SQL 
 
 ## Results
 
-The auth and scope gate is tested against a 30-case adversarial corpus (prompt injection, token forgery, scope escalation, cache poisoning, data exfiltration). Every number below comes from a committed file or a command that needs no API key and no network.
+The auth and scope gate is tested against a 45-case adversarial corpus (prompt injection, token forgery, scope escalation, cache poisoning, data exfiltration). Every number below comes from a committed file or a command that needs no API key and no network.
 
 | Metric | Result | n | Dataset | Date | Model | Baseline | Reproduce |
 |---|---|---|---|---|---|---|---|
-| Corpus cases where the gate's outcome matches `expected_blocked` | **25 of 30 cases**; **5 known gaps** pinned as strict xfail | 30 | [`injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) | 2026-11-17 | none (deterministic gate) | the corpus labels | `uv run pytest tests/gates/test_gate_safety.py -q` |
-| Test suite | **1015 passed**, **11 skipped** (Postgres and Redis integration) | **1031** collected | [`tests/`](tests/) | 2026-11-17 | none | n/a | `uv run pytest -q` |
-| Line coverage of `mcp_toolkit` | **87.57%** (CI floor **80%**) | 1 run | [`tests/`](tests/) | 2026-11-17 | none | CI floor in [`ci.yml`](.github/workflows/ci.yml) | `uv run pytest -q --cov=mcp_toolkit` |
+| Corpus cases where the gate's outcome matches `expected_blocked` | **38 of 45 cases**; **7 known gaps** pinned as strict xfail | 45 | [`injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) | 2026-11-17 | none (deterministic gate) | the corpus labels | `uv run pytest tests/gates/test_gate_safety.py -q` |
+| Test suite | **1065 passed**, **11 skipped** (Postgres and Redis integration) | **1083** collected | [`tests/`](tests/) | 2026-11-17 | none | n/a | `uv run pytest -q` |
+| Line coverage of `mcp_toolkit` | **87.59%** (CI floor **80%**) | 1 run | [`tests/`](tests/) | 2026-11-17 | none | CI floor in [`ci.yml`](.github/workflows/ci.yml) | `uv run pytest -q --cov=mcp_toolkit` |
 | Multi-LLM routing checks | **26/26** | 26 | [`evals/`](evals/) | 2026-11-17 | none (providers mocked) | n/a | `uv run python evals/run_evals.py` |
 | Deterministic smoke checks (routing, cost, JWT, cache) | **10/10** | 10 | [`evals/quality/`](evals/quality/) | 2026-11-17 | none; the LLM judge has no committed run | n/a | `uv run python evals/quality/runner.py` |
 | In-memory cache P50 latency, hit vs miss, on a mock tool | **0.013 ms** hit vs **0.028 ms** miss (**2.1x**) | 500 iterations | [`benchmarks/run-2026-11-17.txt`](benchmarks/run-2026-11-17.txt) | 2026-11-17 | none | cache miss | `uv run python benchmarks/bench_cache.py` |
@@ -32,7 +32,7 @@ uv run pytest -q
 uv run python examples/verified_cache.py
 ```
 
-The test run should end with `1015 passed, 11 skipped, 5 xfailed`. The cache demo dispatches one tool twice through the MCP SDK in-process and prints two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true` from the recorded telemetry ([captured run](docs/assets/cache-run.json), [provenance](docs/VERIFIED_DEMO.md)). With pip instead of uv: `pip install -e ".[dev]"`. The PyPI package is an older 0.1.0 preview that does not include this code, so install from source.
+The test run should end with `1065 passed, 11 skipped, 7 xfailed`. The cache demo dispatches one tool twice through the MCP SDK in-process and prints two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true` from the recorded telemetry ([captured run](docs/assets/cache-run.json), [provenance](docs/VERIFIED_DEMO.md)). With pip instead of uv: `pip install -e ".[dev]"`. The PyPI package is an older 0.1.0 preview that does not include this code, so install from source.
 <!-- TODO(Cayman): publish 0.4.x to PyPI and create the v0.4.0 GitHub release (docs/RELEASING.md), then replace this source-install note and add a PyPI version badge. -->
 
 Inspect the example server in the MCP Inspector (needs Node.js):
@@ -144,7 +144,7 @@ Usage snippets for each server and framework feature: [examples/README.md](examp
 | **Security gate** | Forged signatures, expired tokens, wrong algorithm, missing token, insufficient scope, and a check that the tool body never runs on bad auth ([`test_gate_security.py`](tests/gates/test_gate_security.py)) | Part of the test suite |
 | **SDK stdio round trip** | Starts the public basic-server example as a child process, initializes an MCP session and verifies a discovered tool's result ([`test_stdio_transport.py`](tests/test_stdio_transport.py)) | Part of the test suite |
 | **Five gates** | Schema, security, semantic, scale and safety suites ([`tests/gates/`](tests/gates/)) | Part of the test suite |
-| **Adversarial corpus** | Structure checks on the corpus ([`test_corpus.py`](tests/adversarial/test_corpus.py)); every case dispatched through the real gate, outcome compared with `expected_blocked`, 5 known gaps pinned as strict xfail ([`test_gate_safety.py`](tests/gates/test_gate_safety.py)) | Part of the test suite |
+| **Adversarial corpus** | Structure checks on the corpus ([`test_corpus.py`](tests/adversarial/test_corpus.py)); every case dispatched through the real gate, outcome compared with `expected_blocked`, 7 known gaps pinned as strict xfail ([`test_gate_safety.py`](tests/gates/test_gate_safety.py)) | Part of the test suite |
 | **Lint and types** | `ruff check mcp_toolkit tests` with a pinned rule set, then `pyright` on `mcp_toolkit` | Every CI run; a weekly [lint canary](.github/workflows/lint-canary.yml) tries the newest ruff without blocking |
 | **Routing evals** | `python evals/run_evals.py`: deterministic multi-LLM routing checks, no API key | Every CI run |
 | **Wheel check** | Builds the wheel and sdist, installs the wheel into a clean venv, imports `EnhancedMCP` | Every CI run |
@@ -183,7 +183,8 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 
 **Failures found and kept visible:**
 
-- 5 of the 30 corpus cases are strict xfails. inj-01, inj-02, inj-03 and inj-05 expect a block, but the gate has no content filter: injection text in an argument does not stop a caller who holds the required scope. inj-26 is a wrong label: it expects a token with a future `iat` to pass, but PyJWT rejects it. The corpus file was left as is and the test pins the gap.
+- 7 of the 45 corpus cases are strict xfails. inj-01, inj-02, inj-03 and inj-05 expect a block, but the gate has no content filter: injection text in an argument does not stop a caller who holds the required scope. inj-26 is a wrong label: it expects a token with a future `iat` to pass, but PyJWT rejects it. inj-41 (empty `scope` with `admin` in `permissions`) and inj-43 (U+00A0 inside one scope value) reach an admin-gated tool; they pin two of the open scope-parsing behaviors below. The labels were left as written and the test pins each gap.
+- Cases inj-31 to inj-45 were written by the outside review described below and added on 2026-11-17: 13 behave as labelled and 2 are the new xfails. For inj-39 (a token with `aud` for another service) and inj-40 (`sub` as a list) the refusal comes from PyJWT's own validation, not from toolkit code.
 - The corpus originally had only structure checks; no case was sent to a tool. The current test dispatches every case through the real `JWTAuth` and `requires_scope` gate and mints a real token for cases that name a token property (inj-08 expired, inj-11 read-only, inj-21 RS256, inj-26 future `iat`), so those are not blocked merely as malformed strings.
 - The README used to headline a 3.1x cache speedup from a 2026-04-25 run. Rerunning the same script on 2026-11-17 gave 2.0x to 2.2x, so the table now shows the new run and [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) keeps the old one as history.
 - An outside adversarial review of the gate found no bypass, plus five minor behaviors, each reproduced locally on 2026-11-17. Two are fixed with tests in [`test_auth_credential_types.py`](tests/test_framework/test_auth_credential_types.py): a non-string credential (int, list, dict, bytes) raised `AttributeError` or `TypeError` before any audit line and is now refused with one; and `JWTAuth(secret=...)` without an audience logged that `aud` "is not checked" while PyJWT refuses every token that carries an `aud` claim in that mode, so the warning now says that. Three are open, each of which needs a token the trusted issuer already signed: `_extract_scopes` in [`auth.py`](mcp_toolkit/framework/auth.py) splits a scope string on any Unicode whitespace (tabs, newlines and U+00A0 included, not only spaces); an empty `scope` claim falls through to `scp` or `permissions` instead of granting nothing; and `requires_scope` accepts a signed token with no `sub`, `client_id` or `azp`, which the HTTP gateway verifier refuses.
