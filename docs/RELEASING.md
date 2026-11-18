@@ -65,8 +65,8 @@ change together:
 
 - [ ] `docs/claims.yaml`: refresh `pypi-version` to `0.4.0` with its verification command and
       today's date.
-- [ ] `README.md`: replace the "PyPI package is an early 0.1.0 preview" notes (Quickstart and
-      Methodology & limits) with the plain `pip install mcp-server-toolkit` path.
+- [ ] `README.md`: replace the "PyPI package is an older 0.1.0 preview" notes (Quickstart and
+      Decisions, failures, limits) with the plain `pip install mcp-server-toolkit` path.
 - [ ] `.claude/CLAUDE.md` Deploy section.
 - [ ] `python scripts/check_claims.py --check` again.
 - [ ] Create the GitHub release object for `v0.4.0`.
