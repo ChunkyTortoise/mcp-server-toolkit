@@ -85,6 +85,10 @@ class APIKeyAuth:
         if not api_key:
             _audit("api_key.rejected", error="missing_key")
             return AuthResult(authenticated=False, error="Missing API key")
+        if not isinstance(api_key, str):
+            # Fail closed with an audit line instead of an AttributeError from hash_key.
+            _audit("api_key.rejected", error="non_string_key")
+            return AuthResult(authenticated=False, error="Invalid API key")
 
         key_hash = self.hash_key(api_key)
         record = self._keys.get(key_hash)
@@ -189,6 +193,10 @@ class JWTAuth:
         if not token:
             _audit("jwt.rejected", error="missing_token")
             return AuthResult(authenticated=False, error="Missing token")
+        if not isinstance(token, str):
+            # Fail closed with an audit line instead of an AttributeError from removeprefix.
+            _audit("jwt.rejected", error="non_string_token")
+            return AuthResult(authenticated=False, error="Malformed token")
         token = token.removeprefix("Bearer ").strip()
 
         try:
