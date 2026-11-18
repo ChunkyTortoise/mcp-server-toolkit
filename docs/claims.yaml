@@ -178,6 +178,17 @@ claims:
     date: "2026-11-17"
     status: historical
     scope: Same machine and method as cache-speedup; raw output of these three runs was not saved.
+  - id: cache-speedup-fresh-clone
+    statement: Speedup printed by a run from a fresh clone the same evening.
+    value: "2.0x"
+    match: ["2.0x"]
+    artifact: benchmarks/RESULTS.md
+    artifact_check: contains
+    executes: false
+    command: "python benchmarks/bench_cache.py"
+    date: "2026-11-17"
+    status: historical
+    scope: Same machine and method as cache-speedup; only the summary lines of this run were kept.
   - id: cache-speedup-2026-04
     statement: Speedup printed by the earlier 2026-04-25 run, kept as superseded history.
     value: "3.1x"

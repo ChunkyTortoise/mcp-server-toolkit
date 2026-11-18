@@ -14,7 +14,7 @@ Last run: 2026-11-17 | Python 3.13.11 | macOS 27.0 (Apple M4, arm64) | raw outpu
 
 500 iterations, 20 warmup calls. Backend calls avoided: 499 of 500 hit iterations (99.8%).
 
-Three earlier runs on the same machine the same evening printed 2.2x each. A run on 2026-04-25 (Python 3.12.13, macOS on Apple Silicon) printed 3.1x; the run above supersedes it.
+Three earlier runs on the same machine the same evening printed 2.2x each. A later run from a fresh clone on the same machine printed 2.0x; only its summary lines were kept. A run on 2026-04-25 (Python 3.12.13, macOS on Apple Silicon) printed 3.1x; the run above supersedes it.
 
 ## Reproducing
 

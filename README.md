@@ -19,7 +19,7 @@ The auth and scope gate is tested against a 30-case adversarial corpus (prompt i
 | Deterministic smoke checks (routing, cost, JWT, cache) | **10/10** | 10 | [`evals/quality/`](evals/quality/) | 2026-11-17 | none; the LLM judge has no committed run | n/a | `uv run python evals/quality/runner.py` |
 | In-memory cache P50 latency, hit vs miss, on a mock tool | **0.013 ms** hit vs **0.028 ms** miss (**2.1x**) | 500 iterations | [`benchmarks/run-2026-11-17.txt`](benchmarks/run-2026-11-17.txt) | 2026-11-17 | none | cache miss | `uv run python benchmarks/bench_cache.py` |
 
-Python 3.13.11, macOS arm64 (Apple M4). The cache row measures decorator overhead around a tool that only awaits `asyncio.sleep(0)`, not tool work; repeat runs printed 2.1x to 2.2x. Each number is registered in [`docs/claims.yaml`](docs/claims.yaml), and `python scripts/check_claims.py --check` fails CI when a README number has no entry. Scope and gaps: [Decisions, failures, limits](#decisions-failures-limits).
+Python 3.13.11, macOS arm64 (Apple M4). The cache row measures decorator overhead around a tool that only awaits `asyncio.sleep(0)`, not tool work; repeat runs printed 2.0x to 2.2x. Each number is registered in [`docs/claims.yaml`](docs/claims.yaml), and `python scripts/check_claims.py --check` fails CI when a README number has no entry. Scope and gaps: [Decisions, failures, limits](#decisions-failures-limits).
 
 ## Quickstart
 
@@ -88,8 +88,6 @@ async def main():
 
 asyncio.run(main())
 ```
-
-The first call prints `order 42: shipped`. The forged call raises `ToolError`, which the example catches and prints as `Error executing tool get_order: Unauthorized: malformed token`; the tool body never runs. Each auth decision is also written as a JSON audit-log line. To serve the same tool to Claude Desktop or any MCP client, call `mcp.run()` instead of using `MCPTestClient`.
 
 The first call prints `order 42: shipped`. The forged call raises `ToolError`, which the example catches and prints as `Error executing tool get_order: Unauthorized: malformed token`; the tool body never runs. Each auth decision is also written as a JSON audit-log line. To serve the same tool to Claude Desktop or any MCP client, call `mcp.run()` instead of using `MCPTestClient`; `bash examples/claude_desktop_app/setup.sh` wires three of the pre-built servers into Claude Desktop.
 
@@ -187,8 +185,8 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 
 - 5 of the 30 corpus cases are strict xfails. inj-01, inj-02, inj-03 and inj-05 expect a block, but the gate has no content filter: injection text in an argument does not stop a caller who holds the required scope. inj-26 is a wrong label: it expects a token with a future `iat` to pass, but PyJWT rejects it. The corpus file was left as is and the test pins the gap.
 - The corpus originally had only structure checks; no case was sent to a tool. The current test dispatches every case through the real `JWTAuth` and `requires_scope` gate and mints a real token for cases that name a token property (inj-08 expired, inj-11 read-only, inj-21 RS256, inj-26 future `iat`), so those are not blocked merely as malformed strings.
-- The README used to headline a 3.1x cache speedup from a 2026-04-25 run. Rerunning the same script on 2026-11-17 gave 2.1x to 2.2x, so the table now shows the new run and [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) keeps the old one as history.
-- An outside adversarial review of the gate found no bypass, plus three minor behaviors that are not yet fixed (each reproduced locally on 2026-11-17): `_extract_scopes` in [`auth.py`](mcp_toolkit/framework/auth.py) splits a scope string on any whitespace (tabs and newlines included, not only spaces); an empty `scope` claim falls through to `scp` or `permissions` instead of granting nothing; and `JWTAuth(secret=...)` without an audience logs that `aud` "is not checked", while PyJWT in fact refuses every token that carries an `aud` claim in that mode.
+- The README used to headline a 3.1x cache speedup from a 2026-04-25 run. Rerunning the same script on 2026-11-17 gave 2.0x to 2.2x, so the table now shows the new run and [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) keeps the old one as history.
+- An outside adversarial review of the gate found no bypass, plus five minor behaviors, each reproduced locally on 2026-11-17. Two are fixed with tests in [`test_auth_credential_types.py`](tests/test_framework/test_auth_credential_types.py): a non-string credential (int, list, dict, bytes) raised `AttributeError` or `TypeError` before any audit line and is now refused with one; and `JWTAuth(secret=...)` without an audience logged that `aud` "is not checked" while PyJWT refuses every token that carries an `aud` claim in that mode, so the warning now says that. Three are open, each of which needs a token the trusted issuer already signed: `_extract_scopes` in [`auth.py`](mcp_toolkit/framework/auth.py) splits a scope string on any Unicode whitespace (tabs, newlines and U+00A0 included, not only spaces); an empty `scope` claim falls through to `scp` or `permissions` instead of granting nothing; and `requires_scope` accepts a signed token with no `sub`, `client_id` or `azp`, which the HTTP gateway verifier refuses.
 
 **Limits:**
 
@@ -216,7 +214,7 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 There are no open issues; these are the next steps documented in the repository.
 
 - Run the Redis rate-limiter integration tests in CI.
-- Decide the three gate behaviors listed under failures above.
+- Decide the three open gate behaviors listed under failures above.
 - Deploy the observability stack from its committed [Render blueprint](examples/observability/render.yaml) and verify OTLP export end to end with [`verify_otlp.py`](examples/observability/verify_otlp.py) ([steps](examples/observability/README.md#verify-an-otlp-deployment)).
 - Measure a real RAG workload end to end and publish a dated run artifact alongside the [case study](docs/CASE_STUDY.md).
 

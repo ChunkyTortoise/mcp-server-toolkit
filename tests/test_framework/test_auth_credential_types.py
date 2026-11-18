@@ -98,3 +98,25 @@ async def test_string_credentials_still_pass():
     keys.register_key("real-key", "client-1", scopes=["admin"])
     key_result = await keys.authenticate("real-key")
     assert key_result.authenticated is True
+
+
+async def test_no_audience_mode_refuses_tokens_that_carry_aud(caplog):
+    """JWTAuth(secret=...) without an audience refuses any token with an ``aud`` claim.
+
+    PyJWT raises InvalidAudienceError when a token has ``aud`` and no audience is
+    expected, so the startup warning must say that and not claim ``aud`` is unchecked.
+    """
+    with caplog.at_level(logging.WARNING, logger="mcp_toolkit.framework.auth"):
+        auth = JWTAuth(secret=SECRET)
+    warning = " ".join(r.getMessage() for r in caplog.records if r.levelno == logging.WARNING)
+    assert "not checked" not in warning
+    assert "refused" in warning
+
+    base = {"sub": "client-1", "scope": "admin", "exp": time.time() + 3600}
+    without_aud = await auth.authenticate(jwt.encode(base, SECRET, algorithm="HS256"))
+    with_aud = await auth.authenticate(
+        jwt.encode({**base, "aud": "billing-api"}, SECRET, algorithm="HS256")
+    )
+    assert without_aud.authenticated is True
+    assert with_aud.authenticated is False
+    assert with_aud.error == "Invalid token audience"

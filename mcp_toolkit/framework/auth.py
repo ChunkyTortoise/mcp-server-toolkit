@@ -162,7 +162,9 @@ class JWTAuth:
             )
         if secret and not audience:
             logger.warning(
-                "JWTAuth(secret=...) has no audience, so the 'aud' claim is not checked."
+                "JWTAuth(secret=...) has no audience: tokens without an 'aud' claim are "
+                "accepted and any token that carries one is refused. Pass audience=... "
+                "to accept tokens minted for this server."
             )
 
         self._secret = secret
@@ -231,6 +233,9 @@ class JWTAuth:
             _audit("jwt.rejected", error=error_type)
             return AuthResult(authenticated=False, error=_jwt_error_message(exc))
 
+        # TODO(Cayman): decide whether a signed token with no "sub", "client_id" or "azp"
+        # should be refused here. Today it is accepted with client_id=None, while the
+        # HTTP gateway verifier (framework/http_auth.py) refuses the same token.
         client_id = payload.get("sub") or payload.get("client_id") or payload.get("azp")
         scopes = _extract_scopes(payload)
 
@@ -354,10 +359,10 @@ class OAuthAuth:
 def _extract_scopes(payload: dict[str, Any]) -> list[str]:
     """Extract scopes from a JWT payload, handling common claim variants."""
     # TODO(Cayman): decide two behaviors listed in README "Decisions, failures, limits":
-    # (1) str.split() splits on tabs and newlines too (corpus inj-12/inj-13 accept this);
+    # (1) str.split() splits on any Unicode whitespace (tabs, newlines, U+00A0), not only
+    # the U+0020 that RFC 6749 allows (corpus inj-12/inj-13 accept the newline case);
     # (2) a falsy "scope" claim falls through to "scp"/"permissions" instead of
-    # granting nothing. Also the no-audience warning in JWTAuth.__init__ says "aud" is
-    # not checked, but PyJWT rejects any token carrying "aud" in that mode.
+    # granting nothing.
     raw = payload.get("scope") or payload.get("scp") or payload.get("permissions")
     if not raw:
         return []
