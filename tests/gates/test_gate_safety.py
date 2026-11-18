@@ -135,11 +135,47 @@ KNOWN_GAPS: dict[str, str] = {
     "inj-03": _CONTENT_GAP,
     "inj-05": _CONTENT_GAP,
     "inj-26": (
-        "corpus carries the placeholder string 'future_iat_token', not a signed token with a "
-        "future iat; the gate rejects it as malformed, so expected_blocked=false cannot be "
-        "exercised as written"
+        "corpus expects a token with a future iat to pass ('iat is not verified by default'), "
+        "but PyJWT 2.x checks iat against now + leeway and raises ImmatureSignatureError, so "
+        "the gate blocks a real signed token with a future iat"
     ),
 }
+
+
+def _signed(claims: dict, secret: str) -> str:
+    import jwt
+
+    return jwt.encode(claims, secret, algorithm="HS256")
+
+
+def _rs256_signed(claims: dict, _secret: str) -> str:
+    import jwt
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    return jwt.encode(claims, key, algorithm="RS256")
+
+
+def _placeholder_token(name: str, secret: str, required: str) -> str | None:
+    """Mint the real token a corpus placeholder string describes.
+
+    Some corpus cases name a token by its property instead of carrying one. Each is
+    minted here with that one property and otherwise valid claims (fresh ``exp``, the
+    required scope), so the gate is tested on the property and not on a malformed string.
+    Returns ``None`` for a string that is not a known placeholder.
+    """
+    import time
+
+    now = time.time()
+    base = {"sub": "corpus-client", "scope": required, "exp": now + 3600}
+    builders = {
+        "expired_but_valid_structure": lambda: _signed({**base, "exp": now - 3600}, secret),
+        "read_only_token": lambda: _signed({**base, "scope": "read"}, secret),
+        "rs256_signed_token_presented_to_hs256_endpoint": lambda: _rs256_signed(base, secret),
+        "future_iat_token": lambda: _signed({**base, "iat": now + 3600, "exp": now + 7200}, secret),
+    }
+    build = builders.get(name)
+    return build() if build else None
 
 
 def _case_params() -> list:
@@ -147,7 +183,9 @@ def _case_params() -> list:
     for case in _CORPUS:
         marks = []
         if case["id"] in KNOWN_GAPS:
-            marks.append(pytest.mark.xfail(strict=True, reason=KNOWN_GAPS[case["id"]]))
+            marks.append(
+                pytest.mark.xfail(strict=True, raises=AssertionError, reason=KNOWN_GAPS[case["id"]])
+            )
         params.append(pytest.param(case, id=case["id"], marks=marks))
     return params
 
@@ -155,7 +193,8 @@ def _case_params() -> list:
 def _build_probe(case: dict, secret: str) -> tuple[JWTAuth, str, dict]:
     """Derive the gate setup for a corpus case from its own `input` fields.
 
-    * ``token``: presented to the gate verbatim as the credential.
+    * ``token``: a placeholder name is replaced by the real token it describes (see
+      ``_placeholder_token``); any other string is presented to the gate verbatim.
     * ``scope_claim`` / ``permissions`` / ``token_payload``: claims put into a validly
       signed HS256 token, so the claim parsing is what is under test.
     * ``required_scope``: the scope the tool demands. Defaults to ``admin`` when the case
@@ -163,15 +202,22 @@ def _build_probe(case: dict, secret: str) -> tuple[JWTAuth, str, dict]:
     * Anything else is passed to the tool as an opaque argument payload, with a validly
       signed token holding the required scope, so only the gate's own decision is tested.
     """
-    import jwt
     import time
 
     data = dict(case["input"])
     required = data.pop("required_scope", "admin" if "scope_claim" in data else "read")
     auth = JWTAuth(secret=secret)
+    minted = True
 
     if "token" in data:
-        credential = data.pop("token")
+        raw = data.pop("token")
+        credential = _placeholder_token(raw, secret, required)
+        if credential is None:
+            # A non-blank string that is not JWT-shaped would be rejected as malformed,
+            # which says nothing about the attack the case names.
+            if raw.strip() and raw.count(".") != 2:
+                pytest.fail(f"{case['id']}: unrecognised placeholder token {raw!r}")
+            credential, minted = raw, False
     else:
         claims: dict = {"sub": "corpus-client", "exp": time.time() + 3600}
         if "scope_claim" in data:
@@ -183,8 +229,8 @@ def _build_probe(case: dict, secret: str) -> tuple[JWTAuth, str, dict]:
             claims.setdefault("scope", required)
         else:
             claims["scope"] = required
-        credential = jwt.encode(claims, secret, algorithm="HS256")
-    return auth, credential, {"payload": data, "required": required}
+        credential = _signed(claims, secret)
+    return auth, credential, {"payload": data, "required": required, "minted": minted}
 
 
 class TestAdversarialCorpus:
@@ -223,10 +269,18 @@ class TestAdversarialCorpus:
         blocked = False
         try:
             await client.call_tool("probe", {"payload": ctx["payload"], "token": credential})
-        except ToolError:
+        except ToolError as exc:
+            # Only a refusal from the gate counts as a block; any other tool error is a bug.
+            reason = str(exc)
+            if "Unauthorized:" not in reason and "Forbidden:" not in reason:
+                raise
+            # A well-formed token refused as malformed would not exercise the case.
+            assert not (ctx["minted"] and "malformed" in reason.lower()), (
+                f"{case['id']}: minted token refused as malformed: {reason}"
+            )
             blocked = True
-        # A blocked call must never have run the tool body.
-        assert not (blocked and ran), f"{case['id']}: tool body ran on a blocked call"
+        # A blocked call must never run the tool body; an allowed one must.
+        assert bool(ran) is not blocked, f"{case['id']}: blocked={blocked}, body ran={bool(ran)}"
         assert blocked is case["expected_blocked"], (
             f"{case['id']} ({case['description']}): blocked={blocked}, "
             f"expected_blocked={case['expected_blocked']}"

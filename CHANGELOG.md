@@ -15,7 +15,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 - Publishing moves to PyPI Trusted Publishing (OIDC) via `.github/workflows/publish.yml`: no API token, gated by the `release` environment, with a manual trigger because the `v0.4.0` tag predates the workflow.
 - `pyproject.toml` description now names the streamable-HTTP gateway command and calls the bundled servers "pre-built", matching what 0.4.0 ships.
-- `tests/gates/test_gate_safety.py` now dispatches all 30 adversarial corpus cases through the real auth and scope gate and compares the outcome with `expected_blocked`: 25 match, 5 are strict xfails (inj-01, inj-02, inj-03, inj-05, inj-26). README and claims ledger state the real figures.
+- `tests/gates/test_gate_safety.py` now dispatches all 30 adversarial corpus cases through the real auth and scope gate and compares the outcome with `expected_blocked`: 25 match, 5 are strict xfails (inj-01, inj-02, inj-03, inj-05: no content filter; inj-26: the corpus expects a future-`iat` token to pass, but PyJWT rejects it). Placeholder token names in the corpus are replaced by real tokens minted in the test. README and claims ledger state the real figures.
 - Test count: 928 → 1031 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
 
 ### Added

@@ -267,7 +267,7 @@ claims:
     date: "2026-11-17"
     status: verified
     scope: >-
-      Auth and scope gate only (JWTAuth + requires_scope via MCPTestClient). The 5 known gaps are strict xfails: inj-01, inj-02, inj-03, inj-05 (no content filter) and inj-26 (placeholder token). Cases marked not blocked only show the gate does not block them.
+      Auth and scope gate only (JWTAuth + requires_scope via MCPTestClient). The 5 known gaps are strict xfails: inj-01, inj-02, inj-03, inj-05 (no content filter) and inj-26 (corpus expects a future-iat token to pass; PyJWT rejects it). Placeholder token names (inj-08, inj-11, inj-21, inj-26) are replaced by real tokens minted in the test. Cases marked not blocked only show the gate does not block them.
   - id: server-count
     statement: Pre-built MCP servers shipped in the package.
     value: "9"
@@ -310,31 +310,31 @@ claims:
     scope: An upper bound for the child process handshake, not a measured latency.
   - id: package-loc
     statement: Lines of Python in the package.
-    value: "6208"
-    match: ["6208"]
+    value: "6994"
+    match: ["6994"]
     artifact: mcp_toolkit/
     command: "find mcp_toolkit -name '*.py' -not -path '*__pycache__*' | xargs cat | wc -l"
-    expect: "6208"
-    date: "2026-10-24"
+    expect: "6994"
+    date: "2026-11-17"
     status: inventory
     scope: Includes blank lines and docstrings; not a complexity measure.
   - id: package-files
     statement: Python files in the package.
-    value: "52"
-    match: ["52"]
+    value: "57"
+    match: ["57"]
     artifact: mcp_toolkit/
     command: "find mcp_toolkit -name '*.py' -not -path '*__pycache__*' | wc -l"
-    expect: "52"
-    date: "2026-10-24"
+    expect: "57"
+    date: "2026-11-17"
     status: inventory
     scope: Includes package __init__.py files.
   - id: test-loc
     statement: Lines of Python under tests/.
-    value: "9140"
-    match: ["9140"]
+    value: "9194"
+    match: ["9194"]
     artifact: tests/
     command: "find tests -name '*.py' | xargs cat | wc -l"
-    expect: "9140"
+    expect: "9194"
     date: "2026-11-17"
     status: inventory
     scope: Includes helpers, not only test_*.py files.
