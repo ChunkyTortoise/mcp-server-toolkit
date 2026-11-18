@@ -10,13 +10,13 @@ contributor.
 - PyPI: serves `0.1.0`, a different, older package body whose metadata advertises servers this
   repository does not contain (`pypi-version` in [claims.yaml](claims.yaml)). The Quickstart
   installs from source for that reason.
-- Publishing: PyPI Trusted Publishing (OIDC) through `.github/workflows/publish.yml` — no API
-  token. Until that workflow lands, `publish.yml` still carries the legacy token path, whose
-  manual attempt failed with 403 because the secret was missing.
+- Publishing: PyPI Trusted Publishing (OIDC) through `.github/workflows/publish.yml`, no API
+  token. `publish.yml` now uses Trusted Publishing; the legacy token path, whose manual attempt
+  failed with 403 because the secret was missing, is gone.
 
 ## One-time setup (owner)
 
-1. Land the trusted-publishing `publish.yml` (open PR #77 carries the same switch; the copy in
+1. Land the trusted-publishing `publish.yml` (PR #77, merged 2026-10-26, carried the same switch; the copy in
    this repository adds a `workflow_dispatch` trigger because the `v0.4.0` tag predates the
    workflow — see below).
 2. On PyPI → project *mcp-server-toolkit* → Publishing → add a Trusted Publisher: repository

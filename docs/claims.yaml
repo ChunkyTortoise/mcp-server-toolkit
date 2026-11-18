@@ -1,5 +1,5 @@
 version: 1
-updated: "2026-10-26"
+updated: "2026-11-17"
 baseline: "origin/main @ cb932cf (PR #66 merged)"
 # Claims ledger: the single source of truth for every public number.
 #
@@ -81,7 +81,7 @@ claims:
     artifact: .github/workflows/ci.yml
     command: "python -m pytest tests/ -q --cov=mcp_toolkit --cov-fail-under=80"
     expect: "87.57%"
-    date: "2026-10-26"
+    date: "2026-11-17"
     status: verified
     scope: Local run, Python 3.13. CI prints its own value per matrix entry; the floor is separate.
   - id: coverage-ci-floor
@@ -113,51 +113,73 @@ claims:
       flip this entry to verified with the artifact's date.
   - id: cache-hit-p50
     statement: In-memory cache hit P50 on cached_tool (mock tool, in-process).
-    value: "0.007 ms"
-    match: ["0.007 ms"]
+    value: "0.013 ms"
+    match: ["0.013 ms"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
     command: "python benchmarks/bench_cache.py"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: >-
-      Dated measurement at its original method: 500 iterations, 20 warmups, a mock tool that only awaits asyncio.sleep(0). Measures cache overhead, not tool work. `executes: false` because a re-run prints new timings, not this number.
+      Run of 2026-11-17 on Python 3.13.11, macOS arm64 (Apple M4), raw output in benchmarks/run-2026-11-17.txt: 500 iterations, 20 warmups, a mock tool that only awaits asyncio.sleep(0). Measures cache overhead, not tool work. `executes: false` because a re-run prints new timings, not this number.
   - id: cache-hit-p95
     statement: In-memory cache hit P95.
-    value: "0.008 ms"
-    match: ["0.008 ms"]
+    value: "0.015 ms"
+    match: ["0.015 ms"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
     command: "python benchmarks/bench_cache.py"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Same run as cache-hit-p50.
   - id: cache-miss-p50
     statement: In-memory cache miss P50 on cached_tool.
-    value: "0.023 ms"
-    match: ["0.023 ms"]
+    value: "0.028 ms"
+    match: ["0.028 ms"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
     command: "python benchmarks/bench_cache.py"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Same run as cache-hit-p50; includes key computation and async set.
   - id: cache-miss-p95
     statement: In-memory cache miss P95.
-    value: "0.025 ms"
-    match: ["0.025 ms"]
+    value: "0.033 ms"
+    match: ["0.033 ms"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
     command: "python benchmarks/bench_cache.py"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Same run as cache-hit-p50.
   - id: cache-speedup
     statement: Hit-vs-miss ratio for the mock tool.
+    value: "2.1x"
+    match: ["2.1x"]
+    artifact: benchmarks/RESULTS.md
+    artifact_check: contains
+    executes: false
+    command: "python benchmarks/bench_cache.py"
+    date: "2026-11-17"
+    status: verified
+    scope: Derived from the two P50 values above, same machine and run.
+  - id: cache-speedup-reruns
+    statement: Speedup printed by three further runs the same evening.
+    value: "2.2x"
+    match: ["2.2x"]
+    artifact: benchmarks/RESULTS.md
+    artifact_check: contains
+    executes: false
+    command: "python benchmarks/bench_cache.py"
+    date: "2026-11-17"
+    status: historical
+    scope: Same machine and method as cache-speedup; raw output of these three runs was not saved.
+  - id: cache-speedup-2026-04
+    statement: Speedup printed by the earlier 2026-04-25 run, kept as superseded history.
     value: "3.1x"
     match: ["3.1x"]
     artifact: benchmarks/RESULTS.md
@@ -166,7 +188,7 @@ claims:
     command: "python benchmarks/bench_cache.py"
     date: "2026-04-25"
     status: historical
-    scope: Derived from the two P50 values above, same machine and run.
+    scope: Python 3.12.13 on Apple Silicon; superseded by cache-speedup.
   - id: bench-iterations
     statement: Iterations in the cache benchmark.
     value: "500 iterations"
@@ -175,8 +197,8 @@ claims:
     artifact_check: contains
     executes: false
     command: "grep -n '500 iterations' benchmarks/bench_cache.py benchmarks/RESULTS.md"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Benchmark parameter, not a result.
   - id: bench-warmup
     statement: Warmup calls before measurement.
@@ -186,8 +208,8 @@ claims:
     artifact_check: contains
     executes: false
     command: "grep -n 'warmup' benchmarks/bench_cache.py benchmarks/RESULTS.md"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Benchmark parameter, not a result.
   - id: bench-hit-share
     statement: Share of hit iterations that avoided the backend call.
@@ -197,8 +219,8 @@ claims:
     artifact_check: contains
     executes: false
     command: "grep -n '99.8' benchmarks/RESULTS.md"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: 499 of 500 hit iterations.
   - id: verified-demo-suite
     statement: Suite result recorded in the verified-demo provenance note.
@@ -215,12 +237,12 @@ claims:
   - id: recovery-quality-evals
     statement: Deterministic quality eval suite result.
     value: "10/10"
-    match: ["10/10", "10 tasks"]
+    match: ["10/10", "10 tasks", "10"]
     artifact: evals/RESULTS.md
     artifact_check: contains
     executes: true
     command: "python evals/quality/runner.py"
-    date: "2026-10-24"
+    date: "2026-11-17"
     status: verified
     scope: >-
       Deterministic mode only; the LLM-as-judge path needs ANTHROPIC_API_KEY and mocks the judge without it. The runner prints to stdout and writes evals/RESULTS.md only with --write-results (W5.5), so the ledger executes it.
@@ -238,17 +260,17 @@ claims:
   - id: routing-evals
     statement: Deterministic multi-LLM routing evals run in CI.
     value: "26/26"
-    match: ["26/26"]
+    match: ["26/26", "26"]
     artifact: evals/golden_set.jsonl
     command: "python evals/run_evals.py"
     expect: "26/26"
-    date: "2026-10-24"
+    date: "2026-11-17"
     status: verified
     scope: Deterministic, no API key. The 10-case quality suite is separate (nightly).
   - id: corpus-cases
     statement: Adversarial corpus size.
     value: "30 cases"
-    match: ["30 cases"]
+    match: ["30 cases", "30"]
     artifact: tests/adversarial/injection_corpus.jsonl
     command: "grep -c . tests/adversarial/injection_corpus.jsonl"
     expect: "30"

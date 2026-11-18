@@ -93,6 +93,8 @@ accessible across multiple server instances.
 
 ## Decision 4 -- Streaming Not Implemented
 
+> Superseded in 0.3.0: `A2AAdapter.stream_task()` (`mcp_toolkit/framework/a2a_adapter.py`) yields SSE events (`submitted`, `working`, `completed`). The text below records the original decision.
+
 **SSE streaming is not implemented.** `A2ATaskStatus.to_dict()` returns a single terminal
 status (`completed` or `failed`) per task. The `capabilities` block in the agent card
 advertises `"streaming": True` per spec requirement but no SSE endpoint is wired.
