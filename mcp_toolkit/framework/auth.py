@@ -408,6 +408,12 @@ def _jwt_error_message(exc: Exception) -> str:
         return "Invalid token issuer"
     if "MissingRequiredClaim" in name:
         return "Token missing required claim"
+    if "InvalidAlgorithm" in name:
+        return "Token algorithm not allowed"
+    if "InvalidSubject" in name:
+        return "Invalid token subject"
+    if "ImmatureSignature" in name:
+        return "Token not yet valid"
     if "DecodeError" in name or "InvalidToken" in name:
         return "Malformed token"
     return "Token validation failed"
