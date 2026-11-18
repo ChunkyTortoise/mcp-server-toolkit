@@ -345,6 +345,11 @@ class OAuthAuth:
 
 def _extract_scopes(payload: dict[str, Any]) -> list[str]:
     """Extract scopes from a JWT payload, handling common claim variants."""
+    # TODO(Cayman): decide two behaviors listed in README "Decisions, failures, limits":
+    # (1) str.split() splits on tabs and newlines too (corpus inj-12/inj-13 accept this);
+    # (2) a falsy "scope" claim falls through to "scp"/"permissions" instead of
+    # granting nothing. Also the no-audience warning in JWTAuth.__init__ says "aud" is
+    # not checked, but PyJWT rejects any token carrying "aud" in that mode.
     raw = payload.get("scope") or payload.get("scp") or payload.get("permissions")
     if not raw:
         return []

@@ -33,6 +33,7 @@ uv run python examples/verified_cache.py
 ```
 
 The test run should end with `1015 passed, 11 skipped, 5 xfailed`. The cache demo dispatches one tool twice through the MCP SDK in-process and prints two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true` from the recorded telemetry ([captured run](docs/assets/cache-run.json), [provenance](docs/VERIFIED_DEMO.md)). With pip instead of uv: `pip install -e ".[dev]"`. The PyPI package is an older 0.1.0 preview that does not include this code, so install from source.
+<!-- TODO(Cayman): publish 0.4.x to PyPI and create the v0.4.0 GitHub release (docs/RELEASING.md), then replace this source-install note and add a PyPI version badge. -->
 
 Inspect the example server in the MCP Inspector (needs Node.js):
 
