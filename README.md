@@ -43,8 +43,9 @@ The first call prints `order 42: shipped`. The forged call raises `ToolError`, w
 |---|---|---|---|
 | Measured | In-memory cache latency on `cached_tool`, hit vs miss (in-process mock tool, run dated 2026-04-25) | **P50 0.007 ms** hit vs **0.023 ms** miss (**3.1x**) | [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) · reproduce with [`bench_cache.py`](benchmarks/bench_cache.py) |
 | CI gate | Test coverage floor: the CI test step fails below it | **80%** | [`ci.yml`](.github/workflows/ci.yml) (`--cov-fail-under=80`) |
-| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-26) | **1000** | [`tests/`](tests/) |
+| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-11-17) | **1031** | [`tests/`](tests/) |
 | Inventory | Adversarial corpus: prompt injection, token forgery, scope escalation, cache poisoning, data exfiltration | **30 cases** | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
+| Measured | Corpus cases run through the auth and scope gate whose outcome matches `expected_blocked` | **25 of 30 cases**, **5 known gaps** (strict xfail) | [`test_gate_safety.py`](tests/gates/test_gate_safety.py) |
 | Inventory | Pre-built MCP servers | **9** | [`mcp_toolkit/servers/`](mcp_toolkit/servers/) · `[project.scripts]` in [`pyproject.toml`](pyproject.toml) |
 
 This table is the one place each number is stated. The scope of each one is in [Methodology & limits](#methodology--limits).
@@ -143,7 +144,7 @@ Usage snippets for each server and framework feature: [examples/README.md](examp
 | **Security gate** | Forged signatures, expired tokens, wrong algorithm, missing token, insufficient scope, and a check that the tool body never runs on bad auth ([`test_gate_security.py`](tests/gates/test_gate_security.py)) | Part of the test suite |
 | **SDK stdio round trip** | Starts the public basic-server example as a child process, initializes an MCP session and verifies a discovered tool's result ([`test_stdio_transport.py`](tests/test_stdio_transport.py)) | Part of the test suite |
 | **Five gates** | Schema, security, semantic, scale and safety suites ([`tests/gates/`](tests/gates/)) | Part of the test suite |
-| **Adversarial corpus** | Structure checks on the corpus ([`test_corpus.py`](tests/adversarial/test_corpus.py)); blocking behavior in [`test_gate_safety.py`](tests/gates/test_gate_safety.py) | Part of the test suite |
+| **Adversarial corpus** | Structure checks on the corpus ([`test_corpus.py`](tests/adversarial/test_corpus.py)); every case dispatched through the real gate, outcome compared with `expected_blocked`, 5 known gaps pinned as strict xfail ([`test_gate_safety.py`](tests/gates/test_gate_safety.py)) | Part of the test suite |
 | **Lint and types** | `ruff check mcp_toolkit tests` with a pinned rule set, then `pyright` on `mcp_toolkit` | Every CI run; a weekly [lint canary](.github/workflows/lint-canary.yml) tries the newest ruff without blocking |
 | **Routing evals** | `python evals/run_evals.py`: deterministic multi-LLM routing checks, no API key | Every CI run |
 | **Wheel check** | Builds the wheel and sdist, installs the wheel into a clean venv, imports `EnhancedMCP` | Every CI run |
@@ -187,7 +188,7 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 - The cache receipt demonstrates behavior, not a latency benchmark. Its duration values are from one run ([captured JSON](docs/assets/cache-run.json)). The demo does not exercise network transport, external OTLP export, authentication, remote services or paid model calls ([provenance](docs/VERIFIED_DEMO.md)). The receipt PNG is an editorial layout of actual results, not an application screenshot.
 - The collected-test count was taken on the date shown with the `[dev]` extras installed. It includes Postgres integration tests that skip unless `INTEGRATION=1` and `DATABASE_URL` are set. The count changes as tests are added; earlier docs stated an older figure.
 - The coverage row is the CI floor, not a measured coverage figure; each CI run prints the measured value. [CONTRIBUTING.md](CONTRIBUTING.md#running-tests) documents the same floor. `make test` uses the same 80% floor.
-- The adversarial corpus is a specification. [`test_corpus.py`](tests/adversarial/test_corpus.py) checks its structure; blocking behavior is tested separately in [`test_gate_safety.py`](tests/gates/test_gate_safety.py). Not every case is expected to be blocked at the toolkit layer: each case's `expected_blocked` field records whether it is, and the rest need a defence in your application.
+- The adversarial corpus is dispatched case by case through the real `JWTAuth` and `requires_scope` gate ([`test_gate_safety.py`](tests/gates/test_gate_safety.py)); [`test_corpus.py`](tests/adversarial/test_corpus.py) checks its structure. 25 of 30 cases behave as `expected_blocked` says. The other 5 are strict xfails: inj-01, inj-02, inj-03 and inj-05 expect a block, but the gate has no content filter, so injection text in an argument does not stop a caller who holds the required scope (escalation resistance is covered separately by the low-scope-caller tests in the same file); inj-26 carries a placeholder string instead of a signed token with a future `iat`, so its expectation cannot be exercised as written. Of the 25 matches, `expected_blocked: false` cases only show the gate does not block them; the defence for SQL, paths and LLM-level attacks lives in the layers named in each case's `note`.
 
 **Scope of the library**
 - This is a Python library. There is no hosted service or dashboard.
