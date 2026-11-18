@@ -256,6 +256,20 @@ class TestAdversarialCorpus:
     def test_known_gaps_reference_real_cases(self):
         assert set(KNOWN_GAPS) <= {c["id"] for c in _CORPUS}
 
+    def test_readme_states_the_current_corpus_counts(self):
+        """The README headline is derived from the corpus file and KNOWN_GAPS, not typed in."""
+        readme = (Path(__file__).resolve().parents[2] / "README.md").read_text()
+        total, gaps = len(_CORPUS), len(KNOWN_GAPS)
+        for phrase in (
+            f"{total}-case adversarial corpus",
+            f"{total - gaps} of {total} cases",
+            f"{gaps} known gaps",
+            f"{gaps} of the {total} corpus cases are strict xfails",
+        ):
+            assert phrase in readme, f"README.md does not say {phrase!r}"
+        for case_id in KNOWN_GAPS:
+            assert case_id in readme, f"README.md does not name known gap {case_id}"
+
     @pytest.mark.parametrize("case", _case_params())
     async def test_case_through_gate(self, case):
         """Outcome of calling a gated tool equals the case's `expected_blocked`."""
