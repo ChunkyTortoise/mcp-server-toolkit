@@ -24,7 +24,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 - `examples/observability/verify_otlp.py`: end-to-end OTLP verification — a probe span through the real OTLP exporter plus a backend query check, writing a dated JSON artifact (header values never recorded). Hosted deploy-and-verify steps live in the observability README; the claims ledger registers `otlp-hosted-verification` as historical until a hosted run is captured.
 - `docs/RELEASING.md`: the release checklist — Trusted Publishing setup, pre-publish gates, the `v0.4.0` tag-timing caveat, and the documentation truth flip that must land the day a version publishes.
-- Opt-in Redis backend for `RateLimiter`: `RedisSlidingWindow` (ADR-0005) shares the sliding window across processes behind the `redis` extra. Failure semantics follow `RedisCache`: transient errors raise unless `fallback_to_memory=True`, which returns to per-process limits. `RateLimiter.get_remaining_async()` reads the count from either store; the synchronous `get_remaining()` remains per-process and points at the async twin when a Redis backend is configured.
+- Opt-in Redis backend for `RateLimiter`: `RedisSlidingWindow` (ADR-0005) shares the sliding window across processes behind the `redis` extra. Failure semantics follow `RedisCache`: transient errors raise unless `fallback_to_memory=True`, which returns to per-process limits. `RateLimiter.get_remaining_async()` reads the count from either store; the synchronous `get_remaining()` stays per-process and raises `RuntimeError` naming the async twin when a Redis backend is configured.
 
 ## [0.4.0] - 2026-10-24
 

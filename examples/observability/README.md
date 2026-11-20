@@ -20,7 +20,7 @@ sampled from ranges in `seed_traces.py`, not measured:
 | `llm.input_tokens` / `llm.output_tokens` | Sampled from the `WORKFLOWS` ranges |
 | `llm.cost_usd` | Computed via `CostTracker` against `mcp_toolkit/pricing/2026.json` |
 | `tool.name` / `tool.duration_ms` | Per-tool spans (separate traces, not children of the workflow span) |
-| `tool.cost_usd_partial` | Workflow cost divided evenly across its tool chain |
+| `cost_usd_partial` | Workflow cost divided evenly across its tool chain |
 
 The seeder calls the framework's `TelemetryProvider.span()`,
 `TelemetryProvider.record_tool_call()` and `CostTracker.record_usage()` APIs.
@@ -31,7 +31,7 @@ The seeder calls the framework's `TelemetryProvider.span()`,
 docker compose up -d                                   # start Jaeger
 pip install -e '../..[telemetry]'                     # source install; PyPI is stale
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
-    python demo.py                                     # 3 sample spans
+    python demo.py                                     # 5 sample spans
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
     python seed_traces.py                              # 8-14 sampled workflows
 open http://localhost:16686                            # browse traces
@@ -65,7 +65,8 @@ After deploy:
 [`verify_otlp.py`](verify_otlp.py) closes the loop the docs claim but do not
 prove: spans leave `TelemetryProvider` over OTLP HTTP and are retrievable from
 the backend's query API. It writes a dated JSON artifact (`otlp-proof.json`,
-`--out` to change) either way; exit status 0 means the path is proven. The
+`--out` to change) whether the query check passes or fails; if the emit step
+itself fails it exits 1 without writing one. Exit status 0 means the path is proven. The
 artifact records whether OTLP headers are configured but never their values.
 
 Install with `pip install -e '../..[telemetry]'` (plus `[auth]` etc. as needed;

@@ -23,7 +23,7 @@ Introduce `JWTAuth` as the production authentication class. Keep `OAuthAuth` as 
 
 ### `requires_scope` decorator
 
-Wraps an async tool function. Extracts credential from `token`, `api_key`, or `authorization` kwargs, validates it, checks the required scope, and returns an error string without executing the tool body if either check fails.
+Wraps an async tool function. Extracts credential from `token`, `api_key`, or `authorization` kwargs, validates it, checks the required scope, and raises `Unauthorized` or `Forbidden` (both `ToolError` subclasses) without executing the tool body if either check fails.
 
 ### `auth_tool` on `EnhancedMCP`
 

@@ -223,16 +223,16 @@ claims:
     status: verified
     scope: Benchmark parameter, not a result.
   - id: bench-hit-share
-    statement: Share of hit iterations that avoided the backend call.
-    value: "99.8%"
-    match: ["99.8%"]
+    statement: Tool body runs across all benchmark calls (none during the 500 timed hit iterations).
+    value: "501 times"
+    match: ["501 times"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
-    command: "grep -n '99.8' benchmarks/RESULTS.md"
+    command: "grep -n '501 times' benchmarks/RESULTS.md"
     date: "2026-11-17"
     status: verified
-    scope: 499 of 500 hit iterations.
+    scope: 20 warmup, 500 hit and 500 miss calls.
   - id: verified-demo-suite
     statement: Suite result recorded in the verified-demo provenance note.
     value: "603 passed"

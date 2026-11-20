@@ -50,7 +50,8 @@ workflow has already passed. Pick one before publishing:
 - [ ] `CHANGELOG.md` describes what actually ships in this version.
 - [ ] `pyproject.toml` `version` matches the tag and the description matches the changelog.
 - [ ] `hatch build && twine check dist/*` is clean, and the wheel installs and imports in a clean
-      venv (CI runs this on every push).
+      venv (CI builds with `python -m build` and imports the wheel on every push; it does not
+      run `twine check`).
 
 ## Publish (owner)
 

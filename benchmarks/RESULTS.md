@@ -12,7 +12,7 @@ Last run: 2026-11-17 | Python 3.13.11 | macOS 27.0 (Apple M4, arm64) | raw outpu
 | Cache MISS P95 | 0.033ms |
 | Speedup | **2.1x** faster on cache hit |
 
-500 iterations, 20 warmup calls. Backend calls avoided: 499 of 500 hit iterations (99.8%).
+500 iterations, 20 warmup calls. All 500 timed hit iterations returned without running the tool body: the body ran 501 times across the whole benchmark (once on the first warmup call, then once per miss iteration). The "Backend calls avoided" line in the captured output came from a wrong formula in the script, since corrected; the timings are unaffected.
 
 Three earlier runs on the same machine the same evening printed 2.2x each. A later run from a fresh clone on the same machine printed 2.0x; only its summary lines were kept. A run on 2026-04-25 (Python 3.12.13, macOS on Apple Silicon) printed 3.1x; the run above supersedes it.
 
