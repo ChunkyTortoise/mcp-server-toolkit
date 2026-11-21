@@ -8,6 +8,7 @@ All notable changes to mcp-server-toolkit are documented here.
 
 - `database_query`: the module-level `mcp` server and `configure()` are gone. Build a server with `create_server(DatabaseServerSettings(...), db_client, llm=None)`. `DefaultLLMProvider` is removed and `SQLGenerator(llm=...)` requires a provider: `query_database` and `explain_query` are registered only when an explicit `llm` is passed.
 - `database_query`: the server always validates as Postgres (the client it ships with); there is no `dialect` setting. Schema inspection reads columns with one fixed query and needs `table_schema` and `table_name` in each `information_schema.columns` row.
+- `_extract_scopes` splits a scope string on U+0020 only (RFC 6749 section 3.3) and takes the first claim present among `scope`, `scp` and `permissions`, so an empty `scope` grants nothing. Corpus cases inj-41 and inj-43 now match their labels (40 of 45, 5 known gaps); inj-13 (`read\nadmin`) is relabelled blocked. Breaking for issuers that separate scopes with tabs or newlines, or send `scope: ""` with grants in `scp` or `permissions`.
 
 ### Added
 

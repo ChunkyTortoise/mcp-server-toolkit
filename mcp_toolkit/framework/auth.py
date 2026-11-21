@@ -362,30 +362,23 @@ class OAuthAuth:
 
 
 def _extract_scopes(payload: dict[str, Any]) -> list[str]:
-    """Extract scopes from a JWT payload, handling common claim variants."""
-    # TODO(Cayman): decide two behaviors listed in README "Decisions, failures, limits".
-    # Each change below was trialled against the full suite on 2026-11-17, then reverted.
-    # (1) str.split() splits on any Unicode whitespace (tabs, newlines, U+00A0), not only
-    #     the U+0020 that RFC 6749 allows.
-    #     Change: `return [s for s in raw.split(" ") if s]`.
-    #     Corpus: inj-43 passes (remove it from KNOWN_GAPS); inj-13 ("read\nadmin", labelled
-    #     expected_blocked false) becomes blocked, so relabel it true; inj-12 is unchanged.
-    #     Newly refused: scopes separated by a tab or newline, which RFC 6749 does not allow.
-    # (2) a falsy "scope" claim falls through to "scp"/"permissions" instead of granting
-    #     nothing.
-    #     Change: `raw = next((payload[k] for k in ("scope", "scp", "permissions")
-    #     if payload.get(k) is not None), None)`.
-    #     Corpus: inj-41 passes (remove it from KNOWN_GAPS).
-    #     Newly refused: a token with scope "" and its grants in scp or permissions. The
-    #     gateway test test_scope_claim_formats[scp-value1] (tests/test_framework/
-    #     test_http_auth.py) builds that shape on purpose and fails under this change.
-    raw = payload.get("scope") or payload.get("scp") or payload.get("permissions")
+    """Extract scopes from a JWT payload, handling common claim variants.
+
+    The first claim present (not None) among ``scope``, ``scp`` and ``permissions`` wins,
+    so an explicitly empty ``scope`` grants nothing rather than falling through to the
+    others. A string claim is split on U+0020 only, as RFC 6749 section 3.3 defines, so
+    a tab, newline or no-break space stays inside one scope token.
+    """
+    raw = next(
+        (payload[k] for k in ("scope", "scp", "permissions") if payload.get(k) is not None),
+        None,
+    )
     if not raw:
         return []
     if isinstance(raw, list):
         return raw
     if isinstance(raw, str):
-        return raw.split()
+        return [s for s in raw.split(" ") if s]
     return []
 
 

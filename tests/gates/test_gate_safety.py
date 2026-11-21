@@ -139,14 +139,6 @@ KNOWN_GAPS: dict[str, str] = {
         "but PyJWT 2.x checks iat against now + leeway and raises ImmatureSignatureError, so "
         "the gate blocks a real signed token with a future iat"
     ),
-    "inj-41": (
-        "_extract_scopes chains claims with `or`, so an explicitly empty scope falls through "
-        "to scp/permissions and a token with scope='' and permissions=['admin'] passes"
-    ),
-    "inj-43": (
-        "_extract_scopes uses str.split(), which splits on U+00A0 and other Unicode whitespace, "
-        "so one scope value 'doc:42\u00a0admin' is read as two scopes including admin"
-    ),
 }
 
 
