@@ -31,6 +31,8 @@ contributor.
 
 ## Tag timing for 0.4.0
 
+<!-- TODO(Cayman): verified 2026-11-20 against `git show v0.4.0:.github/workflows/publish.yml`. The tag's tree already has a `publish.yml` (added 2026-03-05): it triggers on `v*` tag pushes only, uploads with `twine` and `secrets.PYPI_API_TOKEN`, and has no `workflow_dispatch`. So the push event did fire for the tag, and a manual run "on the `v0.4.0` ref" would use that old token-based file, not Trusted Publishing, and GitHub offers no manual trigger for it. Choose the release flow (re-tag, a `0.4.1` tag, or dispatch from `main` with the tag checked out) and rewrite this section. The CHANGELOG line that says the tag "predates the workflow" has the same problem. -->
+
 `v0.4.0` was pushed before `publish.yml` existed, so the push event that would trigger the
 workflow has already passed. Pick one before publishing:
 

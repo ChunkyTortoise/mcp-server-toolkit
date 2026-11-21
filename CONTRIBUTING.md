@@ -64,6 +64,8 @@ ruff format .
 
 Release tooling uses [hatch](https://hatch.pypa.io/); it is not needed for the development test route above.
 
+<!-- TODO(Cayman): this block disagrees with docs/RELEASING.md (Trusted Publishing through .github/workflows/publish.yml, no token). `version` in pyproject.toml is a static string; whether `hatch version patch` can bump it was not checked. Pick one flow and make both files say it. -->
+
 ```bash
 hatch version patch   # or minor / major
 hatch build

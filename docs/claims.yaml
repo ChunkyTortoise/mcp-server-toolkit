@@ -80,10 +80,10 @@ claims:
     match: ["87.65%"]
     artifact: .github/workflows/ci.yml
     command: "python -m pytest tests/ -q --cov=mcp_toolkit --cov-fail-under=80"
-    expect: "87.65%"
+    expect: "Total coverage: 87."
     date: "2026-11-17"
     status: verified
-    scope: Local run, Python 3.13. CI prints its own value per matrix entry; the floor is separate.
+    scope: The value is the Python 3.12 to 3.14 figure (local run on 3.13). The measured total depends on the interpreter, so the executed check pins the 87.x band, not the second decimal. CI run 44822460783 printed 87.83% on 3.10, 87.68% on 3.11 and 87.65% on 3.12, 3.13 and 3.14; the floor is separate.
   - id: coverage-ci-floor
     statement: Coverage floor that fails the CI test step.
     value: "80%"

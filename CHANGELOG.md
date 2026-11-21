@@ -18,7 +18,7 @@ All notable changes to mcp-server-toolkit are documented here.
 - Publishing moves to PyPI Trusted Publishing (OIDC) via `.github/workflows/publish.yml`: no API token, gated by the `release` environment, with a manual trigger because the `v0.4.0` tag predates the workflow.
 - `pyproject.toml` description now names the streamable-HTTP gateway command and calls the bundled servers "pre-built", matching what 0.4.0 ships.
 - `tests/gates/test_gate_safety.py` now dispatches every adversarial corpus case through the real auth and scope gate and compares the outcome with `expected_blocked`. The corpus grows from 30 to 45 cases (inj-31 to inj-45, from an outside review): 38 match, 7 are strict xfails (inj-01, inj-02, inj-03, inj-05: no content filter; inj-26: the corpus expects a future-`iat` token to pass, but PyJWT rejects it; inj-41: an empty `scope` falls through to `permissions`; inj-43: a scope value is split on U+00A0). Placeholder token names in the corpus are replaced by real tokens minted in the test. README and claims ledger state the real figures.
-- Test count: from 928 to 1103 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
+- Test count: from 877 collected at the `v0.4.0` tag to 1103 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
 
 ### Added
 
@@ -27,6 +27,8 @@ All notable changes to mcp-server-toolkit are documented here.
 - Opt-in Redis backend for `RateLimiter`: `RedisSlidingWindow` (ADR-0005) shares the sliding window across processes behind the `redis` extra. Failure semantics follow `RedisCache`: transient errors raise unless `fallback_to_memory=True`, which returns to per-process limits. `RateLimiter.get_remaining_async()` reads the count from either store; the synchronous `get_remaining()` stays per-process and raises `RuntimeError` naming the async twin when a Redis backend is configured.
 
 ## [0.4.0] - 2026-10-24
+
+<!-- TODO(Cayman): the v0.4.0 tag is dated 2026-10-25 and v0.3.0 is dated 2026-10-02 (heading below says 2026-04-26). Pick release dates or tag dates. -->
 
 ### Breaking Changes
 
