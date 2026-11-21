@@ -1,5 +1,5 @@
 version: 1
-updated: "2026-10-26"
+updated: "2026-11-17"
 baseline: "origin/main @ cb932cf (PR #66 merged)"
 # Claims ledger: the single source of truth for every public number.
 #
@@ -44,15 +44,15 @@ allow:
 claims:
   - id: test-suite-passed
     statement: Tests passing in this tree with the development extras installed.
-    value: "989 passed"
-    match: ["989 passed"]
+    value: "1084 passed"
+    match: ["1084 passed"]
     artifact: tests/
     command: "python -m pytest tests/ -q"
-    expect: "989 passed"
-    date: "2026-10-26"
+    expect: "1084 passed"
+    date: "2026-11-17"
     status: verified
     scope: >-
-      Local run on Python 3.13.11 on 2026-10-26. The eleven skipped tests are integration cases: nine Postgres (INTEGRATION=1 and DATABASE_URL) and two Redis (INTEGRATION=1 and REDIS_URL).
+      Local run on Python 3.13.11 on 2026-11-17. The eleven skipped tests are integration cases: nine Postgres (INTEGRATION=1 and DATABASE_URL) and two Redis (INTEGRATION=1 and REDIS_URL).
   - id: test-suite-skipped
     statement: Tests skipped in the same run.
     value: "11 skipped"
@@ -65,25 +65,25 @@ claims:
     scope: Postgres integration tests gated on INTEGRATION=1 and DATABASE_URL, and Redis integration tests gated on INTEGRATION=1 and REDIS_URL.
   - id: test-collected
     statement: Tests collected, including skipped ones.
-    value: "1000"
-    match: ["1000"]
+    value: "1103"
+    match: ["1103"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/ --collect-only -q | tail -2"
-    expect: "1000 tests collected"
-    date: "2026-10-26"
+    expect: "1103 tests collected"
+    date: "2026-11-17"
     status: verified
-    scope: Published in the README Results table, dated 2026-10-26. Includes the eleven integration tests that skip without INTEGRATION=1.
+    scope: Published in the README Results table, dated 2026-11-17. Includes the eleven integration tests that skip without INTEGRATION=1.
   - id: coverage-measured
     statement: Line coverage of mcp_toolkit in this tree.
-    value: "87.57%"
-    match: ["87.57%"]
+    value: "87.65%"
+    match: ["87.65%"]
     artifact: .github/workflows/ci.yml
     command: "python -m pytest tests/ -q --cov=mcp_toolkit --cov-fail-under=80"
-    expect: "87.57%"
-    date: "2026-10-26"
+    expect: "Total coverage: 87."
+    date: "2026-11-17"
     status: verified
-    scope: Local run, Python 3.13. CI prints its own value per matrix entry; the floor is separate.
+    scope: The value is the Python 3.12 to 3.14 figure (local run on 3.13). The measured total depends on the interpreter, so the executed check pins the 87.x band, not the second decimal. CI run 44822460783 printed 87.83% on 3.10, 87.68% on 3.11 and 87.65% on 3.12, 3.13 and 3.14; the floor is separate.
   - id: coverage-ci-floor
     statement: Coverage floor that fails the CI test step.
     value: "80%"
@@ -113,51 +113,84 @@ claims:
       flip this entry to verified with the artifact's date.
   - id: cache-hit-p50
     statement: In-memory cache hit P50 on cached_tool (mock tool, in-process).
-    value: "0.007 ms"
-    match: ["0.007 ms"]
+    value: "0.013 ms"
+    match: ["0.013 ms"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
     command: "python benchmarks/bench_cache.py"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: >-
-      Dated measurement at its original method: 500 iterations, 20 warmups, a mock tool that only awaits asyncio.sleep(0). Measures cache overhead, not tool work. `executes: false` because a re-run prints new timings, not this number.
+      Run of 2026-11-17 on Python 3.13.11, macOS arm64 (Apple M4), raw output in benchmarks/run-2026-11-17.txt: 500 iterations, 20 warmups, a mock tool that only awaits asyncio.sleep(0). Measures cache overhead, not tool work. `executes: false` because a re-run prints new timings, not this number.
   - id: cache-hit-p95
     statement: In-memory cache hit P95.
-    value: "0.008 ms"
-    match: ["0.008 ms"]
+    value: "0.015 ms"
+    match: ["0.015 ms"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
     command: "python benchmarks/bench_cache.py"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Same run as cache-hit-p50.
   - id: cache-miss-p50
     statement: In-memory cache miss P50 on cached_tool.
-    value: "0.023 ms"
-    match: ["0.023 ms"]
+    value: "0.028 ms"
+    match: ["0.028 ms"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
     command: "python benchmarks/bench_cache.py"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Same run as cache-hit-p50; includes key computation and async set.
   - id: cache-miss-p95
     statement: In-memory cache miss P95.
-    value: "0.025 ms"
-    match: ["0.025 ms"]
+    value: "0.033 ms"
+    match: ["0.033 ms"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
     command: "python benchmarks/bench_cache.py"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Same run as cache-hit-p50.
   - id: cache-speedup
     statement: Hit-vs-miss ratio for the mock tool.
+    value: "2.1x"
+    match: ["2.1x"]
+    artifact: benchmarks/RESULTS.md
+    artifact_check: contains
+    executes: false
+    command: "python benchmarks/bench_cache.py"
+    date: "2026-11-17"
+    status: verified
+    scope: Derived from the two P50 values above, same machine and run.
+  - id: cache-speedup-reruns
+    statement: Speedup printed by three further runs the same evening.
+    value: "2.2x"
+    match: ["2.2x"]
+    artifact: benchmarks/RESULTS.md
+    artifact_check: contains
+    executes: false
+    command: "python benchmarks/bench_cache.py"
+    date: "2026-11-17"
+    status: historical
+    scope: Same machine and method as cache-speedup; raw output of these three runs was not saved.
+  - id: cache-speedup-fresh-clone
+    statement: Speedup printed by a run from a fresh clone the same evening.
+    value: "2.0x"
+    match: ["2.0x"]
+    artifact: benchmarks/RESULTS.md
+    artifact_check: contains
+    executes: false
+    command: "python benchmarks/bench_cache.py"
+    date: "2026-11-17"
+    status: historical
+    scope: Same machine and method as cache-speedup; only the summary lines of this run were kept.
+  - id: cache-speedup-2026-04
+    statement: Speedup printed by the earlier 2026-04-25 run, kept as superseded history.
     value: "3.1x"
     match: ["3.1x"]
     artifact: benchmarks/RESULTS.md
@@ -166,7 +199,7 @@ claims:
     command: "python benchmarks/bench_cache.py"
     date: "2026-04-25"
     status: historical
-    scope: Derived from the two P50 values above, same machine and run.
+    scope: Python 3.12.13 on Apple Silicon; superseded by cache-speedup.
   - id: bench-iterations
     statement: Iterations in the cache benchmark.
     value: "500 iterations"
@@ -175,8 +208,8 @@ claims:
     artifact_check: contains
     executes: false
     command: "grep -n '500 iterations' benchmarks/bench_cache.py benchmarks/RESULTS.md"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Benchmark parameter, not a result.
   - id: bench-warmup
     statement: Warmup calls before measurement.
@@ -186,20 +219,20 @@ claims:
     artifact_check: contains
     executes: false
     command: "grep -n 'warmup' benchmarks/bench_cache.py benchmarks/RESULTS.md"
-    date: "2026-04-25"
-    status: historical
+    date: "2026-11-17"
+    status: verified
     scope: Benchmark parameter, not a result.
   - id: bench-hit-share
-    statement: Share of hit iterations that avoided the backend call.
-    value: "99.8%"
-    match: ["99.8%"]
+    statement: Tool body runs across all benchmark calls (none during the 500 timed hit iterations).
+    value: "501 times"
+    match: ["501 times"]
     artifact: benchmarks/RESULTS.md
     artifact_check: contains
     executes: false
-    command: "grep -n '99.8' benchmarks/RESULTS.md"
-    date: "2026-04-25"
-    status: historical
-    scope: 499 of 500 hit iterations.
+    command: "grep -n '501 times' benchmarks/RESULTS.md"
+    date: "2026-11-17"
+    status: verified
+    scope: 20 warmup, 500 hit and 500 miss calls.
   - id: verified-demo-suite
     statement: Suite result recorded in the verified-demo provenance note.
     value: "603 passed"
@@ -215,12 +248,12 @@ claims:
   - id: recovery-quality-evals
     statement: Deterministic quality eval suite result.
     value: "10/10"
-    match: ["10/10", "10 tasks"]
+    match: ["10/10", "10 tasks", "10"]
     artifact: evals/RESULTS.md
     artifact_check: contains
     executes: true
     command: "python evals/quality/runner.py"
-    date: "2026-10-24"
+    date: "2026-11-17"
     status: verified
     scope: >-
       Deterministic mode only; the LLM-as-judge path needs ANTHROPIC_API_KEY and mocks the judge without it. The runner prints to stdout and writes evals/RESULTS.md only with --write-results (W5.5), so the ledger executes it.
@@ -238,24 +271,36 @@ claims:
   - id: routing-evals
     statement: Deterministic multi-LLM routing evals run in CI.
     value: "26/26"
-    match: ["26/26"]
+    match: ["26/26", "26"]
     artifact: evals/golden_set.jsonl
     command: "python evals/run_evals.py"
     expect: "26/26"
-    date: "2026-10-24"
+    date: "2026-11-17"
     status: verified
     scope: Deterministic, no API key. The 10-case quality suite is separate (nightly).
   - id: corpus-cases
     statement: Adversarial corpus size.
-    value: "30 cases"
-    match: ["30 cases"]
+    value: "45 cases"
+    match: ["45 cases", "45", "45-case"]
     artifact: tests/adversarial/injection_corpus.jsonl
     command: "grep -c . tests/adversarial/injection_corpus.jsonl"
-    expect: "30"
-    date: "2026-10-24"
+    expect: "45"
+    date: "2026-11-17"
     status: verified
     scope: >-
-      A specification: test_corpus.py checks structure, blocking behaviour is tested in tests/gates/test_gate_safety.py. Not every case is blocked at the toolkit layer.
+      test_corpus.py checks structure; tests/gates/test_gate_safety.py dispatches every case through the real gate. Not every case is blocked at the toolkit layer.
+  - id: corpus-gate-outcomes
+    statement: Corpus cases whose outcome through the real gate matches expected_blocked, and known gaps.
+    value: "38 of 45 cases"
+    match: ["38 of 45 cases", "7 known gaps"]
+    artifact: README.md
+    artifact_check: contains
+    command: "python -m pytest tests/gates/test_gate_safety.py -k test_case_through_gate -q | tail -1"
+    expect: "38 passed"
+    date: "2026-11-17"
+    status: verified
+    scope: >-
+      Auth and scope gate only (JWTAuth + requires_scope via MCPTestClient). The 7 known gaps are strict xfails: inj-01, inj-02, inj-03, inj-05 (no content filter), inj-26 (corpus expects a future-iat token to pass; PyJWT rejects it), inj-41 (empty scope falls through to permissions) and inj-43 (scope value split on U+00A0). Placeholder token names (inj-08, inj-11, inj-21, inj-26) are replaced by real tokens minted in the test. Cases marked not blocked only show the gate does not block them.
   - id: server-count
     statement: Pre-built MCP servers shipped in the package.
     value: "9"
@@ -298,32 +343,32 @@ claims:
     scope: An upper bound for the child process handshake, not a measured latency.
   - id: package-loc
     statement: Lines of Python in the package.
-    value: "6208"
-    match: ["6208"]
+    value: "6994"
+    match: ["6994"]
     artifact: mcp_toolkit/
     command: "find mcp_toolkit -name '*.py' -not -path '*__pycache__*' | xargs cat | wc -l"
-    expect: "6208"
-    date: "2026-10-24"
+    expect: "6994"
+    date: "2026-11-17"
     status: inventory
     scope: Includes blank lines and docstrings; not a complexity measure.
   - id: package-files
     statement: Python files in the package.
-    value: "52"
-    match: ["52"]
+    value: "57"
+    match: ["57"]
     artifact: mcp_toolkit/
     command: "find mcp_toolkit -name '*.py' -not -path '*__pycache__*' | wc -l"
-    expect: "52"
-    date: "2026-10-24"
+    expect: "57"
+    date: "2026-11-17"
     status: inventory
     scope: Includes package __init__.py files.
   - id: test-loc
     statement: Lines of Python under tests/.
-    value: "9042"
-    match: ["9042"]
+    value: "9194"
+    match: ["9194"]
     artifact: tests/
     command: "find tests -name '*.py' | xargs cat | wc -l"
-    expect: "9042"
-    date: "2026-10-26"
+    expect: "9194"
+    date: "2026-11-17"
     status: inventory
     scope: Includes helpers, not only test_*.py files.
   - id: test-files

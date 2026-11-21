@@ -26,7 +26,7 @@ python -m pytest tests/ -q --tb=short
 python -m pytest tests/test_file_processing/test_server.py -v
 ```
 
-The required coverage floor is 80%, matching [CI](.github/workflows/ci.yml). Postgres integration tests skip unless `INTEGRATION=1` and `DATABASE_URL` are set; Redis integration tests skip unless `INTEGRATION=1` and `REDIS_URL` is set. A passing default run does not verify external services.
+The required coverage floor is 80%, matching [CI](.github/workflows/ci.yml). Postgres integration tests skip unless `INTEGRATION=1`, `DATABASE_URL` and `ADMIN_DATABASE_URL` are set; Redis integration tests skip unless `INTEGRATION=1` and `REDIS_URL` is set. A passing default run does not verify external services.
 
 ## Lint
 
@@ -63,6 +63,8 @@ ruff format .
 ## Release Process (maintainers only)
 
 Release tooling uses [hatch](https://hatch.pypa.io/); it is not needed for the development test route above.
+
+<!-- TODO(Cayman): this block disagrees with docs/RELEASING.md (Trusted Publishing through .github/workflows/publish.yml, no token). `version` in pyproject.toml is a static string; whether `hatch version patch` can bump it was not checked. Pick one flow and make both files say it. -->
 
 ```bash
 hatch version patch   # or minor / major

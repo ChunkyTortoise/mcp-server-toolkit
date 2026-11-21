@@ -1,6 +1,6 @@
 # Examples and usage reference
 
-Runnable examples live in this directory. Run every command below from the repository root after the [source install](../README.md#quickstart). The sections below were moved here from the top-level README unchanged apart from link paths; the [Methodology & limits](../README.md#methodology--limits) section of the README covers what each demo does and does not show.
+Runnable examples live in this directory. Run every command below from the repository root after the [source install](../README.md#quickstart). The sections below were moved here from the top-level README unchanged apart from link paths; the [Decisions, failures, limits](../README.md#decisions-failures-limits) section of the README covers what each demo does and does not show.
 
 ## Example index
 
@@ -12,7 +12,7 @@ Working implementations in this directory:
 - [`crm_ghl_usage.py`](crm_ghl_usage.py): GoHighLevel CRM contact and pipeline management
 - [`gemini_embedding_usage.py`](gemini_embedding_usage.py): embedding, vector indexing, semantic search
 - [`a2a_bridge/`](a2a_bridge/): A2A bridge, Starlette server + client, SSE streaming, webhooks
-- [`agentic_rag/`](agentic_rag/): Streamlit RAG app, query embedding to pgvector to cited synthesis
+- [`agentic_rag/`](agentic_rag/): Streamlit RAG app; the default seeded mode uses fixed demo vectors and a template answer, with optional pgvector retrieval and model synthesis when configured
 - [`claude_desktop_app/`](claude_desktop_app/): one-command Claude Desktop setup wiring 3 servers
 - [`multi_agent_research/`](multi_agent_research/): orchestrator, parallel web search + multi-LLM synthesis + A2A output
 - [`observability/`](observability/): Jaeger docker-compose + OTel span demo
@@ -41,7 +41,7 @@ Configured synthesis and retrieval require separate dependencies and services. R
 
 | What | How | What you see |
 |---|---|---|
-| OTel + Jaeger traces | `cd examples/observability && docker compose up -d && python seed_traces.py` | Spans carrying `cost_usd`, `cache_hit`, `tokens_in/out` ([`seed_traces.py`](observability/seed_traces.py)). [Screenshot preview](../assets/jaeger-trace-demo.png) from real `TelemetryProvider` spans. Render blueprint committed but not yet deployed ([`render.yaml`](observability/render.yaml)). |
+| OTel + Jaeger traces | `cd examples/observability && docker compose up -d && OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 python seed_traces.py` | Spans carrying `llm.cost_usd`, `workflow.cache_hit`, `llm.input_tokens` and `llm.output_tokens` ([`seed_traces.py`](observability/seed_traces.py)). [Screenshot preview](../assets/jaeger-trace-demo.png) from real `TelemetryProvider` spans. Render blueprint committed but not yet deployed ([`render.yaml`](observability/render.yaml)). |
 | Agentic RAG app | [`examples/agentic_rag/app.py`](agentic_rag/app.py) | Standalone seeded pipeline; optional configured services, not MCP tool calls |
 | Worked case study | [`docs/CASE_STUDY.md`](../docs/CASE_STUDY.md) | Synthetic trace walkthrough with explicit limits; no production latency or hit-rate measurement |
 
@@ -105,8 +105,8 @@ configure(store=store)
 from mcp_toolkit.servers.web_scraping.server import mcp
 
 # Tools available:
-# - scrape_page(url="https://example.com", extract="product prices")
-# - extract_structured(url="...", schema={"name": "str", "price": "float"})
+# - scrape_url(url="https://example.com", css_selector=".price")
+# - extract_data(url="...", description="product prices", schema={"name": "str", "price": "float"})
 ```
 
 </details>
@@ -210,8 +210,9 @@ from mcp_toolkit.servers.calendar.server import mcp
 from mcp_toolkit.servers.file_processing.server import mcp
 
 # Tools available:
-# - parse_file(path="report.pdf")
-# - chunk_for_rag(text="...", chunk_size=512)
+# - process_file(file_content_base64="...", filename="report.pdf")
+# - chunk_text(text="...", chunk_size=512)
+# - detect_file_type(filename="report.pdf")
 ```
 
 </details>
@@ -225,7 +226,7 @@ Built-in L1 (in-memory) cache with optional Redis backend:
 ```python
 from mcp_toolkit.framework.caching import CacheLayer, RedisCache
 
-cache = CacheLayer(backend=RedisCache(url="redis://localhost:6379"))
+cache = CacheLayer(backend=RedisCache(redis_url="redis://localhost:6379"))
 ```
 
 Redis fallback is opt-in, not silent: `fallback_to_memory=False` is the default and a typed `_REDIS_TRANSIENT` exception signals a recoverable failure.
@@ -257,9 +258,9 @@ result = await auth.authenticate("my-api-key")
 
 ### Telemetry
 
-> Note: in the current code, spans are recorded automatically only by `cached_tool` and `rate_limited_tool`, the cache attribute is named `cache_hit`, and `cost_usd` appears only when you add it. See [Methodology & limits](../README.md#methodology--limits).
+> Note: in the current code, spans are recorded automatically only by `cached_tool`, `rate_limited_tool` and `auth_tool`, the cache attribute is named `cache_hit`, and `cost_usd` appears only when you add it. See [Decisions, failures, limits](../README.md#decisions-failures-limits).
 
-Tools wrapped with `cached_tool` or `rate_limited_tool` record a span automatically. Other tools are instrumented only when you call `telemetry.span()` yourself. Set up the provider:
+Tools wrapped with `cached_tool`, `rate_limited_tool` or `auth_tool` record a span automatically. Other tools are instrumented only when you call `telemetry.span()` yourself. Set up the provider:
 
 ```python
 from mcp_toolkit.framework.telemetry import TelemetryProvider
@@ -316,7 +317,7 @@ The nightly GitHub Actions workflow runs the deterministic quality evals and upl
 
 ### Adversarial safety corpus
 
-30-case injection corpus at `tests/adversarial/injection_corpus.jsonl` covering prompt injection, token forgery (`alg:none`, wrong secret, expired), scope escalation, cache poisoning, and data exfiltration. Each case documents whether the toolkit layer blocks the threat and the defence mechanism.
+45-case injection corpus at `tests/adversarial/injection_corpus.jsonl` covering prompt injection, token forgery (`alg:none`, wrong secret, expired), scope escalation, cache poisoning, and data exfiltration. Each case documents whether the toolkit layer blocks the threat and the defence mechanism.
 
 ## A2A protocol support
 

@@ -85,6 +85,10 @@ class APIKeyAuth:
         if not api_key:
             _audit("api_key.rejected", error="missing_key")
             return AuthResult(authenticated=False, error="Missing API key")
+        if not isinstance(api_key, str):
+            # Fail closed with an audit line instead of an AttributeError from hash_key.
+            _audit("api_key.rejected", error="non_string_key")
+            return AuthResult(authenticated=False, error="Invalid API key")
 
         key_hash = self.hash_key(api_key)
         record = self._keys.get(key_hash)
@@ -158,7 +162,9 @@ class JWTAuth:
             )
         if secret and not audience:
             logger.warning(
-                "JWTAuth(secret=...) has no audience, so the 'aud' claim is not checked."
+                "JWTAuth(secret=...) has no audience: tokens without an 'aud' claim are "
+                "accepted and any token that carries one is refused. Pass audience=... "
+                "to accept tokens minted for this server."
             )
 
         self._secret = secret
@@ -189,6 +195,10 @@ class JWTAuth:
         if not token:
             _audit("jwt.rejected", error="missing_token")
             return AuthResult(authenticated=False, error="Missing token")
+        if not isinstance(token, str):
+            # Fail closed with an audit line instead of an AttributeError from removeprefix.
+            _audit("jwt.rejected", error="non_string_token")
+            return AuthResult(authenticated=False, error="Malformed token")
         token = token.removeprefix("Bearer ").strip()
 
         try:
@@ -223,6 +233,15 @@ class JWTAuth:
             _audit("jwt.rejected", error=error_type)
             return AuthResult(authenticated=False, error=_jwt_error_message(exc))
 
+        # TODO(Cayman): decide whether a signed token with no "sub", "client_id" or "azp"
+        # should be refused here. Today it is accepted with client_id=None, while the
+        # HTTP gateway verifier (framework/http_auth.py) refuses the same token.
+        # Change: after the next line add `if not client_id:` with a "jwt.rejected" audit
+        # line and `return AuthResult(authenticated=False, error="Token missing required claim")`.
+        # Trial run 2026-11-17: no existing test fails and no corpus case changes; the strict
+        # xfail test_token_without_subject_is_refused (tests/test_framework/test_auth_gate_edges.py)
+        # starts passing, so its marker comes off.
+        # Newly refused: client-credentials tokens from an issuer that sets none of the three.
         client_id = payload.get("sub") or payload.get("client_id") or payload.get("azp")
         scopes = _extract_scopes(payload)
 
@@ -345,6 +364,22 @@ class OAuthAuth:
 
 def _extract_scopes(payload: dict[str, Any]) -> list[str]:
     """Extract scopes from a JWT payload, handling common claim variants."""
+    # TODO(Cayman): decide two behaviors listed in README "Decisions, failures, limits".
+    # Each change below was trialled against the full suite on 2026-11-17, then reverted.
+    # (1) str.split() splits on any Unicode whitespace (tabs, newlines, U+00A0), not only
+    #     the U+0020 that RFC 6749 allows.
+    #     Change: `return [s for s in raw.split(" ") if s]`.
+    #     Corpus: inj-43 passes (remove it from KNOWN_GAPS); inj-13 ("read\nadmin", labelled
+    #     expected_blocked false) becomes blocked, so relabel it true; inj-12 is unchanged.
+    #     Newly refused: scopes separated by a tab or newline, which RFC 6749 does not allow.
+    # (2) a falsy "scope" claim falls through to "scp"/"permissions" instead of granting
+    #     nothing.
+    #     Change: `raw = next((payload[k] for k in ("scope", "scp", "permissions")
+    #     if payload.get(k) is not None), None)`.
+    #     Corpus: inj-41 passes (remove it from KNOWN_GAPS).
+    #     Newly refused: a token with scope "" and its grants in scp or permissions. The
+    #     gateway test test_scope_claim_formats[scp-value1] (tests/test_framework/
+    #     test_http_auth.py) builds that shape on purpose and fails under this change.
     raw = payload.get("scope") or payload.get("scp") or payload.get("permissions")
     if not raw:
         return []
@@ -390,6 +425,12 @@ def _jwt_error_message(exc: Exception) -> str:
         return "Invalid token issuer"
     if "MissingRequiredClaim" in name:
         return "Token missing required claim"
+    if "InvalidAlgorithm" in name:
+        return "Token algorithm not allowed"
+    if "InvalidSubject" in name:
+        return "Invalid token subject"
+    if "ImmatureSignature" in name:
+        return "Token not yet valid"
     if "DecodeError" in name or "InvalidToken" in name:
         return "Malformed token"
     return "Token validation failed"

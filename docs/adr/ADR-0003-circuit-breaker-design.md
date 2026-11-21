@@ -68,3 +68,21 @@ failure opens only the Gemini breaker; OpenAI and xAI remain available.
   instances), this is acceptable.
 - Breaker thresholds are hardcoded. If the 3-failure threshold causes too many false positives
   in high-throughput deployments, it should be made configurable via `configure()`.
+
+---
+
+## Correction, 2026-11-20
+
+Checked against `mcp_toolkit/servers/multi_llm/models.py` and `providers.py`. The text above
+is kept as the record of the 2026-03-15 decision; where it differs from the code, the code
+is right.
+
+- The breaker is a `CircuitBreaker` dataclass in `models.py`, one instance per provider
+  object (`GeminiProvider`, `OpenAICompatibleProvider` and `MockProvider`). Its fields are
+  `failure_threshold` (3), `cooldown_seconds` (60), `_failures` and `_open_until`; there are
+  no `_consecutive_failures` or `_circuit_open` fields.
+- There is no half-open probe. After the 60 second cooldown `is_open()` resets the failure
+  count and closes the circuit, so the next calls go through at full traffic. One failure
+  after that counts toward a new run of 3, not an immediate reopen. The "Half-open probe"
+  row in the thresholds table does not describe the code.
+- `list_providers` prints `OPEN` or `CLOSED` and the current failure count.

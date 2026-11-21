@@ -64,3 +64,20 @@ invalidation by calling `cache.delete(key)` after a write operation.
   key -- deterministic, but means cached results do not reflect external state changes until TTL
   expires. Tools with real-time requirements (e.g., `list_providers` circuit breaker state)
   bypass the cache explicitly (`ttl=0`).
+
+---
+
+## Correction, 2026-11-20
+
+Checked against the code in `mcp_toolkit/framework/caching.py`. The text above is kept as
+the record of the 2026-03-01 decision; where it differs from the code, the code is right.
+
+- There is one backend, not two tiers. `CacheLayer` holds a single `CacheBackend`:
+  `InMemoryCache` by default, or `RedisCache` when passed in. A Redis backend replaces the
+  in-memory one; there is no L1 in front of L2 and no L1-miss-to-L2 fall-through. The
+  per-process tradeoff for the in-memory backend still holds. With `fallback_to_memory=True`
+  `RedisCache` uses an in-process fallback only while Redis is unreachable.
+- The constructor argument is `RedisCache(redis_url=...)`, not `url=`.
+- `ttl=0` is not a bypass. `cached_tool` passes `ttl` straight to the backend and neither
+  backend special-cases 0. `list_providers` is simply registered with `@mcp.tool()`, so it is
+  never cached. For invalidation, `CacheLayer.delete(key)` exists.

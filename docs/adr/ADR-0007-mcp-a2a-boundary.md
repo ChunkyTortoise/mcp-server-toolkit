@@ -8,7 +8,7 @@
 
 ## Context
 
-The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and [Agent-to-Agent (A2A) protocol](https://google.github.io/A2A/) solve adjacent but different problems:
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and [Agent-to-Agent (A2A) protocol](https://a2a-protocol.org/) solve adjacent but different problems:
 
 | Dimension | MCP | A2A |
 |-----------|-----|-----|
