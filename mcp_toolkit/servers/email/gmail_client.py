@@ -41,7 +41,7 @@ class GmailEmailClient:
 
     def _build_service(self) -> Any:
         try:
-            from googleapiclient.discovery import build
+            from googleapiclient.discovery import build  # pyright: ignore[reportMissingImports]
         except ImportError as exc:
             raise ImportError(
                 "Install google-api-python-client: pip install mcp-server-toolkit[gmail]"

@@ -39,7 +39,7 @@ class GoogleCalendarProvider:
     def _build(self) -> Any:
         if self._service is None:
             try:
-                from googleapiclient.discovery import build
+                from googleapiclient.discovery import build  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError(
                     "Install google-api-python-client: pip install mcp-server-toolkit[gcal]"
