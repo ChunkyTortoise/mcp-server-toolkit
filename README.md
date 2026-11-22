@@ -43,7 +43,7 @@ The first call prints `order 42: shipped`. The forged call raises `ToolError`, w
 |---|---|---|---|
 | Measured | In-memory cache latency on `cached_tool`, hit vs miss (in-process mock tool, run dated 2026-04-25) | **P50 0.007 ms** hit vs **0.023 ms** miss (**3.1x**) | [`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) · reproduce with [`bench_cache.py`](benchmarks/bench_cache.py) |
 | CI gate | Test coverage floor: the CI test step fails below it | **80%** | [`ci.yml`](.github/workflows/ci.yml) (`--cov-fail-under=80`) |
-| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-10-26) | **1000** | [`tests/`](tests/) |
+| Inventory | Collected tests (`pytest --collect-only -q`, run 2026-11-08) | **1082** | [`tests/`](tests/) |
 | Inventory | Adversarial corpus: prompt injection, token forgery, scope escalation, cache poisoning, data exfiltration | **30 cases** | [`tests/adversarial/injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) |
 | Inventory | Pre-built MCP servers | **9** | [`mcp_toolkit/servers/`](mcp_toolkit/servers/) · `[project.scripts]` in [`pyproject.toml`](pyproject.toml) |
 
@@ -159,7 +159,7 @@ pytest tests/ -q --cov=mcp_toolkit   # CI also enforces the coverage floor in Re
 python evals/run_evals.py
 
 # Postgres integration tests (need a real database)
-INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_postgres_client.py
+INTEGRATION=1 DATABASE_URL=postgres://... ADMIN_DATABASE_URL=postgres://... pytest tests/test_database_query/test_postgres_client.py tests/test_database_http.py
 
 # Redis integration tests (need a real Redis)
 INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_rate_limiter_redis.py
@@ -193,11 +193,12 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 - This is a Python library. There is no hosted service or dashboard.
 - [GitHub tag v0.4.0](https://github.com/ChunkyTortoise/mcp-server-toolkit/releases/tag/v0.4.0) is a source snapshot of this version. The supported Quickstart installs a checkout of `main`; the PyPI preview does not include the current code.
 - The architecture image is illustrative, not a captured trace.
-- Spans are recorded automatically only by `cached_tool` and `rate_limited_tool`. A plain `@mcp.tool()` or `@mcp.auth_tool` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend ([verification script and hosted steps ready](examples/observability/README.md#verify-an-otlp-deployment); the claims ledger carries the claim as `historical`). The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
+- Spans are recorded automatically only by `cached_tool`, `rate_limited_tool` and `traced_tool`. A plain `@mcp.tool()` or `@mcp.auth_tool` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend ([verification script and hosted steps ready](examples/observability/README.md#verify-an-otlp-deployment); the claims ledger carries the claim as `historical`). The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
 - `rate_limited_tool` falls back to one shared `"default"` bucket, with a warning log, when the call carries no `caller_id`, `client_id` or `user_id`. The default limiter is in-process, so separate server processes keep separate counters. [`RedisSlidingWindow`](mcp_toolkit/framework/rate_limiter.py) ([ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md)) is the opt-in Redis backend behind the `redis` extra: it raises on connectivity errors unless you pass `fallback_to_memory=True`, which silently returns to per-process limits. Its windows are scored by wall clock, so clock skew between instances shifts window edges.
 - Redis cache fallback is opt-in, not silent: `fallback_to_memory=False` is the default and a typed `_REDIS_TRANSIENT` exception signals a recoverable failure.
-- The full sqlglot allowlist runs in `PostgresClient` (`read_only=True` by default). The database server itself only checks that each generated statement starts with `SELECT` or `WITH` after sqlglot parsing ([`sql_generator.py`](mcp_toolkit/servers/database_query/sql_generator.py)), so a `db_connection` you supply yourself gets only that prefix check. Neither is a framework-wide guard for other tools.
+- The database server runs the same sqlglot validator on every `run_sql` call and on generated SQL before it reaches the client, and `PostgresClient.fetch_bounded` runs it again with a one-statement rule ([`server.py`](mcp_toolkit/servers/database_query/server.py)). It is defense in depth for this server, not a framework-wide guard for other tools; the read-only role is what holds.
 - The SQL allowlist is defense in depth, not a security boundary. A function list can't be complete, so connect with a read-only Postgres role as well (for example `default_transaction_read_only = on`, or a role with only `SELECT` grants).
+- Callers that share one database role can read each other's SQL text in `pg_stat_activity` (an integration test shows it). Use one role per caller, or revoke access to that view for the role.
 - `auth_tool` and `requires_scope` read the token from a tool argument, so the token passes through the model's context. That suits local and stdio servers. For a hosted server, authenticate at the HTTP transport as the MCP authorization spec describes, and keep tokens out of tool arguments.
 - `OAuthAuth` is a deprecated test-only stub; use `JWTAuth`.
 - Several pre-built servers default to mock clients so they run without credentials: `crm_ghl` uses `MockGHLClient` and `gemini_embedding` uses a deterministic `MockEmbeddingClient`. The `multi_llm` router skips any provider whose API key is not set.

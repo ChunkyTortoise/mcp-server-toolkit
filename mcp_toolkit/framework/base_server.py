@@ -67,6 +67,26 @@ class EnhancedMCP(MCPServer):
             )
         return self.tool(**tool_kwargs)(wrapper)
 
+    def traced_tool(self, **tool_kwargs: Any) -> Callable:
+        """Decorator that records one span per call, with the hashed HTTP subject.
+
+        No caching or rate limiting. Extra keyword arguments go to ``MCPServer.tool``.
+        """
+
+        def decorator(func: Callable) -> Callable:
+            @functools.wraps(func)
+            async def wrapper(*args: Any, **kwargs: Any) -> Any:
+                async with self._telemetry.tool_call(func.__name__):
+                    access = get_request_access_token()
+                    if access is not None:
+                        annotate_call(**{"mcp.subject": _hash_id(access.subject or access.client_id)})
+                    return await func(*args, **kwargs)
+
+            wrapper.__wrapped__ = func  # type: ignore[attr-defined]
+            return self._register_tool(func, wrapper, tool_kwargs)
+
+        return decorator
+
     def cached_tool(self, ttl: int = 300, **tool_kwargs: Any) -> Callable:
         """Decorator for local tools with automatic response caching.
 
