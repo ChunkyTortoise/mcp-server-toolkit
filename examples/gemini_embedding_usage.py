@@ -7,7 +7,7 @@ cosine similarity using the MockEmbeddingClient (no API key needed).
 import asyncio
 
 from mcp_toolkit.framework.testing import MCPTestClient
-from mcp_toolkit.servers.gemini_embedding.server import mcp, configure, MockEmbeddingClient
+from mcp_toolkit.servers.gemini_embedding.server import MockEmbeddingClient, configure, mcp
 from mcp_toolkit.servers.gemini_embedding.vector_store import InMemoryVectorStore
 
 
@@ -38,7 +38,11 @@ async def main() -> None:
     for doc_id, text in docs:
         result = await client.call_tool(
             "index_text",
-            {"text": text, "item_id": doc_id, "metadata": f'{{"language": "{text.split()[0].lower()}"}}'},
+            {
+                "text": text,
+                "item_id": doc_id,
+                "metadata": f'{{"language": "{text.split()[0].lower()}"}}',
+            },
         )
         print(result)
 

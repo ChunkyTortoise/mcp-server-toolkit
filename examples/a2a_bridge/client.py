@@ -16,7 +16,6 @@ import uuid
 
 import httpx
 
-
 BASE_URL = "http://localhost:8080"
 
 
@@ -43,7 +42,7 @@ async def stream_task(client: httpx.AsyncClient, tool: str, arguments: dict) -> 
         async for line in resp.aiter_lines():
             if not line.startswith("data:"):
                 continue
-            raw = line[len("data:"):].strip()
+            raw = line[len("data:") :].strip()
             if raw == "[DONE]":
                 print("  → [stream complete]")
                 break
@@ -81,7 +80,7 @@ async def inline_demo() -> None:
     print("\n=== Streaming task (SSE events) ===")
     async for chunk in adapter.stream_task(str(uuid.uuid4()), "echo", {"message": "streamed!"}):
         if chunk.startswith("data:"):
-            raw = chunk[len("data:"):].strip()
+            raw = chunk[len("data:") :].strip()
             if raw == "[DONE]":
                 print("  → [stream complete]")
             else:

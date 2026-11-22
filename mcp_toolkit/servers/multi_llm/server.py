@@ -114,9 +114,7 @@ async def get_second_opinion(prompt: str, context: str = "") -> str:
         prompt: The question or prompt to send to all providers.
         context: Optional context passed as system prompt to each provider.
     """
-    available = [
-        (pn, p) for pn, p in _providers.items() if not p.circuit_breaker.is_open()
-    ]
+    available = [(pn, p) for pn, p in _providers.items() if not p.circuit_breaker.is_open()]
 
     if not available:
         return "Error: No providers available. Check API keys and circuit breaker status."

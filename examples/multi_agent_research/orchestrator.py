@@ -43,14 +43,20 @@ def _extract_text(result: object) -> str:
         return str(item)
     return str(result)
 
+
 # ---------------------------------------------------------------------------
 # Lightweight mock clients for standalone demo (no real API keys needed)
 # ---------------------------------------------------------------------------
 
+
 class _MockWebClient:
     async def search(self, query: str, max_results: int = 3) -> list[dict]:
         return [
-            {"title": f"Source {i+1}: {query}", "url": f"https://example.com/{i+1}", "snippet": f"Relevant excerpt {i+1} about {query}."}
+            {
+                "title": f"Source {i + 1}: {query}",
+                "url": f"https://example.com/{i + 1}",
+                "snippet": f"Relevant excerpt {i + 1} about {query}.",
+            }
             for i in range(max_results)
         ]
 
@@ -66,6 +72,7 @@ class _MockLLMClient:
 # ---------------------------------------------------------------------------
 # MCP servers
 # ---------------------------------------------------------------------------
+
 
 def _build_web_server() -> EnhancedMCP:
     mcp = EnhancedMCP("research-web")
@@ -104,6 +111,7 @@ def _build_llm_server() -> EnhancedMCP:
 # Orchestrator
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ResearchResult:
     query: str
@@ -127,16 +135,17 @@ async def research(query: str) -> ResearchResult:
     quick_text = _extract_text(quick)
 
     # Step 2: sequential — deep synthesis with sources
-    deep = await llm_mcp.call_tool(
-        "deep_synthesis", {"sources": source_text, "query": query}
-    )
+    deep = await llm_mcp.call_tool("deep_synthesis", {"sources": source_text, "query": query})
     deep_text = _extract_text(deep)
 
     # Step 3: expose as A2A task for downstream consumers
-    adapter = A2AAdapter(llm_mcp, base_url="http://localhost:9000", description="Research orchestrator")
+    adapter = A2AAdapter(
+        llm_mcp, base_url="http://localhost:9000", description="Research orchestrator"
+    )
     task_id = f"research-{hash(query) & 0xFFFFFF:06x}"
     # Store final result in adapter task registry
     from mcp_toolkit.framework.a2a_adapter import A2ATaskStatus
+
     final_status = A2ATaskStatus(
         task_id=task_id,
         status="completed",

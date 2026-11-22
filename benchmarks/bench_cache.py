@@ -74,9 +74,13 @@ def main() -> None:
     print("\nmcp-server-toolkit cache benchmark (L1 in-memory)")
     print(f"Iterations: {ITERATIONS} | Warmup: {WARMUP}\n")
     print(f"  Cache HIT  -- P50: {results['hit_p50_ms']:.3f}ms  P95: {results['hit_p95_ms']:.3f}ms")
-    print(f"  Cache MISS -- P50: {results['miss_p50_ms']:.3f}ms  P95: {results['miss_p95_ms']:.3f}ms")
+    print(
+        f"  Cache MISS -- P50: {results['miss_p50_ms']:.3f}ms  P95: {results['miss_p95_ms']:.3f}ms"
+    )
     print(f"  Speedup:      {results['speedup_x']:.1f}x faster on cache hit")
-    print(f"  Backend calls avoided: {ITERATIONS - results['backend_calls_total'] + ITERATIONS} of {ITERATIONS * 2 + 20} total calls\n")
+    print(
+        f"  Backend calls avoided: {ITERATIONS - results['backend_calls_total'] + ITERATIONS} of {ITERATIONS * 2 + 20} total calls\n"
+    )
 
 
 if __name__ == "__main__":

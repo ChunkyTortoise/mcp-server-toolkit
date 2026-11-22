@@ -385,6 +385,7 @@ async def test_unset_deploy_origin_list_rejects_supplied_origin():
 @pytest.mark.parametrize("deploy_mode", [False, True])
 def test_hand_built_public_settings_cannot_skip_explicit_opt_in(deploy_mode):
     from mcp.server.transport_security import TransportSecuritySettings
+
     from mcp_toolkit.framework.http_auth import HttpConfigError, HttpServerSettings
 
     with pytest.raises(HttpConfigError):
@@ -444,6 +445,7 @@ def test_invalid_or_credential_bearing_config_urls_fail_with_generic_errors(name
 
 def test_invalid_port_error_does_not_echo_its_value_or_cause():
     import traceback
+
     from mcp_toolkit.framework.http_auth import HttpConfigError
 
     sensitive_value = "sentinel-port-secret"

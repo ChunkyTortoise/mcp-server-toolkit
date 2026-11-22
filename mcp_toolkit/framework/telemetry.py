@@ -125,7 +125,12 @@ class TelemetryProvider:
 
                 headers_raw = os.environ.get("OTEL_EXPORTER_OTLP_HEADERS", "")
                 headers = (
-                    {k: v for pair in headers_raw.split(",") if "=" in pair for k, v in [pair.split("=", 1)]}
+                    {
+                        k: v
+                        for pair in headers_raw.split(",")
+                        if "=" in pair
+                        for k, v in [pair.split("=", 1)]
+                    }
                     if headers_raw
                     else {}
                 )
@@ -137,9 +142,9 @@ class TelemetryProvider:
                     "falling back to console exporter. "
                     "Install with: pip install 'mcp-server-toolkit[telemetry]'"
                 )
-                exporter = ConsoleSpanExporter(out=sys.stderr)
+                exporter = ConsoleSpanExporter(out=sys.stderr)  # type: ignore[assignment]  # console fallback shares the OTLP-typed name
         else:
-            exporter = ConsoleSpanExporter(out=sys.stderr)
+            exporter = ConsoleSpanExporter(out=sys.stderr)  # type: ignore[assignment]  # console fallback shares the OTLP-typed name
 
         provider.add_span_processor(BatchSpanProcessor(exporter))
         trace.set_tracer_provider(provider)

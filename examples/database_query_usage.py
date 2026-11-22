@@ -7,7 +7,7 @@ and using the tools to query, explain, and list tables.
 import asyncio
 
 from mcp_toolkit.framework.testing import MCPTestClient
-from mcp_toolkit.servers.database_query.server import mcp, configure
+from mcp_toolkit.servers.database_query.server import configure, mcp
 
 
 async def main() -> None:

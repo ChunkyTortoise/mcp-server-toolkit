@@ -73,7 +73,9 @@ async def main() -> None:
     print(cheap_result)
 
     # Route to the best available model
-    best_result = await client.call_tool("query_best", {"prompt": "Explain async/await in one sentence."})
+    best_result = await client.call_tool(
+        "query_best", {"prompt": "Explain async/await in one sentence."}
+    )
     print("\n--- query_best ---")
     print(best_result)
 

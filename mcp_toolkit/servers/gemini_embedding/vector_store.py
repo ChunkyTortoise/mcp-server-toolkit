@@ -39,8 +39,7 @@ class InMemoryVectorStore:
     def search(self, query_vector: list[float], top_k: int = 5) -> list[tuple[IndexedItem, float]]:
         """Return top_k items sorted by cosine similarity descending."""
         scored = [
-            (item, cosine_similarity(query_vector, item.vector))
-            for item in self._items.values()
+            (item, cosine_similarity(query_vector, item.vector)) for item in self._items.values()
         ]
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored[:top_k]

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import os
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from mcp_toolkit.servers.multi_llm.models import CircuitBreaker, LLMResponse, ProviderName
 from mcp_toolkit.servers.multi_llm.providers import (
@@ -489,8 +489,8 @@ class TestRouter:
         assert BEST_PRIORITY[0] == (ProviderName.OPENAI, "gpt-5.5")
 
     def test_all_router_models_in_pricing(self):
-        from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY, CHEAP_PRIORITY
         from mcp_toolkit.servers.multi_llm.pricing import PRICING
+        from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY, CHEAP_PRIORITY
         for _, model in CHEAP_PRIORITY + BEST_PRIORITY:
             assert model in PRICING, f"Model {model!r} missing from PRICING"
 
