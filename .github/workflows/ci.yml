@@ -108,5 +108,5 @@ jobs:
           ADMIN_DATABASE_URL: postgresql://postgres:ci-superuser-throwaway@localhost:5432/mcp_test
         run: |
           set -o pipefail
-          pytest tests/test_database_query/test_postgres_client.py -v -s -rs | tee out.txt
+          pytest tests/test_database_query/test_postgres_client.py tests/test_database_http.py -v -s -rs | tee out.txt
           ! grep -q SKIPPED out.txt

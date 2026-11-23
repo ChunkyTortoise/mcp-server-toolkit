@@ -44,44 +44,44 @@ allow:
 claims:
   - id: test-suite-passed
     statement: Tests passing in this tree with the development extras installed.
-    value: "989 passed"
-    match: ["989 passed"]
+    value: "1050 passed"
+    match: ["1050 passed"]
     artifact: tests/
     command: "python -m pytest tests/ -q"
-    expect: "989 passed"
-    date: "2026-10-26"
+    expect: "1050 passed"
+    date: "2026-11-08"
     status: verified
     scope: >-
-      Local run on Python 3.13.11 on 2026-10-26. The eleven skipped tests are integration cases: nine Postgres (INTEGRATION=1 and DATABASE_URL) and two Redis (INTEGRATION=1 and REDIS_URL).
+      Local run on Python 3.12.7 on 2026-11-08. The 32 skipped tests are integration cases: 30 Postgres (INTEGRATION=1, DATABASE_URL and ADMIN_DATABASE_URL; 17 client tests plus 13 database_query HTTP tests) and two Redis (INTEGRATION=1 and REDIS_URL).
   - id: test-suite-skipped
     statement: Tests skipped in the same run.
-    value: "11 skipped"
-    match: ["11 skipped"]
+    value: "32 skipped"
+    match: ["32 skipped"]
     artifact: tests/
     command: "python -m pytest tests/ -q"
-    expect: "11 skipped"
-    date: "2026-10-26"
+    expect: "32 skipped"
+    date: "2026-11-08"
     status: verified
-    scope: Postgres integration tests gated on INTEGRATION=1 and DATABASE_URL, and Redis integration tests gated on INTEGRATION=1 and REDIS_URL.
+    scope: Postgres integration tests gated on INTEGRATION=1, DATABASE_URL and ADMIN_DATABASE_URL (17 client tests plus 13 database_query HTTP tests), and Redis integration tests gated on INTEGRATION=1 and REDIS_URL.
   - id: test-collected
     statement: Tests collected, including skipped ones.
-    value: "1000"
-    match: ["1000"]
+    value: "1082"
+    match: ["1082"]
     artifact: README.md
     artifact_check: contains
     command: "python -m pytest tests/ --collect-only -q | tail -2"
-    expect: "1000 tests collected"
-    date: "2026-10-26"
+    expect: "1082 tests collected"
+    date: "2026-11-08"
     status: verified
-    scope: Published in the README Results table, dated 2026-10-26. Includes the eleven integration tests that skip without INTEGRATION=1.
+    scope: Published in the README Results table, dated 2026-11-08. Includes the 32 integration tests that skip without INTEGRATION=1.
   - id: coverage-measured
     statement: Line coverage of mcp_toolkit in this tree.
-    value: "87.57%"
-    match: ["87.57%"]
+    value: "88.39%"
+    match: ["88.39%"]
     artifact: .github/workflows/ci.yml
     command: "python -m pytest tests/ -q --cov=mcp_toolkit --cov-fail-under=80"
-    expect: "87.57%"
-    date: "2026-10-26"
+    expect: "88.39%"
+    date: "2026-11-08"
     status: verified
     scope: Local run, Python 3.13. CI prints its own value per matrix entry; the floor is separate.
   - id: coverage-ci-floor
