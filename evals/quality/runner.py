@@ -56,7 +56,9 @@ async def run_task(task: EvalTask, use_judge: bool) -> TaskResult:
         return TaskResult(task=task, actual=actual, passed=passed, score=score, elapsed_ms=elapsed)
     except Exception as exc:
         elapsed = (time.perf_counter() - t0) * 1000
-        return TaskResult(task=task, actual="", passed=False, score=None, elapsed_ms=elapsed, error=str(exc))
+        return TaskResult(
+            task=task, actual="", passed=False, score=None, elapsed_ms=elapsed, error=str(exc)
+        )
 
 
 def _format_score(score: JudgeScore | None) -> str:
@@ -95,7 +97,7 @@ def _render_results(results: list[TaskResult], use_judge: bool) -> str:
                 "|--------|-------|",
                 f"| P50 quality | {p50:.2f} |",
                 f"| P95 quality | {p95:.2f} |",
-                f"| Mean quality | {sum(means)/len(means):.2f} |",
+                f"| Mean quality | {sum(means) / len(means):.2f} |",
                 "",
             ]
 
@@ -179,6 +181,7 @@ async def main(argv: list[str] | None = None) -> int:
     use_judge = args.judge
     if use_judge:
         import os
+
         if os.environ.get("ANTHROPIC_API_KEY", ""):
             print("LLM-as-judge: enabled")
         else:

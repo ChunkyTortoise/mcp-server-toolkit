@@ -14,8 +14,9 @@ from mcp_toolkit.framework.auth import APIKeyAuth, JWTAuth, requires_scope
 
 
 def _hs_token(secret: str, scopes: list[str], expired: bool = False) -> str:
-    import jwt
     import time
+
+    import jwt
 
     exp = time.time() + (-120 if expired else 3600)
     return jwt.encode(

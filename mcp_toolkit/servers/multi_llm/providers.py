@@ -37,9 +37,7 @@ class LLMProvider(Protocol):
     ) -> LLMResponse: ...
 
 
-async def _post_with_retry(
-    client: httpx.AsyncClient, url: str, **kwargs: Any
-) -> httpx.Response:
+async def _post_with_retry(client: httpx.AsyncClient, url: str, **kwargs: Any) -> httpx.Response:
     """POST with a single retry on 429 (rate limit) or 503 (service unavailable)."""
     resp = await client.post(url, **kwargs)
     if resp.status_code in (429, 503):

@@ -14,6 +14,7 @@ def test_bridge_binds_loopback():
 def test_bridge_example_suppresses_credential_bearing_httpx_info_logs(monkeypatch, caplog):
     import logging
     import runpy
+
     import httpx
 
     logger = logging.getLogger("httpx")

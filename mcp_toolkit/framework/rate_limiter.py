@@ -132,7 +132,7 @@ class RedisSlidingWindow:
             import redis.asyncio as aioredis
 
             client = aioredis.from_url(self._redis_url, decode_responses=True)
-            await client.ping()  # type: ignore[misc]  # redis.asyncio stub types ping() as sync
+            await client.ping()  # redis.asyncio stub types ping() as sync
             self._client = client
             return self._client
         except _REDIS_TRANSIENT as exc:
@@ -142,7 +142,9 @@ class RedisSlidingWindow:
             raise
         except Exception as exc:
             if self._fallback_to_memory:
-                logger.warning("Redis connection error (%s); falling back to per-process limits.", exc)
+                logger.warning(
+                    "Redis connection error (%s); falling back to per-process limits.", exc
+                )
                 return None
             raise
 

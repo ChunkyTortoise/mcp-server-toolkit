@@ -114,7 +114,9 @@ class CostTracker:
             tool_name=tool_name,
         )
 
-    def record_from_response_dict(self, response: dict[str, Any], provider: str, model: str, tool_name: str = "") -> float:
+    def record_from_response_dict(
+        self, response: dict[str, Any], provider: str, model: str, tool_name: str = ""
+    ) -> float:
         """Record from a raw API response dict (Gemini, xAI, generic)."""
         usage = response.get("usageMetadata") or response.get("usage") or {}
         input_tok = (
@@ -150,7 +152,9 @@ class CostTracker:
             logger.debug("No pricing entry for %s/%s; cost = $0.00", provider, model)
             return 0.0
 
-        cost = (input_tokens / 1_000_000) * prices["input"] + (output_tokens / 1_000_000) * prices["output"]
+        cost = (input_tokens / 1_000_000) * prices["input"] + (output_tokens / 1_000_000) * prices[
+            "output"
+        ]
         return round(cost, 8)
 
     def total_cost(self) -> float:

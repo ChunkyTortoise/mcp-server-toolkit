@@ -1,14 +1,13 @@
 """Exercise the public no-key demo and error boundaries."""
 
-import sys
+import importlib.util
 import runpy
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-
-import importlib.util
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("rag_audit_app", ROOT / "examples/agentic_rag/app.py")

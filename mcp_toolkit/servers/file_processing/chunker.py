@@ -74,7 +74,7 @@ class TextChunker:
 
     def _chunk_fixed(self, text: str) -> list[Chunk]:
         """Fixed-size chunks with overlap."""
-        chunks = []
+        chunks: list[Chunk] = []
         pos = 0
         while pos < len(text):
             end = min(pos + self._chunk_size, len(text))
@@ -103,7 +103,7 @@ class TextChunker:
     def _chunk_sentence(self, text: str) -> list[Chunk]:
         """Chunk by sentences, grouping to meet target size."""
         sentences = re.split(r"(?<=[.!?])\s+", text)
-        chunks = []
+        chunks: list[Chunk] = []
         current_sentences: list[str] = []
         current_len = 0
         current_start = 0
@@ -145,7 +145,7 @@ class TextChunker:
     def _chunk_paragraph(self, text: str) -> list[Chunk]:
         """Chunk by paragraphs (double newline), grouping to meet target size."""
         paragraphs = re.split(r"\n\s*\n", text)
-        chunks = []
+        chunks: list[Chunk] = []
         current_paras: list[str] = []
         current_len = 0
         current_start = 0
@@ -187,7 +187,7 @@ class TextChunker:
     def _chunk_markdown(self, text: str) -> list[Chunk]:
         """Chunk by markdown headings, preserving heading hierarchy."""
         sections = re.split(r"(?=^#{1,3}\s)", text, flags=re.MULTILINE)
-        chunks = []
+        chunks: list[Chunk] = []
         current_sections: list[str] = []
         current_len = 0
         current_start = 0

@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from mcp.server.mcpserver.exceptions import ToolError
 
 from mcp_toolkit.framework.auth import JWTAuth, requires_scope
@@ -21,8 +20,9 @@ CORPUS_PATH = Path(__file__).parent.parent / "adversarial" / "injection_corpus.j
 
 
 def _hs_token(secret: str, scopes: list[str]) -> str:
-    import jwt
     import time
+
+    import jwt
 
     return jwt.encode(
         {"sub": "test-client", "scope": " ".join(scopes), "exp": time.time() + 3600},

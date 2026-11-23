@@ -10,7 +10,6 @@ import pytest_asyncio
 
 from mcp_toolkit.servers.database_query.postgres_client import PostgresClient, _validate_read_only
 
-
 # Shared with test_sql_safety.py, which runs each entry through every validation path.
 HOSTILE_SQL = [
     "SELECT * INTO stolen FROM users",

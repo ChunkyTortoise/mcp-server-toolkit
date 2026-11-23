@@ -154,7 +154,7 @@ async def generate_chart(
         metric: [p.value for p in points],
     }
     config = ChartConfig(chart_type=chart_type, title=title or metric, y_label=metric)
-    result = _chart_generator.generate(data, config)
+    result = _chart_generator.generate(data, config)  # type: ignore[arg-type]  # dict literal infers dict[str, object]
 
     if not result.is_success:
         return f"Chart error: {result.error}"

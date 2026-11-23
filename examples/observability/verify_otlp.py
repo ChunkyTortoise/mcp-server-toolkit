@@ -74,9 +74,7 @@ def emit_probe(service: str) -> dict[str, Any]:
     """
     _apply_endpoint_override()
     if not os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        raise SystemExit(
-            "--emit needs OTEL_EXPORTER_OTLP_ENDPOINT (the OTLP ingest base URL)"
-        )
+        raise SystemExit("--emit needs OTEL_EXPORTER_OTLP_ENDPOINT (the OTLP ingest base URL)")
 
     nonce = uuid.uuid4().hex[:12]
     telemetry = TelemetryProvider(service)
@@ -125,9 +123,7 @@ def query_traces(
             client.close()
 
 
-def summarise_traces(
-    traces: list[dict[str, Any]], nonce: str | None
-) -> dict[str, Any]:
+def summarise_traces(traces: list[dict[str, Any]], nonce: str | None) -> dict[str, Any]:
     """Turn Jaeger trace payloads into the evidence fields of the artifact."""
     trace_ids: list[str] = []
     span_count = 0
@@ -165,9 +161,7 @@ def check_backend(
     With a nonce, the proof requires that exact probe trace. Without one (the
     hosted cron path), any recent trace from the service proves the pipeline.
     """
-    traces = query_traces(
-        query_url, service, nonce=nonce, lookback=lookback, client=client
-    )
+    traces = query_traces(query_url, service, nonce=nonce, lookback=lookback, client=client)
     summary = summarise_traces(traces, nonce)
     ok = summary["traces_found"] > 0 and (summary["nonce_seen"] if nonce else True)
     return {
@@ -193,9 +187,7 @@ def poll_check(
     deadline = time.monotonic() + timeout
     result: dict[str, Any] = {}
     while True:
-        result = check_backend(
-            query_url, service, nonce=nonce, lookback=lookback, client=client
-        )
+        result = check_backend(query_url, service, nonce=nonce, lookback=lookback, client=client)
         if result["ok"] or time.monotonic() >= deadline:
             return result
         time.sleep(interval)
@@ -210,9 +202,7 @@ def write_artifact(result: dict[str, Any], out: Path) -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--emit", action="store_true", help="send a probe span over OTLP")
-    parser.add_argument(
-        "--check", action="store_true", help="query the backend for traces"
-    )
+    parser.add_argument("--check", action="store_true", help="query the backend for traces")
     parser.add_argument("--query-url", default=DEFAULT_QUERY_URL)
     parser.add_argument("--service", default=DEFAULT_SERVICE)
     parser.add_argument(

@@ -82,10 +82,10 @@ class ChartGenerator:
         config: ChartConfig,
     ) -> ChartResult:
         try:
-            import matplotlib  # type: ignore[import-untyped]
+            import matplotlib  # pyright: ignore[reportMissingImports]
 
             matplotlib.use("Agg")
-            import matplotlib.pyplot as plt  # type: ignore[import-untyped]
+            import matplotlib.pyplot as plt  # pyright: ignore[reportMissingImports]
 
             fig, ax = plt.subplots(figsize=(config.width, config.height))
 
