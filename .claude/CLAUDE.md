@@ -33,4 +33,4 @@ Test count: run `pytest --collect-only -q` (README Results table holds the dated
 both together when it changes).
 
 ## Key Env
-None for publishing: PyPI trusted publishing (OIDC) via publish.yml, release environment
+None for publishing: PyPI trusted publishing (OIDC) via publish.yml, gated by the `release` environment; no token secret.
