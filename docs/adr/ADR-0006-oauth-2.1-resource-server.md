@@ -23,7 +23,7 @@ Introduce `JWTAuth` as the production authentication class. Keep `OAuthAuth` as 
 
 ### `requires_scope` decorator
 
-Wraps an async tool function. Extracts credential from `token`, `api_key`, or `authorization` kwargs, validates it, checks the required scope, and returns an error string without executing the tool body if either check fails.
+Wraps an async tool function. Extracts credential from `token`, `api_key`, or `authorization` kwargs, validates it, checks the required scope, and raises `Unauthorized` or `Forbidden` (both `ToolError` subclasses) without executing the tool body if either check fails.
 
 ### `auth_tool` on `EnhancedMCP`
 
@@ -39,7 +39,7 @@ Every auth event (accepted / rejected, including reason) is emitted as structure
 - JWKS key fetching is synchronous internally (PyJWT) but wrapped with `run_in_executor` to avoid blocking the async event loop.
 - `OAuthAuth` is kept for backward compatibility and for tests that need a simple token issuer without a full IdP.
 - Full OAuth 2.1 authorization-server functionality (token issuance, PKCE, refresh) is out of scope; this library is a resource server only.
-- Transport-level resource-server behavior (RFC 9728 protected resource metadata, a `WWW-Authenticate` challenge, audience bound to the server URL) is not implemented. `JWTAuth` validates a token passed as a tool argument.
+- Transport-level resource-server behavior (RFC 9728 protected resource metadata, a `WWW-Authenticate` challenge, audience bound to the server URL) is not implemented here. `JWTAuth` validates a token passed as a tool argument. Update for 0.4.0: the HTTP gateway (`mcp_toolkit/gateway/`) adds transport-level bearer verification; see ADR-0008. `JWTAuth` as a tool-argument check is unchanged.
 
 ## Alternatives Rejected
 

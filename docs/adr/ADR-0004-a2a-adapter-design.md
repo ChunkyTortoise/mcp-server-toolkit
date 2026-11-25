@@ -93,6 +93,8 @@ accessible across multiple server instances.
 
 ## Decision 4 -- Streaming Not Implemented
 
+> Superseded in 0.3.0: `A2AAdapter.stream_task()` (`mcp_toolkit/framework/a2a_adapter.py`) yields SSE events (`submitted`, `working`, `completed`). The text below records the original decision.
+
 **SSE streaming is not implemented.** `A2ATaskStatus.to_dict()` returns a single terminal
 status (`completed` or `failed`) per task. The `capabilities` block in the agent card
 advertises `"streaming": True` per spec requirement but no SSE endpoint is wired.
@@ -128,3 +130,12 @@ over a Server-Sent Events connection.
 - Task state is ephemeral. A2A callers that need durable history must persist it themselves.
 - Streaming endpoints are absent. A2A callers that require SSE streaming cannot use this
   adapter until streaming is implemented.
+
+---
+
+## Correction, 2026-11-20
+
+The last consequence above ("Streaming endpoints are absent") no longer holds.
+`A2AAdapter.stream_task()` in `mcp_toolkit/framework/a2a_adapter.py` yields SSE chunks, the
+agent card advertises `"streaming": True`, and `examples/a2a_bridge/server.py` serves it at
+`POST /tasks/sendSubscribe` as `text/event-stream`. The rest of the record is unchanged.

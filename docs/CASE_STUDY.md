@@ -72,7 +72,7 @@ pending proof against a hosted backend.
 
 | Evidence | What it supports | What it does not establish |
 |---|---|---|
-| [Cache benchmark](../benchmarks/RESULTS.md), April 25, 2026 | Local framework cache timings from that dated run | End-to-end RAG latency or a production hit rate |
+| [Cache benchmark](../benchmarks/RESULTS.md), 2026-11-17 run | Local framework cache timings from that dated run | End-to-end RAG latency or a production hit rate |
 | [Python example](../examples/agentic_rag/app.py), base `b4b53fe` | Source code for fake embeddings, fixed ranking and template output | Retrieval relevance or live-provider success |
 | [Telemetry implementation](../mcp_toolkit/framework/telemetry.py) | Toolkit span and exporter code | App instrumentation or a deployed service |
 | [Cost implementation](../mcp_toolkit/framework/costing.py) | Cost calculation from supplied usage and dated rates | Current provider pricing or paid usage in this demo |

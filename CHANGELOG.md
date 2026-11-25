@@ -18,24 +18,27 @@ All notable changes to mcp-server-toolkit are documented here.
 - CI `integration` job boots the database server on HTTP against the `mcp_reader` role with an in-process RSA JWKS (`tests/test_database_http.py`).
 - `examples/observability/verify_otlp.py`: end-to-end OTLP verification: a probe span through the real OTLP exporter plus a backend query check, writing a dated JSON artifact (header values never recorded). Hosted deploy-and-verify steps live in the observability README; the claims ledger registers `otlp-hosted-verification` as historical until a hosted run is captured.
 - `docs/RELEASING.md`: the release checklist: Trusted Publishing setup, pre-publish gates, the `v0.4.0` tag-timing caveat, and the documentation truth flip that must land the day a version publishes.
-- Opt-in Redis backend for `RateLimiter`: `RedisSlidingWindow` (ADR-0005) shares the sliding window across processes behind the `redis` extra. Failure semantics follow `RedisCache`: transient errors raise unless `fallback_to_memory=True`, which returns to per-process limits. `RateLimiter.get_remaining_async()` reads the count from either store; the synchronous `get_remaining()` remains per-process and points at the async twin when a Redis backend is configured.
+- Opt-in Redis backend for `RateLimiter`: `RedisSlidingWindow` (ADR-0005) shares the sliding window across processes behind the `redis` extra. Failure semantics follow `RedisCache`: transient errors raise unless `fallback_to_memory=True`, which returns to per-process limits. `RateLimiter.get_remaining_async()` reads the count from either store; the synchronous `get_remaining()` stays per-process and raises `RuntimeError` naming the async twin when a Redis backend is configured.
 
 ### Changed
 
 - `database_query` tools report failures as `ToolError` (`isError`) with fixed messages; SQL text, driver messages and credentials are not returned or logged (logs carry the exception class only). Every tool has a title and `readOnlyHint`.
 - Publishing moves to PyPI Trusted Publishing (OIDC) via `.github/workflows/publish.yml`: no API token, gated by the `release` environment, with a manual trigger because the `v0.4.0` tag predates the workflow.
 - `pyproject.toml` description now names the streamable-HTTP gateway command and calls the bundled servers "pre-built", matching what 0.4.0 ships.
-- Test count: 928 → 1000 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
+- `tests/gates/test_gate_safety.py` now dispatches every adversarial corpus case through the real auth and scope gate and compares the outcome with `expected_blocked`. The corpus grows from 30 to 45 cases (inj-31 to inj-45, from an outside review): 38 match, 7 are strict xfails (inj-01, inj-02, inj-03, inj-05: no content filter; inj-26: the corpus expects a future-`iat` token to pass, but PyJWT rejects it; inj-41: an empty `scope` falls through to `permissions`; inj-43: a scope value is split on U+00A0). Placeholder token names in the corpus are replaced by real tokens minted in the test. README and claims ledger state the real figures.
+- Test count: from 877 collected at the `v0.4.0` tag to 1185 collected. The Redis integration tests run under `INTEGRATION=1` with `REDIS_URL`, like the Postgres ones.
 
 ### Security
 
 - Outbound calls share one address classifier (`mcp_toolkit.framework.net_safety`) covering IPv4 embedded in IPv6 (mapped, NAT64, 6to4); the A2A webhook is checked and never follows redirects, and DNS lookups run off the event loop. The scraper drops client auth, not just headers, when a redirect leaves the original origin, and scrape tools return a generic `ToolError` on refusal.
 - Gemini API keys are sent in the `x-goog-api-key` header, not URL query strings; the A2A example binds `127.0.0.1`.
-- Dependency bumps for advisories tracked by Dependabot: the `files` extra floor moves to `pypdf>=6.21.2` (GHSA-6c7f-9265-g8fw, GHSA-jr96-gvgh-j3r4, GHSA-gmh7-3g9r-mjh5: repeated/malformed xref and missing-object references could blow up runtimes; the bump also picks up the 6.20.x to 6.21.1 fixes), and the lock resolves `certifi` to 2026.10.23 (GHSA-6q48-6c7w-9gw2: emSign root CAs with compromised intermediate keys). `certifi` is transitive (via `httpx`); the floor applies to this repo's lockfile and environments, and a fresh downstream resolve takes the patched release by default.
+- Dependency bumps for advisories tracked by Dependabot: the `files` extra floor moves to `pypdf>=6.21.4` (GHSA-6c7f-9265-g8fw, GHSA-jr96-gvgh-j3r4, GHSA-gmh7-3g9r-mjh5: repeated/malformed xref and missing-object references could blow up runtimes; the bump also picks up the 6.20.x to 6.21.1 fixes), and the lock resolves `certifi` to 2026.10.23 (GHSA-6q48-6c7w-9gw2: emSign root CAs with compromised intermediate keys). `certifi` is transitive (via `httpx`); the floor applies to this repo's lockfile and environments, and a fresh downstream resolve takes the patched release by default.
 - `database_query`: `run_sql` cells escape `|`, `\`, and line breaks and print `NULL` explicitly, so a stored value cannot add rows or columns to the table; the header row counts against `max_output_chars`. `list_tables` output is capped at `max_output_chars`, and a table with a non-identifier name is skipped instead of failing the whole listing. Repeated column names (`SELECT a.id, b.id`) keep every value (`id`, `id_2`). `PostgresClient.open()` counts a user only after the pool exists and creates one pool under concurrent opens.
 - HTTP gateway: a non-loopback bind now requires `MCP_BIND_PUBLIC=1`, `MCP_ISSUER`, `MCP_RESOURCE_URL` and an exact `MCP_ALLOWED_HOSTS` list. `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` feed SDK Host/Origin checks on every bind, forwarded identity headers are ignored, and `docs/DEPLOYMENT.md` documents the rules.
 
 ## [0.4.0] - 2026-10-24
+
+<!-- TODO(Cayman): the v0.4.0 tag is dated 2026-10-25 and v0.3.0 is dated 2026-10-02 (heading below says 2026-04-26). Pick release dates or tag dates. -->
 
 ### Breaking Changes
 

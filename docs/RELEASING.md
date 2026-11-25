@@ -10,13 +10,13 @@ contributor.
 - PyPI: serves `0.1.0`, a different, older package body whose metadata advertises servers this
   repository does not contain (`pypi-version` in [claims.yaml](claims.yaml)). The Quickstart
   installs from source for that reason.
-- Publishing: PyPI Trusted Publishing (OIDC) through `.github/workflows/publish.yml` — no API
-  token. Until that workflow lands, `publish.yml` still carries the legacy token path, whose
-  manual attempt failed with 403 because the secret was missing.
+- Publishing: PyPI Trusted Publishing (OIDC) through `.github/workflows/publish.yml`, no API
+  token. `publish.yml` now uses Trusted Publishing; the legacy token path, whose manual attempt
+  failed with 403 because the secret was missing, is gone.
 
 ## One-time setup (owner)
 
-1. Land the trusted-publishing `publish.yml` (open PR #77 carries the same switch; the copy in
+1. Land the trusted-publishing `publish.yml` (PR #77, merged 2026-10-26, carried the same switch; the copy in
    this repository adds a `workflow_dispatch` trigger because the `v0.4.0` tag predates the
    workflow — see below).
 2. On PyPI → project *mcp-server-toolkit* → Publishing → add a Trusted Publisher: repository
@@ -30,6 +30,8 @@ contributor.
    wrong package body before `0.4.0` is up.
 
 ## Tag timing for 0.4.0
+
+<!-- TODO(Cayman): verified 2026-11-20 against `git show v0.4.0:.github/workflows/publish.yml`. The tag's tree already has a `publish.yml` (added 2026-03-05): it triggers on `v*` tag pushes only, uploads with `twine` and `secrets.PYPI_API_TOKEN`, and has no `workflow_dispatch`. So the push event did fire for the tag, and a manual run "on the `v0.4.0` ref" would use that old token-based file, not Trusted Publishing, and GitHub offers no manual trigger for it. Choose the release flow (re-tag, a `0.4.1` tag, or dispatch from `main` with the tag checked out) and rewrite this section. The CHANGELOG line that says the tag "predates the workflow" has the same problem. -->
 
 `v0.4.0` was pushed before `publish.yml` existed, so the push event that would trigger the
 workflow has already passed. Pick one before publishing:
@@ -50,7 +52,8 @@ workflow has already passed. Pick one before publishing:
 - [ ] `CHANGELOG.md` describes what actually ships in this version.
 - [ ] `pyproject.toml` `version` matches the tag and the description matches the changelog.
 - [ ] `hatch build && twine check dist/*` is clean, and the wheel installs and imports in a clean
-      venv (CI runs this on every push).
+      venv (CI builds with `python -m build` and imports the wheel on every push; it does not
+      run `twine check`).
 
 ## Publish (owner)
 
@@ -65,8 +68,8 @@ change together:
 
 - [ ] `docs/claims.yaml`: refresh `pypi-version` to `0.4.0` with its verification command and
       today's date.
-- [ ] `README.md`: replace the "PyPI package is an early 0.1.0 preview" notes (Quickstart and
-      Methodology & limits) with the plain `pip install mcp-server-toolkit` path.
+- [ ] `README.md`: replace the "PyPI package is an older 0.1.0 preview" notes (Quickstart and
+      Decisions, failures, limits) with the plain `pip install mcp-server-toolkit` path.
 - [ ] `.claude/CLAUDE.md` Deploy section.
 - [ ] `python scripts/check_claims.py --check` again.
 - [ ] Create the GitHub release object for `v0.4.0`.

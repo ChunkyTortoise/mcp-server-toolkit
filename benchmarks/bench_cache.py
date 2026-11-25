@@ -78,9 +78,8 @@ def main() -> None:
         f"  Cache MISS -- P50: {results['miss_p50_ms']:.3f}ms  P95: {results['miss_p95_ms']:.3f}ms"
     )
     print(f"  Speedup:      {results['speedup_x']:.1f}x faster on cache hit")
-    print(
-        f"  Backend calls avoided: {ITERATIONS - results['backend_calls_total'] + ITERATIONS} of {ITERATIONS * 2 + 20} total calls\n"
-    )
+    total_calls = WARMUP + ITERATIONS * 2
+    print(f"  Tool body runs: {results['backend_calls_total']:.0f} of {total_calls} total calls\n")
 
 
 if __name__ == "__main__":

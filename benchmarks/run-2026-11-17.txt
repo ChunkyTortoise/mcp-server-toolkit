@@ -1,0 +1,9 @@
+
+mcp-server-toolkit cache benchmark (L1 in-memory)
+Iterations: 500 | Warmup: 20
+
+  Cache HIT  -- P50: 0.013ms  P95: 0.015ms
+  Cache MISS -- P50: 0.028ms  P95: 0.033ms
+  Speedup:      2.1x faster on cache hit
+  Backend calls avoided: 499 of 1020 total calls
+

@@ -5,6 +5,7 @@
 | Version | Supported |
 |---------|-----------|
 | main (source install) | Yes |
+| 0.4.x (tag v0.4.0, source only) | Yes |
 | 0.3.x   | Yes       |
 | 0.2.x and older | No |
 

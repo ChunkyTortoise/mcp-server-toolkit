@@ -138,3 +138,15 @@ wrong issuer, allowed and rejected Host and Origin values, an omitted Origin,
 and forwarded identity headers with no bearer.
 Rate-limit counters and sessions live in one process. Shared limits and sessions
 across replicas require a separate deployment design.
+
+---
+
+## Correction, 2026-11-20
+
+- `uv.lock` resolves `mcp` 2.3.0 (the 0.4.0 line requires `mcp>=2.3,<3`). The statements
+  above that name "SDK 1.29.1" describe the SDK when this ADR was written; they were not
+  rechecked against 2.x in this correction.
+- "Rate-limit counters and sessions live in one process" is no longer the only option.
+  `RedisSlidingWindow` in `mcp_toolkit/framework/rate_limiter.py` (opt-in, see
+  [ADR-0005](ADR-0005-rate-limit-distribution.md)) shares rate-limit counters across
+  processes. Sessions are still per process.
