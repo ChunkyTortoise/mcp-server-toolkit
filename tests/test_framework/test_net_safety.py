@@ -32,6 +32,7 @@ def test_deprecated_site_local_and_mapped_multicast_are_not_global_destinations(
     monkeypatch, address
 ):
     import socket
+
     from mcp_toolkit.framework.net_safety import validate_global_url
 
     monkeypatch.setattr(
@@ -45,6 +46,7 @@ def test_deprecated_site_local_and_mapped_multicast_are_not_global_destinations(
 
 def test_empty_dns_answer_cannot_authorize_an_outbound_request(monkeypatch):
     import socket
+
     from mcp_toolkit.framework.net_safety import validate_global_url
 
     monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [])

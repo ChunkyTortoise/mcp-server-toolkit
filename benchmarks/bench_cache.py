@@ -74,7 +74,9 @@ def main() -> None:
     print("\nmcp-server-toolkit cache benchmark (L1 in-memory)")
     print(f"Iterations: {ITERATIONS} | Warmup: {WARMUP}\n")
     print(f"  Cache HIT  -- P50: {results['hit_p50_ms']:.3f}ms  P95: {results['hit_p95_ms']:.3f}ms")
-    print(f"  Cache MISS -- P50: {results['miss_p50_ms']:.3f}ms  P95: {results['miss_p95_ms']:.3f}ms")
+    print(
+        f"  Cache MISS -- P50: {results['miss_p50_ms']:.3f}ms  P95: {results['miss_p95_ms']:.3f}ms"
+    )
     print(f"  Speedup:      {results['speedup_x']:.1f}x faster on cache hit")
     total_calls = WARMUP + ITERATIONS * 2
     print(f"  Tool body runs: {results['backend_calls_total']:.0f} of {total_calls} total calls\n")

@@ -53,7 +53,9 @@ class EnhancedMCP(MCPServer):
     def telemetry(self) -> TelemetryProvider:
         return self._telemetry
 
-    def _register_tool(self, func: Callable, wrapper: Callable, tool_kwargs: dict[str, Any]) -> Callable:
+    def _register_tool(
+        self, func: Callable, wrapper: Callable, tool_kwargs: dict[str, Any]
+    ) -> Callable:
         """Register ``wrapper`` with MCPServer, refusing a name that is already taken.
 
         MCPServer keeps the first registration and drops later ones with only a log
@@ -66,6 +68,26 @@ class EnhancedMCP(MCPServer):
                 "a repeated name would silently drop one guard; register each tool once."
             )
         return self.tool(**tool_kwargs)(wrapper)
+
+    def traced_tool(self, **tool_kwargs: Any) -> Callable:
+        """Decorator that records one span per call, with the hashed HTTP subject.
+
+        No caching or rate limiting. Extra keyword arguments go to ``MCPServer.tool``.
+        """
+
+        def decorator(func: Callable) -> Callable:
+            @functools.wraps(func)
+            async def wrapper(*args: Any, **kwargs: Any) -> Any:
+                async with self._telemetry.tool_call(func.__name__):
+                    access = get_request_access_token()
+                    if access is not None:
+                        annotate_call(**{"mcp.subject": _hash_id(access.subject or access.client_id)})
+                    return await func(*args, **kwargs)
+
+            wrapper.__wrapped__ = func  # type: ignore[attr-defined]
+            return self._register_tool(func, wrapper, tool_kwargs)
+
+        return decorator
 
     def cached_tool(self, ttl: int = 300, **tool_kwargs: Any) -> Callable:
         """Decorator for local tools with automatic response caching.
@@ -88,7 +110,9 @@ class EnhancedMCP(MCPServer):
                 async with self._telemetry.tool_call(func.__name__) as call:
                     access = get_request_access_token()
                     if access is not None:
-                        annotate_call(**{"mcp.subject": _hash_id(access.subject or access.client_id)})
+                        annotate_call(
+                            **{"mcp.subject": _hash_id(access.subject or access.client_id)}
+                        )
                         raise Forbidden(
                             "Forbidden: cached_tool is unavailable for authenticated HTTP calls"
                         )
@@ -102,7 +126,7 @@ class EnhancedMCP(MCPServer):
                     await self._cache.set(cache_key, result, ttl=ttl)
                     return result
 
-            wrapper.__wrapped__ = func  # type: ignore[attr-defined]
+            wrapper.__wrapped__ = func
             return self._register_tool(func, wrapper, tool_kwargs)
 
         return decorator
@@ -131,7 +155,7 @@ class EnhancedMCP(MCPServer):
                         annotate_call(**{"mcp.subject": _hash_id(caller_id)})
                     else:
                         caller_id = (
-                            kwargs.get("caller_id")
+                            kwargs.get("caller_id")  # type: ignore[assignment]  # narrowed to str by the falsy check below
                             or kwargs.get("client_id")
                             or kwargs.get("user_id")
                         )
@@ -168,7 +192,7 @@ class EnhancedMCP(MCPServer):
                         raise RateLimited(f"Rate limited: retry after {window_seconds}s")
                     return await func(*args, **kwargs)
 
-            wrapper.__wrapped__ = func  # type: ignore[attr-defined]
+            wrapper.__wrapped__ = func
             return self._register_tool(func, wrapper, tool_kwargs)
 
         return decorator
@@ -197,7 +221,7 @@ class EnhancedMCP(MCPServer):
                 async with self._telemetry.tool_call(func.__name__):
                     return await guarded(*args, **kwargs)
 
-            wrapper.__wrapped__ = func  # type: ignore[attr-defined]
+            wrapper.__wrapped__ = func
             return self._register_tool(func, wrapper, tool_kwargs)
 
         return decorator

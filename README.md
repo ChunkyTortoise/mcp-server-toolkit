@@ -13,8 +13,8 @@ The auth and scope gate is tested against a 45-case adversarial corpus (prompt i
 | Metric | Result | n | Dataset | Date | Model | Baseline | Reproduce |
 |---|---|---|---|---|---|---|---|
 | Corpus cases where the gate's outcome matches `expected_blocked` | **38 of 45 cases**; **7 known gaps** pinned as strict xfail | 45 | [`injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) | 2026-11-17 | none (deterministic gate) | the corpus labels | `uv run pytest tests/gates/test_gate_safety.py -q` |
-| Test suite | **1084 passed**, **11 skipped** (Postgres and Redis integration) | **1103** collected | [`tests/`](tests/) | 2026-11-17 | none | n/a | `uv run pytest -q` |
-| Line coverage of `mcp_toolkit` | **87.65%** (CI floor **80%**) | 1 run | [`tests/`](tests/) | 2026-11-17 | none | CI floor in [`ci.yml`](.github/workflows/ci.yml) | `uv run pytest -q --cov=mcp_toolkit` |
+| Test suite | **1145 passed**, **32 skipped** (Postgres and Redis integration) | **1185** collected | [`tests/`](tests/) | 2026-11-25 | none | n/a | `uv run pytest -q` |
+| Line coverage of `mcp_toolkit` | **88.55%** (CI floor **80%**) | 1 run | [`tests/`](tests/) | 2026-11-25 | none | CI floor in [`ci.yml`](.github/workflows/ci.yml) | `uv run pytest -q --cov=mcp_toolkit` |
 | Multi-LLM routing checks | **26/26** | 26 | [`evals/`](evals/) | 2026-11-17 | none (providers mocked) | n/a | `uv run python evals/run_evals.py` |
 | Deterministic smoke checks (routing, cost, JWT, cache) | **10/10** | 10 | [`evals/quality/`](evals/quality/) | 2026-11-17 | none; the LLM judge has no committed run | n/a | `uv run python evals/quality/runner.py` |
 | In-memory cache P50 latency, hit vs miss, on a mock tool | **0.013 ms** hit vs **0.028 ms** miss (**2.1x**) | 500 iterations | [`benchmarks/run-2026-11-17.txt`](benchmarks/run-2026-11-17.txt) | 2026-11-17 | none | cache miss | `uv run python benchmarks/bench_cache.py` |
@@ -32,7 +32,7 @@ uv run pytest -q
 uv run python examples/verified_cache.py
 ```
 
-The test run should end with `1084 passed, 11 skipped, 8 xfailed`. The cache demo dispatches one tool twice through the MCP SDK in-process and prints two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true` from the recorded telemetry ([captured run](docs/assets/cache-run.json), [provenance](docs/VERIFIED_DEMO.md)). With pip instead of uv: `pip install -e ".[dev]"`. The PyPI package is an older 0.1.0 preview that does not include this code, so install from source.
+The test run should end with `1145 passed, 32 skipped, 8 xfailed`. The cache demo dispatches one tool twice through the MCP SDK in-process and prints two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true` from the recorded telemetry ([captured run](docs/assets/cache-run.json), [provenance](docs/VERIFIED_DEMO.md)). With pip instead of uv: `pip install -e ".[dev]"`. The PyPI package is an older 0.1.0 preview that does not include this code, so install from source.
 <!-- TODO(Cayman): publish 0.4.x to PyPI and create the v0.4.0 GitHub release (docs/RELEASING.md), then replace this source-install note and add a PyPI version badge. -->
 
 Inspect the example server in the MCP Inspector (needs Node.js):
@@ -160,7 +160,7 @@ pytest tests/ -q --cov=mcp_toolkit   # CI also enforces the coverage floor in Re
 python evals/run_evals.py
 
 # Postgres integration tests (need a real database)
-INTEGRATION=1 DATABASE_URL=postgres://... pytest tests/test_database_query/test_postgres_client.py
+INTEGRATION=1 DATABASE_URL=postgres://... ADMIN_DATABASE_URL=postgres://... pytest tests/test_database_query/test_postgres_client.py tests/test_database_http.py
 
 # Redis integration tests (need a real Redis)
 INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_rate_limiter_redis.py
@@ -201,11 +201,12 @@ INTEGRATION=1 REDIS_URL=redis://localhost:6379 pytest tests/test_framework/test_
 - This is a Python library. There is no hosted service or dashboard.
 - [GitHub tag v0.4.0](https://github.com/ChunkyTortoise/mcp-server-toolkit/releases/tag/v0.4.0) is a source snapshot of this version. The supported Quickstart installs a checkout of `main`; the PyPI preview does not include the current code.
 - The architecture image is illustrative, not a captured trace.
-- Spans are recorded automatically by `cached_tool`, `rate_limited_tool` and `auth_tool`. A plain `@mcp.tool()` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend ([verification script and hosted steps ready](examples/observability/README.md#verify-an-otlp-deployment); the claims ledger carries the claim as `historical`). The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
+- Spans are recorded automatically by `cached_tool`, `rate_limited_tool`, `auth_tool` and `traced_tool`. A plain `@mcp.tool()` call is not instrumented unless you call `telemetry.span()` yourself. Spans stay in memory unless you call `initialize(use_otel=True)` with an OTLP endpoint configured; external OTLP export has not been verified against a hosted backend ([verification script and hosted steps ready](examples/observability/README.md#verify-an-otlp-deployment); the claims ledger carries the claim as `historical`). The span attribute for cache hits is `cache_hit`; a `cost_usd` attribute appears only when you record cost on the span.
 - `rate_limited_tool` falls back to one shared `"default"` bucket, with a warning log, when the call carries no `caller_id`, `client_id` or `user_id`. The default limiter is in-process, so separate server processes keep separate counters. [`RedisSlidingWindow`](mcp_toolkit/framework/rate_limiter.py) ([ADR-0005](docs/adr/ADR-0005-rate-limit-distribution.md)) is the opt-in Redis backend behind the `redis` extra: it raises on connectivity errors unless you pass `fallback_to_memory=True`, which silently returns to per-process limits. Its windows are scored by wall clock, so clock skew between instances shifts window edges.
 - Redis cache fallback is opt-in, not silent: `fallback_to_memory=False` is the default and a typed `_REDIS_TRANSIENT` exception signals a recoverable failure.
-- The sqlglot allowlist runs in `PostgresClient` (`read_only=True` by default) and on every statement the database server generates ([`sql_generator.py`](mcp_toolkit/servers/database_query/sql_generator.py) calls `validate_read_only`). A `db_connection` you supply yourself still executes with whatever privileges it holds. The allowlist is not a framework-wide guard for other tools.
+- The database server runs the same sqlglot validator on every `run_sql` call and on generated SQL before it reaches the client, and `PostgresClient.fetch_bounded` runs it again with a one-statement rule ([`server.py`](mcp_toolkit/servers/database_query/server.py)). It is defense in depth for this server, not a framework-wide guard for other tools; the read-only role is what holds.
 - The SQL allowlist is defense in depth, not a security boundary. A function list can't be complete, so connect with a read-only Postgres role as well (for example `default_transaction_read_only = on`, or a role with only `SELECT` grants).
+- Callers that share one database role can read each other's SQL text in `pg_stat_activity` (an integration test shows it). Use one role per caller, or revoke access to that view for the role.
 - `auth_tool` and `requires_scope` read the token from a tool argument, so the token passes through the model's context. That suits local and stdio servers. For a hosted server, use the [HTTP gateway](#hosted-http-gateway), which authenticates at the transport.
 - `OAuthAuth` is a deprecated test-only stub; use `JWTAuth`.
 - Several pre-built servers default to mock clients so they run without credentials: `crm_ghl` uses `MockGHLClient` and `gemini_embedding` uses a deterministic `MockEmbeddingClient`. The `multi_llm` router skips any provider whose API key is not set.

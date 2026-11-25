@@ -225,7 +225,9 @@ class JWTAuth:
             else:
                 # HS256: symmetric secret (guaranteed non-None by __init__ invariant)
                 if self._secret is None:
-                    return AuthResult(authenticated=False, error="JWTAuth misconfigured: missing secret")
+                    return AuthResult(
+                        authenticated=False, error="JWTAuth misconfigured: missing secret"
+                    )
                 payload = pyjwt.decode(token, self._secret, **decode_kwargs)
 
         except Exception as exc:
@@ -278,10 +280,7 @@ def requires_scope(auth: APIKeyAuth | JWTAuth, scope: str) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
             credential = (
-                kwargs.get("token")
-                or kwargs.get("api_key")
-                or kwargs.get("authorization")
-                or ""
+                kwargs.get("token") or kwargs.get("api_key") or kwargs.get("authorization") or ""
             )
             result = await auth.authenticate(credential)
             annotate_call(**{"mcp.subject": _subject(result)})

@@ -55,7 +55,7 @@ redis = ["redis>=5.2"]
 auth = ["PyJWT[cryptography]>=2.13.0"]
 console = ["jinja2>=3.1"]
 telemetry = [
-    "opentelemetry-api>=1.44.0",
+    "opentelemetry-api>=1.45.2",
     "opentelemetry-sdk>=1.20",
     "opentelemetry-exporter-otlp-proto-http>=1.20",
 ]
@@ -87,7 +87,22 @@ dev = [
     # dependency set reads YAML, and a hand-rolled parser would break on
     # legitimate ledger entries. Dev-only: the runtime package does not need it.
     "pyyaml>=6.0",
+    "mypy>=1.13",
+    "types-pyyaml",
 ]
+
+[tool.mypy]
+check_untyped_defs = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+files = ["mcp_toolkit"]
+
+[tool.coverage.run]
+source = ["mcp_toolkit"]
+omit = ["tests/*", "*/migrations/*", "*/alembic/*"]
+
+[tool.coverage.report]
+fail_under = 80
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -97,12 +112,16 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+force-exclude = true
+
+[tool.ruff.format]
+exclude = ["**/*.md", "tests/**", "**/test_*.py", "**/*_test.py", "**/*.test.py"]
 
 [tool.ruff.lint]
 # Pinned explicitly: ruff 0.16 expanded its implicit defaults, which turned a
 # green gate red without a code change. Selection must not float with the tool.
-select = ["E4", "E7", "E9", "F"]
-ignore = ["E741"]
+select = ["E", "F", "I"]
+ignore = ["E741", "E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["E", "F401", "F841"]

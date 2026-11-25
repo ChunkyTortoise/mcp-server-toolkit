@@ -39,7 +39,7 @@ class GoogleCalendarProvider:
     def _build(self) -> Any:
         if self._service is None:
             try:
-                from googleapiclient.discovery import build  # type: ignore[import-untyped]
+                from googleapiclient.discovery import build  # pyright: ignore[reportMissingImports]
             except ImportError as exc:
                 raise ImportError(
                     "Install google-api-python-client: pip install mcp-server-toolkit[gcal]"
@@ -75,9 +75,7 @@ class GoogleCalendarProvider:
                     start=datetime.fromisoformat(start_raw.rstrip("Z")),
                     end=datetime.fromisoformat(end_raw.rstrip("Z")),
                     description=item.get("description", ""),
-                    attendees=[
-                        a.get("email", "") for a in item.get("attendees", [])
-                    ],
+                    attendees=[a.get("email", "") for a in item.get("attendees", [])],
                     calendar_id=cal_id,
                 )
             )

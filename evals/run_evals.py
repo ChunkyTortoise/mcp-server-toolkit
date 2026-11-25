@@ -172,13 +172,17 @@ def run_case(case: dict) -> EvalResult:
                 k1 = CacheLayer.make_key("f", ("a",), {"b": 1})
                 k2 = CacheLayer.make_key("f", ("a",), {"b": 1})
                 passed = k1 == k2
-                return EvalResult(case_id, description, passed, "same_key", f"k1={k1[:8]} k2={k2[:8]}")
+                return EvalResult(
+                    case_id, description, passed, "same_key", f"k1={k1[:8]} k2={k2[:8]}"
+                )
 
             elif op == "key_uniqueness":
                 k1 = CacheLayer.make_key("f", ("a",), {})
                 k2 = CacheLayer.make_key("f", ("b",), {})
                 passed = k1 != k2
-                return EvalResult(case_id, description, passed, "different_keys", f"k1={k1[:8]} k2={k2[:8]}")
+                return EvalResult(
+                    case_id, description, passed, "different_keys", f"k1={k1[:8]} k2={k2[:8]}"
+                )
 
             elif op == "clear":
                 key = CacheLayer.make_key("clr", ("v",), {})
@@ -224,13 +228,21 @@ def run_case(case: dict) -> EvalResult:
             elif op == "agent_card":
                 card = asyncio.run(adapter.get_agent_card())
                 passed = isinstance(card, dict) and "skills" in card and len(card["skills"]) >= 1
-                return EvalResult(case_id, description, passed, "dict with skills>=1", str(type(card)))
+                return EvalResult(
+                    case_id, description, passed, "dict with skills>=1", str(type(card))
+                )
 
             elif op == "task_status":
                 asyncio.run(adapter.handle_task("t3", "answer", {"question": "test"}))
                 status = adapter.get_task_status("t3")
                 passed = status is not None and status.task_id == "t3"
-                return EvalResult(case_id, description, passed, "task_id=t3", str(status.task_id if status else None))
+                return EvalResult(
+                    case_id,
+                    description,
+                    passed,
+                    "task_id=t3",
+                    str(status.task_id if status else None),
+                )
 
             elif op == "list_tasks":
                 asyncio.run(adapter.handle_task("t4", "answer", {"question": "a"}))
@@ -242,7 +254,7 @@ def run_case(case: dict) -> EvalResult:
             return EvalResult(case_id, description, False, "known op", f"unknown op: {op}")
 
         elif tool == "rate_limiter":
-            from mcp_toolkit.framework.rate_limiter import RateLimiter, RateLimitConfig
+            from mcp_toolkit.framework.rate_limiter import RateLimitConfig, RateLimiter
 
             op = case["operation"]
 
@@ -352,7 +364,9 @@ def run_case(case: dict) -> EvalResult:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run routing evals for mcp-server-toolkit")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Show all cases, not just failures")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Show all cases, not just failures"
+    )
     args = parser.parse_args()
 
     golden_path = Path(__file__).parent / "golden_set.jsonl"

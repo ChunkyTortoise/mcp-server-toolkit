@@ -30,8 +30,10 @@ class EvalTask:
 
 # ── Multi-LLM routing (deterministic) ────────────────────────────────────────
 
+
 async def _routing_cheap_selects_cheapest() -> str:
     from unittest.mock import MagicMock
+
     from mcp_toolkit.servers.multi_llm.models import CircuitBreaker, ProviderName
     from mcp_toolkit.servers.multi_llm.router import CHEAP_PRIORITY
 
@@ -50,6 +52,7 @@ async def _routing_cheap_selects_cheapest() -> str:
 
 async def _routing_best_selects_gpt() -> str:
     from unittest.mock import MagicMock
+
     from mcp_toolkit.servers.multi_llm.models import CircuitBreaker, ProviderName
     from mcp_toolkit.servers.multi_llm.router import BEST_PRIORITY
 
@@ -68,6 +71,7 @@ async def _routing_best_selects_gpt() -> str:
 
 async def _circuit_breaker_trips_at_threshold() -> str:
     from mcp_toolkit.servers.multi_llm.models import CircuitBreaker
+
     cb = CircuitBreaker(failure_threshold=3)
     for _ in range(3):
         cb.record_failure()
@@ -76,14 +80,17 @@ async def _circuit_breaker_trips_at_threshold() -> str:
 
 # ── CostTracker accuracy ──────────────────────────────────────────────────────
 
+
 async def _cost_1m_gpt55_input() -> str:
     from mcp_toolkit.framework.costing import CostTracker
+
     cost = CostTracker._compute_cost("openai", "gpt-5.5", 1_000_000, 0)
     return f"{cost:.2f}"
 
 
 async def _cost_haiku_cheaper_than_sonnet() -> str:
     from mcp_toolkit.framework.costing import CostTracker
+
     haiku = CostTracker._compute_cost("anthropic", "claude-haiku-4-5-20251001", 100_000, 10_000)
     sonnet = CostTracker._compute_cost("anthropic", "claude-sonnet-4-6", 100_000, 10_000)
     return "haiku_cheaper" if haiku < sonnet else "sonnet_cheaper"
@@ -91,31 +98,51 @@ async def _cost_haiku_cheaper_than_sonnet() -> str:
 
 # ── Auth correctness ──────────────────────────────────────────────────────────
 
+
 async def _jwt_valid_hs256() -> str:
-    import jwt as pyjwt
     import time
+
+    import jwt as pyjwt
+
     from mcp_toolkit.framework.auth import JWTAuth
-    token = pyjwt.encode({"sub": "u1", "scope": "read", "exp": time.time() + 3600}, "eval-secret-long-enough-32ch", algorithm="HS256")
+
+    token = pyjwt.encode(
+        {"sub": "u1", "scope": "read", "exp": time.time() + 3600},
+        "eval-secret-long-enough-32ch",
+        algorithm="HS256",
+    )
     auth = JWTAuth(secret="eval-secret-long-enough-32ch")
     result = await auth.authenticate(token)
     return "authenticated" if result.authenticated else f"rejected: {result.error}"
 
 
 async def _jwt_expired_rejected() -> str:
-    import jwt as pyjwt
     import time
+
+    import jwt as pyjwt
+
     from mcp_toolkit.framework.auth import JWTAuth
-    token = pyjwt.encode({"sub": "u1", "scope": "read", "exp": time.time() - 120}, "eval-secret-long-enough-32ch", algorithm="HS256")
+
+    token = pyjwt.encode(
+        {"sub": "u1", "scope": "read", "exp": time.time() - 120},
+        "eval-secret-long-enough-32ch",
+        algorithm="HS256",
+    )
     auth = JWTAuth(secret="eval-secret-long-enough-32ch")
     result = await auth.authenticate(token)
     return "rejected" if not result.authenticated else "authenticated"
 
 
 async def _jwt_wrong_secret_rejected() -> str:
-    import jwt as pyjwt
     import time
+
+    import jwt as pyjwt
+
     from mcp_toolkit.framework.auth import JWTAuth
-    token = pyjwt.encode({"sub": "u1", "scope": "read", "exp": time.time() + 3600}, "wrong-secret", algorithm="HS256")
+
+    token = pyjwt.encode(
+        {"sub": "u1", "scope": "read", "exp": time.time() + 3600}, "wrong-secret", algorithm="HS256"
+    )
     auth = JWTAuth(secret="eval-secret-long-enough-32ch")
     result = await auth.authenticate(token)
     return "rejected" if not result.authenticated else "authenticated"
@@ -123,8 +150,10 @@ async def _jwt_wrong_secret_rejected() -> str:
 
 # ── Cache semantics ───────────────────────────────────────────────────────────
 
+
 async def _cache_hit_returns_stored() -> str:
     from mcp_toolkit.framework.caching import CacheLayer, InMemoryCache
+
     layer = CacheLayer(InMemoryCache())
     layer.initialize()
     await layer.set("k1", "stored_value", ttl=60)
@@ -134,6 +163,7 @@ async def _cache_hit_returns_stored() -> str:
 
 async def _cache_key_deterministic() -> str:
     from mcp_toolkit.framework.caching import CacheLayer
+
     k1 = CacheLayer.make_key("fn", (1,), {"a": "b"})
     k2 = CacheLayer.make_key("fn", (1,), {"a": "b"})
     return "deterministic" if k1 == k2 else "nondeterministic"

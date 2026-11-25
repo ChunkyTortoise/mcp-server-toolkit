@@ -41,16 +41,14 @@ class GmailEmailClient:
 
     def _build_service(self) -> Any:
         try:
-            from googleapiclient.discovery import build  # type: ignore[import-untyped]
+            from googleapiclient.discovery import build  # pyright: ignore[reportMissingImports]
         except ImportError as exc:
             raise ImportError(
                 "Install google-api-python-client: pip install mcp-server-toolkit[gmail]"
             ) from exc
         return build("gmail", "v1", credentials=self.credentials)
 
-    async def send(
-        self, to: str, subject: str, body: str, cc: str = "", bcc: str = ""
-    ) -> dict:
+    async def send(self, to: str, subject: str, body: str, cc: str = "", bcc: str = "") -> dict:
         msg = email.mime.multipart.MIMEMultipart("alternative")
         msg["To"] = to
         msg["Subject"] = subject
@@ -67,9 +65,7 @@ class GmailEmailClient:
         result = service.users().messages().send(userId="me", body={"raw": raw}).execute()
         return {"id": result.get("id", "unknown"), "status": "sent"}
 
-    async def search(
-        self, query: str, folder: str = "INBOX", limit: int = 20
-    ) -> list[dict]:
+    async def search(self, query: str, folder: str = "INBOX", limit: int = 20) -> list[dict]:
         service = self._build_service()
         label = "INBOX" if folder.upper() == "INBOX" else folder
         resp = (
@@ -84,16 +80,19 @@ class GmailEmailClient:
             detail = (
                 service.users()
                 .messages()
-                .get(userId="me", id=m["id"], format="metadata",
-                     metadataHeaders=["Subject", "From"])
+                .get(
+                    userId="me", id=m["id"], format="metadata", metadataHeaders=["Subject", "From"]
+                )
                 .execute()
             )
             headers = {h["name"]: h["value"] for h in detail.get("payload", {}).get("headers", [])}
             snippet = detail.get("snippet", "")
-            results.append({
-                "id": m["id"],
-                "subject": headers.get("Subject", ""),
-                "from": headers.get("From", ""),
-                "preview": snippet[:100],
-            })
+            results.append(
+                {
+                    "id": m["id"],
+                    "subject": headers.get("Subject", ""),
+                    "from": headers.get("From", ""),
+                    "preview": snippet[:100],
+                }
+            )
         return results

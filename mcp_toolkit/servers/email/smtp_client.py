@@ -53,9 +53,7 @@ class SMTPEmailClient:
         if not self.from_addr:
             self.from_addr = self.username
 
-    async def send(
-        self, to: str, subject: str, body: str, cc: str = "", bcc: str = ""
-    ) -> dict:
+    async def send(self, to: str, subject: str, body: str, cc: str = "", bcc: str = "") -> dict:
         msg = email.mime.multipart.MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = self.from_addr
@@ -86,9 +84,7 @@ class SMTPEmailClient:
 
         return {"id": f"smtp-{hash(subject) & 0xFFFFFF:06x}", "status": "sent"}
 
-    async def search(
-        self, query: str, folder: str = "INBOX", limit: int = 20
-    ) -> list[dict]:
+    async def search(self, query: str, folder: str = "INBOX", limit: int = 20) -> list[dict]:
         """Search emails via IMAP. Requires imap_host to be set."""
         if not self.imap_host:
             return []

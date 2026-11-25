@@ -103,7 +103,9 @@ class TestJWTAuthHS256:
         expires_in: int = 3600,
         extra: dict | None = None,
     ) -> str:
-        import jwt, time
+        import time
+
+        import jwt
         payload = {
             "sub": sub,
             "scope": " ".join(scopes or ["read"]),
@@ -126,7 +128,9 @@ class TestJWTAuthHS256:
         assert "db:query" in result.scopes
 
     async def test_scp_claim_variant(self, jwt_auth):
-        import jwt, time
+        import time
+
+        import jwt
         payload = {"sub": "u1", "scp": ["read", "admin"], "iss": "test-issuer", "exp": time.time() + 3600}
         token = jwt.encode(payload, "super-secret", algorithm="HS256")
         result = await jwt_auth.authenticate(token)
@@ -184,7 +188,9 @@ class TestRequiresScope:
         return JWTAuth(secret="test-secret")
 
     def _token(self, scopes: list[str]) -> str:
-        import jwt, time
+        import time
+
+        import jwt
         return jwt.encode(
             {"sub": "u1", "scope": " ".join(scopes), "exp": time.time() + 3600},
             "test-secret", algorithm="HS256",

@@ -146,9 +146,11 @@ class TestEmbeddingClientAwait:
 
     async def test_embed_is_coroutine(self):
         """Verify embed() is a proper async function that returns a list, not a coroutine."""
-        from mcp_toolkit.servers.gemini_embedding.embedding_client import GeminiEmbeddingClient
-        from unittest.mock import AsyncMock, patch, MagicMock
+        from unittest.mock import AsyncMock, MagicMock, patch
+
         import httpx
+
+        from mcp_toolkit.servers.gemini_embedding.embedding_client import GeminiEmbeddingClient
 
         client = GeminiEmbeddingClient(api_key="test-key")
         mock_response = MagicMock()

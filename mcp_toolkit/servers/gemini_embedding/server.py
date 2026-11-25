@@ -166,9 +166,12 @@ async def similarity(
     )
     score = cosine_similarity(vectors[0], vectors[1])
     label = (
-        "very similar" if score > 0.9
-        else "similar" if score > 0.7
-        else "somewhat related" if score > 0.4
+        "very similar"
+        if score > 0.9
+        else "similar"
+        if score > 0.7
+        else "somewhat related"
+        if score > 0.4
         else "dissimilar"
     )
     return f"Similarity score: {score:.4f} ({label})\n\nText A: {text_a[:60]!r}\nText B: {text_b[:60]!r}"

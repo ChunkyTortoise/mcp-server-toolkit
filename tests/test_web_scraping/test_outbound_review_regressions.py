@@ -131,6 +131,7 @@ async def test_dns_lookup_does_not_block_other_async_tasks(monkeypatch, consumer
     import asyncio
     import threading
     from unittest.mock import MagicMock
+
     from mcp_toolkit.framework.a2a_adapter import A2AAdapter, A2ATaskStatus
 
     released = threading.Event()
@@ -166,6 +167,7 @@ async def test_dns_lookup_does_not_block_other_async_tasks(monkeypatch, consumer
 @pytest.mark.asyncio
 async def test_webhook_redirect_is_never_followed(monkeypatch):
     from unittest.mock import MagicMock
+
     from mcp_toolkit.framework.a2a_adapter import A2AAdapter, A2ATaskStatus
 
     seen = []
@@ -250,6 +252,7 @@ async def test_non_redirect_status_does_not_follow_location(status):
 @pytest.mark.asyncio
 async def test_unicode_webhook_uses_canonical_dns_and_issues_no_request(monkeypatch):
     from unittest.mock import MagicMock
+
     from mcp_toolkit.framework.a2a_adapter import A2AAdapter, A2ATaskStatus
 
     checked = []

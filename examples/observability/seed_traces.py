@@ -31,7 +31,6 @@ os.environ.setdefault("OTEL_SERVICE_NAME", "mcp-toolkit-demo")
 from mcp_toolkit.framework.costing import CostTracker  # noqa: E402
 from mcp_toolkit.framework.telemetry import TelemetryProvider  # noqa: E402
 
-
 WORKFLOWS = [
     {
         "name": "agentic_rag.query",

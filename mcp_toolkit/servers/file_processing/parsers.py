@@ -85,7 +85,7 @@ class FileParser:
         try:
             # pypdf is the maintained successor to PyPDF2, which was abandoned at
             # 3.0.1 with GHSA-4vvm-4w3v-6mr8 unpatched. Same PdfReader API.
-            from pypdf import PdfReader  # type: ignore[import-untyped]
+            from pypdf import PdfReader
         except ImportError:
             return ParsedFile(
                 filename=filename,
