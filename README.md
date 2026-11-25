@@ -21,6 +21,11 @@ The auth and scope gate is tested against a 45-case adversarial corpus (prompt i
 
 Python 3.13.11, macOS arm64 (Apple M4). The cache row measures decorator overhead around a tool that only awaits `asyncio.sleep(0)`, not tool work; repeat runs printed 2.0x to 2.2x. Each number is registered in [`docs/claims.yaml`](docs/claims.yaml), and `python scripts/check_claims.py --check` fails CI when a README number has no entry. Scope and gaps: [Decisions, failures, limits](#decisions-failures-limits).
 
+<p align="center">
+  <img src="./docs/assets/terminal-demo.png" width="720" alt="Terminal capture. uv run python examples/guarded_tool.py prints order 42: shipped for the call with a valid scoped token, then Error executing tool get_order: Unauthorized: malformed token for the forged one. uv run pytest on tests/gates/test_gate_safety.py then reports its passes and its strict xfails, the known gaps." />
+</p>
+<p align="center"><sub>Real output of the two commands shown. Regenerate with <code>uv run --with pillow python scripts/render_terminal_demo.py</code>.</sub></p>
+
 ## Quickstart
 
 Needs [uv](https://docs.astral.sh/uv/) and Python 3.10+. No API key, no network after install.
@@ -89,7 +94,7 @@ async def main():
 asyncio.run(main())
 ```
 
-The first call prints `order 42: shipped`. The forged call raises `ToolError`, which the example catches and prints as `Error executing tool get_order: Unauthorized: malformed token`; the tool body never runs. Each auth decision is also written as a JSON audit-log line. To serve the same tool to Claude Desktop or any MCP client, call `mcp.run()` instead of using `MCPTestClient`; `bash examples/claude_desktop_app/setup.sh` wires three of the pre-built servers into Claude Desktop.
+The same code is in [`examples/guarded_tool.py`](examples/guarded_tool.py). The first call prints `order 42: shipped`. The forged call raises `ToolError`, which the example catches and prints as `Error executing tool get_order: Unauthorized: malformed token`; the tool body never runs. Each auth decision is also written as a JSON audit-log line. To serve the same tool to Claude Desktop or any MCP client, call `mcp.run()` instead of using `MCPTestClient`; `bash examples/claude_desktop_app/setup.sh` wires three of the pre-built servers into Claude Desktop.
 
 <p align="center">
   <img src="docs/assets/architecture.svg" width="720" alt="Library map: your tool logic at the center, wrapped by auth, per-caller rate limits, cache, cost attribution and OpenTelemetry. Illustrative architecture, not a captured trace." />
