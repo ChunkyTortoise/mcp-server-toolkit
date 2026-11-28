@@ -29,8 +29,9 @@ def token(**overrides):
         "scope": "orders:read",
     }
     claims.update(overrides)
-    if claims.get("sub") is None:
-        claims.pop("sub", None)
+    for key in ("sub", "scope"):
+        if claims.get(key) is None:
+            claims.pop(key, None)
     return jwt.encode(claims, SECRET, algorithm="HS256")
 
 
@@ -84,11 +85,28 @@ async def test_malformed_token_returns_none(verifier, bearer):
     "claim,value", [("scope", "orders:read orders:write"), ("scp", ["orders:read", "orders:write"])]
 )
 async def test_scope_claim_formats(verifier, claim, value):
-    claims = {"scope": ""}
+    claims = {"scope": None}
     claims[claim] = value
     bearer = token(**claims)
     access = await verifier.verify_token(bearer)
     assert access.scopes == ["orders:read", "orders:write"]
+
+
+async def test_empty_scope_claim_grants_nothing(verifier):
+    """An explicit empty scope does not fall through to scp or permissions."""
+    access = await verifier.verify_token(
+        token(scope="", scp=["orders:write"], permissions=["admin"])
+    )
+    assert access is not None
+    assert access.scopes == []
+
+
+@pytest.mark.parametrize("sep", ["\t", "\n", "\u00a0"])
+async def test_scope_string_splits_on_space_only(verifier, sep):
+    """RFC 6749 delimits scopes with U+0020; other whitespace stays inside one token."""
+    access = await verifier.verify_token(token(scope=f"orders:read{sep}admin orders:write"))
+    assert access is not None
+    assert access.scopes == [f"orders:read{sep}admin", "orders:write"]
 
 
 async def test_audience_list_containing_resource_is_accepted(verifier):
