@@ -13,7 +13,7 @@ The auth and scope gate is tested against a 45-case adversarial corpus (prompt i
 | Metric | Result | n | Dataset | Date | Model | Baseline | Reproduce |
 |---|---|---|---|---|---|---|---|
 | Corpus cases where the gate's outcome matches `expected_blocked` | **40 of 45 cases**; **5 known gaps** pinned as strict xfail | 45 | [`injection_corpus.jsonl`](tests/adversarial/injection_corpus.jsonl) | 2026-11-20 | none (deterministic gate) | the corpus labels | `uv run pytest tests/gates/test_gate_safety.py -q` |
-| Test suite | **1145 passed**, **32 skipped** (Postgres and Redis integration) | **1185** collected | [`tests/`](tests/) | 2026-11-25 | none | n/a | `uv run pytest -q` |
+| Test suite | **1151 passed**, **32 skipped** (Postgres and Redis integration) | **1185** collected | [`tests/`](tests/) | 2026-11-25 | none | n/a | `uv run pytest -q` |
 | Line coverage of `mcp_toolkit` | **88.55%** (CI floor **80%**) | 1 run | [`tests/`](tests/) | 2026-11-25 | none | CI floor in [`ci.yml`](.github/workflows/ci.yml) | `uv run pytest -q --cov=mcp_toolkit` |
 | Multi-LLM routing checks | **26/26** | 26 | [`evals/`](evals/) | 2026-11-17 | none (providers mocked) | n/a | `uv run python evals/run_evals.py` |
 | Deterministic smoke checks (routing, cost, JWT, cache) | **10/10** | 10 | [`evals/quality/`](evals/quality/) | 2026-11-17 | none; the LLM judge has no committed run | n/a | `uv run python evals/quality/runner.py` |
@@ -37,7 +37,7 @@ uv run pytest -q
 uv run python examples/verified_cache.py
 ```
 
-The test run should end with `1145 passed, 32 skipped, 8 xfailed`. The cache demo dispatches one tool twice through the MCP SDK in-process and prints two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true` from the recorded telemetry ([captured run](docs/assets/cache-run.json), [provenance](docs/VERIFIED_DEMO.md)). With pip instead of uv: `pip install -e ".[dev]"`. The PyPI package is an older 0.1.0 preview that does not include this code, so install from source.
+The test run should end with `1151 passed, 32 skipped, 8 xfailed`. The cache demo dispatches one tool twice through the MCP SDK in-process and prints two `Hello, World!` results, `tool_executions: 1`, then `cache_hit: false` and `cache_hit: true` from the recorded telemetry ([captured run](docs/assets/cache-run.json), [provenance](docs/VERIFIED_DEMO.md)). With pip instead of uv: `pip install -e ".[dev]"`. The PyPI package is an older 0.1.0 preview that does not include this code, so install from source.
 <!-- TODO(Cayman): publish 0.4.x to PyPI and create the v0.4.0 GitHub release (docs/RELEASING.md), then replace this source-install note and add a PyPI version badge. -->
 
 Inspect the example server in the MCP Inspector (needs Node.js):

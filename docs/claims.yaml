@@ -44,11 +44,11 @@ allow:
 claims:
   - id: test-suite-passed
     statement: Tests passing in this tree with the development extras installed.
-    value: "1145 passed"
-    match: ["1145 passed"]
+    value: "1151 passed"
+    match: ["1151 passed"]
     artifact: tests/
     command: "python -m pytest tests/ -q"
-    expect: "1145 passed"
+    expect: "1151 passed"
     date: "2026-11-25"
     status: verified
     scope: >-
